@@ -1,0 +1,16 @@
+# environment.yml
+name: protest_safety
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11.13
+  - numpy
+  - pandas
+  - scipy
+  - matplotlib
+  - pip:
+    - gymnasium
+    - networkx
+    - pyyaml
+    - pytest
