@@ -16,5 +16,8 @@ SHELL ["conda", "run", "-n", "protest_safety", "/bin/bash", "-c"]
 # Copy the rest of the application code to the working directory
 COPY . .
 
-# Activate the environment and run smoke tests when the container starts
+# Activate the environment and run smoke tests when the container starts (default command)
 CMD ["conda", "run", "-n", "protest_safety", "python", "-m", "pytest", "tests/ -v"]
+
+# Run the MVP script
+#CMD ["conda", "run", "-n", "protest_safety", "python", "src/run_mvp.py"]
