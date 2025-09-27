@@ -9,6 +9,8 @@ dependencies:
   - pandas
   - scipy
   - matplotlib
+  - flake8
+  - pip
   - pip:
     - gymnasium
     - networkx
