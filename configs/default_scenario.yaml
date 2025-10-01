@@ -1,0 +1,92 @@
+# default_scenario.yaml - Main configuration for protest simulation
+
+# Grid configuration
+grid:
+  width: 100
+  height: 100
+  cell_size_m: 1.0              # Meters per cell (CRITICAL: must match CV)
+  origin: "top_left"             # Coordinate system origin; matches image conventions (rows = y, cols = x)
+  obstacle_raster: "generate"    # 'generate' or path to PNG if will be loaded from png mask
+
+# Time configuration
+time:
+  delta_t: 1.0                   # Seconds per simulation step
+  max_steps: 2000                # Maximum episode length (~33 minutes)
+  video_frame_dt: 0.033          # For CV temporal alignment (30fps)
+
+# Agent configuration
+agents:
+  protesters:
+    count: 100
+    spawn:
+      type: "clusters"           # 'clusters', 'uniform', 'fixed'
+      centers: 
+        - [10, 10]
+        - [20, 60]
+        - [80, 20]
+      radius: 5
+    speed_m_s: 1.2               # Movement speed (m/s = cells/step)
+    risk_tolerance_mean: 0.3     # [0, 1], higher = less cautious
+    risk_tolerance_std: 0.1      # Standard deviation (for DAY 2 heterogeneity)
+    goals:
+      strategy: "nearest_exit"   # 'nearest_exit', 'fixed', 'random'
+      exit_points:
+        - [5, 95]
+        - [95, 95]
+        - [50, 0]
+  
+  police:
+    count: 10
+    spawn:
+      type: "fixed"
+      positions:
+        - [50, 50]
+        - [70, 20]
+        - [30, 70]
+        - [60, 80]
+        - [40, 30]
+        - [80, 60]
+        - [20, 40]
+        - [55, 15]
+        - [35, 85]
+        - [75, 75]
+    speed_m_s: 1.5               # Faster than protesters
+    deploy_prob: 0.01            # Per-step probability of gas deployment
+    deploy_cooldown: 50          # Steps before can deploy again
+
+# Hazard configuration
+hazards:
+  gas:
+    # Physical parameters (grid units)
+    diffusion_coeff: 0.2         # D_grid (dimensionless per step)
+    decay_rate: 0.05             # γ_step (fraction per step)
+    
+    # Deployment parameters
+    inj_intensity: 5.0           # Concentration units per deployment
+    
+    # Harm mapping (CALIBRATED)
+    k_harm: 0.1386               # Calibrated for 50% harm/s at C=5
+    H_crit: 5.0                  # Cumulative harm threshold for incapacitation
+    
+    # Numerical stability
+    concentration_min: 0.0
+    concentration_max: 100.0
+
+# Simulation parameters
+simulation:
+  base_seed: 123456              # Base RNG seed
+  n_cell_max: 6                  # Max agents per cell
+  store_full_traces: false       # Save only I_i indicators (memory)
+
+# Monte Carlo configuration
+monte_carlo:
+  n_rollouts: 200                # Production runs
+  n_rollouts_dev: 50             # Development (faster)
+  bootstrap_samples: 1000        # For confidence intervals
+  n_jobs: 8                      # Parallel workers
+
+# Output configuration
+output:
+  save_events: true              # Log police deployments
+  save_I_grids: true             # Save harm indicators
+  save_path: "artifacts/rollouts/"
