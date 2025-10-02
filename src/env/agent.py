@@ -24,11 +24,30 @@ class Agent:
     """
     Base agent class for protesters, medics, bystanders.
     
-    Day 1: Homogeneous protesters with basic goal-directed movement
+    Supports heterogeneous agent types with different risk tolerances and speeds.
     """
     
     # Type priorities for conflict resolution
     PRIORITY = {'police': 0, 'medic': 1, 'protester': 2, 'bystander': 3}
+    
+    # Agent type profiles (heterogeneity)
+    AGENT_PROFILES = {
+        'cautious': {
+            'speed_multiplier': 0.83,      # 1.0 m/s (slower)
+            'risk_tolerance': 0.1,         # Very cautious
+            'w_hazard_multiplier': 1.5     # Extra weight on hazard avoidance
+        },
+        'average': {
+            'speed_multiplier': 1.0,       # 1.2 m/s (baseline)
+            'risk_tolerance': 0.3,         # Moderate caution
+            'w_hazard_multiplier': 1.0     # Standard weight
+        },
+        'bold': {
+            'speed_multiplier': 1.17,      # 1.4 m/s (faster)
+            'risk_tolerance': 0.6,         # Risk-taking
+            'w_hazard_multiplier': 0.5     # Less concerned about hazards
+        }
+    }
     
     # 8-neighbor movement offsets
     MOVE_OFFSETS = [
@@ -50,7 +69,8 @@ class Agent:
                  goal: Tuple[int, int],
                  speed: float,
                  risk_tolerance: float,
-                 rng: np.random.Generator):
+                 rng: np.random.Generator,
+                 profile_name: str = 'average'):
         """
         Initialize agent.
         
@@ -59,22 +79,63 @@ class Agent:
             agent_type: 'protester', 'police', 'medic', 'bystander'
             pos: Initial (x, y) cell position
             goal: Target (x, y) cell position
-            speed: Cells per step (float, e.g., 1.2)
-            risk_tolerance: [0, 1], higher = less cautious
+            speed: Base cells per step (will be modified by profile)
+            risk_tolerance: Base risk tolerance (will be modified by profile)
             rng: Random number generator
+            profile_name: Agent profile ('cautious', 'average', 'bold')
         """
+        # Apply profile modifications
+        profile = self.AGENT_PROFILES.get(profile_name, self.AGENT_PROFILES['average'])
+        
         # Core attributes (locked data types)
         self.id: int = agent_id
         self.agent_type: str = agent_type
+        self.profile_name: str = profile_name
         self.pos: Tuple[int, int] = pos
         self.goal: Tuple[int, int] = goal
-        self.speed: np.float32 = np.float32(speed)
-        self.risk_tolerance: np.float32 = np.float32(risk_tolerance)
+        
+        # Apply profile speed multiplier
+        self.speed: np.float32 = np.float32(speed * profile['speed_multiplier'])
+        
+        # Use profile risk tolerance
+        self.risk_tolerance: np.float32 = np.float32(profile['risk_tolerance'])
         
         # State
         self.state: str = AgentState.MOVING
         
         # Harm tracking (dual-purpose model)
+        self.cumulative_harm: np.float32 = np.float32(0.0)
+        self.harm_events: int = 0
+        
+        # Movement mechanics
+        self.move_accum: np.float32 = np.float32(0.0)
+        self.last_move_direction: Optional[int] = None
+        
+        # RNG for stochastic decisions
+        self.rng = rng
+        
+        # Scoring weights (locked parameters, modified by profile)
+        self.w_goal: float = 1.0
+        self.w_hazard: float = 5.0 * (1.0 - self.risk_tolerance) * profile['w_hazard_multiplier']
+        self.w_occupancy: float = 0.5
+        self.w_inertia: float = 0.2
+        self.beta: float = 5.0  # Boltzmann temperature model)
+        self.cumulative_harm: np.float32 = np.float32(0.0)
+        self.harm_events: int = 0
+        
+        # Movement mechanics
+        self.move_accum: np.float32 = np.float32(0.0)
+        self.last_move_direction: Optional[int] = None
+        
+        # RNG for stochastic decisions
+        self.rng = rng
+        
+        # Scoring weights (locked parameters, modified by profile)
+        self.w_goal: float = 1.0
+        self.w_hazard: float = 5.0 * (1.0 - self.risk_tolerance) * profile['w_hazard_multiplier']
+        self.w_occupancy: float = 0.5
+        self.w_inertia: float = 0.2
+        self.beta: float = 5.0  # Boltzmann temperature model)
         self.cumulative_harm: np.float32 = np.float32(0.0)
         self.harm_events: int = 0
         

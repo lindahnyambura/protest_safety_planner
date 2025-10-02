@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .agent import Agent, PoliceAgent, AgentState
 from .hazards import HazardField
+from .map_loader import load_nairobi_cbd_map
 
 
 @dataclass
@@ -88,6 +89,11 @@ class ProtestEnv(gym.Env):
         self.occupancy_count = None
         self.obstacle_mask = None
         self.hazard_field = None
+
+        # OSM data (if loaded)
+        self.osm_metadata = None
+        self.buildings_gdf = None
+        self.streets_graph = None
         
         # Agent management
         self.agents: List[Agent] = []
@@ -235,40 +241,66 @@ class ProtestEnv(gym.Env):
     
     def _load_or_generate_obstacles(self) -> np.ndarray:
         """
-        Load obstacle mask from file or generate simple obstacles.
+        Load obstacle mask from OSM or generate simple obstacles.
         
         Returns:
             obstacle_mask: Boolean array (True = impassable)
         """
-        obstacle_cfg = self.config['grid'].get('obstacle_raster', 'generate')
+        obstacle_source = self.config['grid'].get('obstacle_source', 'generate')
+
+        if obstacle_source == 'osm':
+            # Try loading from OSM
+            print("Loading Nairobi CBD map from OpenStreetMap...")
+            osm_data = load_nairobi_cbd_map(
+                self.config,
+                force_download=self.config.get('osm', {}).get('force_download', False)
+            )
+
+            if osm_data is not None:
+                # Store metadata for CV integration
+                self.osm_metadata = osm_data['metadata']
+                self.buildings_gdf = osm_data.get('buildings_gdf')
+                self.streets_graph = osm_data.get('streets_graph')
+
+                print(f" Loaded OSM map: {self.osm_metadata['width']}×"
+                      f"{self.osm_metadata['height']} grid")
+                print(f"  CRS: {self.osm_metadata['crs']}")
+                print(f"  Coverage: {self.osm_metadata['cell_size_m']*self.width:.0f}m × "
+                      f"{self.osm_metadata['cell_size_m']*self.height:.0f}m")
+                
+                return osm_data['obstacle_mask']
+            else:
+                print(" [WARN] OSM loading failed, falling back to generated obstacles.")
+
+        # Simple generated obstacles (random blocks)
+        print("Generating synthetic obstacles...")
+        mask = np.zeros((self.height, self.width), dtype=bool)
+
+        # Add border walls
+        mask[0, :] = True
+        mask[-1, :] = True
+        mask[:, 0] = True
+        mask[:, -1] = True
+
+        # Add a few internal obstacles (buildings) - scaled for larger grid
+        scale_factor = self.width / 100  # Scale from original 100×100
+
+        mask[int(20*scale_factor):int(30*scale_factor), 
+             int(20*scale_factor):int(35*scale_factor)] = True
+        mask[int(60*scale_factor):int(75*scale_factor), 
+             int(50*scale_factor):int(70*scale_factor)] = True
+        mask[int(40*scale_factor):int(50*scale_factor), 
+             int(70*scale_factor):int(80*scale_factor)] = True
         
-        if obstacle_cfg == 'generate':
-            # Generate simple rectangular obstacles for Day 1
-            mask = np.zeros((self.height, self.width), dtype=bool)
-            
-            # Add border walls
-            mask[0, :] = True
-            mask[-1, :] = True
-            mask[:, 0] = True
-            mask[:, -1] = True
-            
-            # Add a few internal obstacles (buildings)
-            mask[20:30, 20:35] = True
-            mask[60:75, 50:70] = True
-            mask[40:50, 70:80] = True
-            
-            return mask
-        else:
-            # TODO Day 3: Load from PNG
-            raise NotImplementedError("PNG obstacle loading deferred to Day 3")
-    
+        return mask
+
     def _spawn_agents(self):
         """Spawn protesters and police according to config."""
         self.agents = []
         self.protesters = []
         self.police_agents = []
         
-        # Spawn protesters
+        # Spawn protesters with heterogeneity
         protester_cfg = self.config['agents']['protesters']
         n_protesters = protester_cfg['count']
         spawn_cfg = protester_cfg['spawn']
@@ -279,16 +311,31 @@ class ProtestEnv(gym.Env):
             spawn_params=spawn_cfg
         )
         
+        # Check if heterogeneous types are configured
+        if 'types' in protester_cfg:
+            # Heterogeneous protesters
+            agent_profiles = self._assign_agent_profiles(
+                n_protesters,
+                protester_cfg['types']
+            )
+        else:
+            # Homogeneous protesters (fallback)
+            agent_profiles = ['average'] * n_protesters
+        
+        # Create protesters with assigned profiles
+        base_speed = protester_cfg.get('speed_m_s', 1.2)
+
         # Homogeneous protesters (all identical parameters)
-        for i, pos in enumerate(positions):
+        for i, (pos, profile) in enumerate(zip(positions, agent_profiles)):
             agent = Agent(
                 agent_id=i,
                 agent_type='protester',
                 pos=pos,
                 goal=self._assign_goal(pos, protester_cfg.get('goals', {})),
-                speed=protester_cfg['speed_m_s'],
-                risk_tolerance=protester_cfg.get('risk_tolerance_mean', 0.3),
-                rng=self.rng
+                speed=base_speed,  # Will be modified by profile
+                risk_tolerance=0.3,  # Will be modified by profile
+                rng=self.rng,
+                profile_name=profile
             )
             self.agents.append(agent)
             self.protesters.append(agent)
@@ -319,6 +366,40 @@ class ProtestEnv(gym.Env):
             )
             self.agents.append(agent)
             self.police_agents.append(agent)
+
+    def _assign_agent_profiles(self, n_agents: int, 
+                               types_config: Dict) -> List[str]:
+        """
+        Assign agent profiles based on configured ratios.
+        
+        Args:
+            n_agents: Total number of agents
+            types_config: Dict with type names and ratios
+            
+        Returns:
+            List of profile names for each agent
+        """
+
+        profiles = []
+
+        # Extract types and ratios
+        type_names = []
+        ratios = []
+        for type_name, type_cfg in types_config.items():
+            type_names.append(type_name)
+            ratios.append(type_cfg['ratio'])
+        
+        # Normalize ratios
+        total_ratio = sum(ratios)
+        ratios = [r / total_ratio for r in ratios]
+
+        # Assign agents to types
+        for i in range(n_agents):
+            # Use RNG to sample from distribution
+            profile = self.rng.choice(type_names, p=ratios)
+            profiles.append(profile)
+        
+        return profiles
     
     def _generate_spawn_positions(self, n_agents: int, spawn_type: str, 
                                   spawn_params: Dict) -> List[Tuple[int, int]]:
@@ -593,7 +674,7 @@ class ProtestEnv(gym.Env):
         }
     
     def render(self, mode='human'):
-        """Basic rendering (defer fancy viz to Day 3)."""
+        """Basic rendering (defer fancy viz)."""
         if mode == 'human':
             print(f"Step {self.step_count}: {len(self.agents)} agents, "
                   f"{sum(a.state == 'moving' for a in self.agents)} moving")

@@ -1,92 +1,122 @@
-# default_scenario.yaml - Main configuration for protest simulation
+# default_scenario.yaml - Main configuration with OSM Nairobi CBD support
 
 # Grid configuration
 grid:
-  width: 100
-  height: 100
-  cell_size_m: 1.0              # Meters per cell (CRITICAL: must match CV)
-  origin: "top_left"             # Coordinate system origin; matches image conventions (rows = y, cols = x)
-  obstacle_raster: "generate"    # 'generate' or path to PNG if will be loaded from png mask
+  width: 500
+  height: 500
+  cell_size_m: 2.0              # 2 meters per cell (1km × 1km coverage)
+  obstacle_source: "osm"         # 'osm' or 'generate'
+  origin: "top_left"
+
+# OSM configuration (Nairobi CBD)
+osm:
+  # Bounding box (lat/lon) - covers ~1km × 1km of CBD
+  bbox:
+    north: -1.2800              # Uhuru Highway
+    south: -1.2900              # Haile Selassie Avenue  
+    east: 36.8250               # Moi Avenue
+    west: 36.8150               # University Way
+  
+  crs: "EPSG:32737"             # UTM Zone 37S (Nairobi)
+  
+  features:
+    buildings: true
+    streets: true
+    parks: false
+  
+  cache_dir: "data/osm_cache"
+  force_download: false         # Set true to refresh OSM data
 
 # Time configuration
 time:
-  delta_t: 1.0                   # Seconds per simulation step
-  max_steps: 2000                # Maximum episode length (~33 minutes)
-  video_frame_dt: 0.033          # For CV temporal alignment (30fps)
+  delta_t: 1.0
+  max_steps: 2000
+  video_frame_dt: 0.033         # 30fps for CV alignment
 
 # Agent configuration
 agents:
   protesters:
     count: 100
+    
     spawn:
-      type: "clusters"           # 'clusters', 'uniform', 'fixed'
-      centers: 
-        - [10, 10]
-        - [20, 60]
-        - [80, 20]
-      radius: 5
-    speed_m_s: 1.2               # Movement speed (m/s = cells/step)
-    risk_tolerance_mean: 0.3     # [0, 1], higher = less cautious
-    risk_tolerance_std: 0.1      # Standard deviation (for DAY 2 heterogeneity)
+      type: "clusters"
+      centers:
+        - [50, 50]
+        - [100, 400]
+        - [400, 100]
+      radius: 10
+    
+    # Heterogeneous agent types
+    types:
+      cautious:
+        ratio: 0.3              # 30%
+        speed_m_s: 1.0
+        risk_tolerance: 0.1
+      average:
+        ratio: 0.5              # 50%
+        speed_m_s: 1.2
+        risk_tolerance: 0.3
+      bold:
+        ratio: 0.2              # 20%
+        speed_m_s: 1.4
+        risk_tolerance: 0.6
+    
     goals:
-      strategy: "nearest_exit"   # 'nearest_exit', 'fixed', 'random'
+      strategy: "nearest_exit"
       exit_points:
-        - [5, 95]
-        - [95, 95]
-        - [50, 0]
+        - [10, 490]
+        - [490, 490]
+        - [250, 10]
   
   police:
     count: 10
     spawn:
       type: "fixed"
       positions:
-        - [50, 50]
-        - [70, 20]
-        - [30, 70]
-        - [60, 80]
-        - [40, 30]
-        - [80, 60]
-        - [20, 40]
-        - [55, 15]
-        - [35, 85]
-        - [75, 75]
-    speed_m_s: 1.5               # Faster than protesters
-    deploy_prob: 0.01            # Per-step probability of gas deployment
-    deploy_cooldown: 50          # Steps before can deploy again
+        - [250, 250]
+        - [100, 100]
+        - [400, 400]
+        - [400, 100]
+        - [100, 400]
+        - [250, 100]
+        - [250, 400]
+        - [150, 250]
+        - [350, 250]
+        - [200, 200]
+    speed_m_s: 1.5
+    deploy_prob: 0.01
+    deploy_cooldown: 50
 
-# Hazard configuration
+# Hazards
 hazards:
   gas:
-    # Physical parameters (grid units)
-    diffusion_coeff: 0.2         # D_grid (dimensionless per step)
-    decay_rate: 0.05             # γ_step (fraction per step)
-    
-    # Deployment parameters
-    inj_intensity: 5.0           # Concentration units per deployment
-    
-    # Harm mapping (CALIBRATED)
-    k_harm: 0.1386               # Calibrated for 50% harm/s at C=5
-    H_crit: 5.0                  # Cumulative harm threshold for incapacitation
-    
-    # Numerical stability
-    concentration_min: 0.0
-    concentration_max: 100.0
+    diffusion_coeff: 0.2
+    decay_rate: 0.05
+    inj_intensity: 5.0
+    k_harm: 0.1386              # Calibrated: 50% harm/s at C=5
+    H_crit: 5.0
 
-# Simulation parameters
+# Simulation
 simulation:
-  base_seed: 123456              # Base RNG seed
-  n_cell_max: 6                  # Max agents per cell
-  store_full_traces: false       # Save only I_i indicators (memory)
+  base_seed: 123456
+  n_cell_max: 6
+  store_full_traces: false
 
-# Monte Carlo configuration
+# Monte Carlo
 monte_carlo:
-  n_rollouts: 200                # Production runs
-  n_rollouts_dev: 50             # Development (faster)
-  bootstrap_samples: 1000        # For confidence intervals
-  n_jobs: 8                      # Parallel workers
+  n_rollouts: 200               # Production
+  bootstrap_samples: 1000
+  n_jobs: 8
+  
+  n_rollouts_dev: 50            # Development (fast)
+  bootstrap_samples_dev: 200
+  
+  use_memmap: true
+  aggregate_on_the_fly: true
 
-# Output configuration
+# Output
 output:
-  save_events: true              # Log police deployments
-  save_I_grids: true             # Save harm indicators
+  save_events: true
+  save_I_grids: true
   save_path: "artifacts/rollouts/"
+  save_visualizations: true

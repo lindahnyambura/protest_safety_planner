@@ -1,0 +1,84 @@
+# dev_scenario.yaml - Fast testing configuration
+
+grid:
+  width: 250
+  height: 250
+  cell_size_m: 2.0
+  obstacle_source: "generate"   # Synthetic (no OSM download)
+  origin: "top_left"
+
+time:
+  delta_t: 1.0
+  max_steps: 500                # Shorter episodes
+
+agents:
+  protesters:
+    count: 50                   # Fewer agents
+    spawn:
+      type: "clusters"
+      centers:
+        - [25, 25]
+        - [50, 200]
+        - [200, 50]
+      radius: 8
+    
+    types:
+      cautious:
+        ratio: 0.3
+        speed_m_s: 1.0
+        risk_tolerance: 0.1
+      average:
+        ratio: 0.5
+        speed_m_s: 1.2
+        risk_tolerance: 0.3
+      bold:
+        ratio: 0.2
+        speed_m_s: 1.4
+        risk_tolerance: 0.6
+    
+    goals:
+      strategy: "nearest_exit"
+      exit_points:
+        - [10, 240]
+        - [240, 240]
+        - [125, 10]
+  
+  police:
+    count: 5                    # Fewer police
+    spawn:
+      type: "fixed"
+      positions:
+        - [125, 125]
+        - [50, 50]
+        - [200, 200]
+        - [200, 50]
+        - [50, 200]
+    speed_m_s: 1.5
+    deploy_prob: 0.01
+    deploy_cooldown: 50
+
+hazards:
+  gas:
+    diffusion_coeff: 0.2
+    decay_rate: 0.05
+    inj_intensity: 5.0
+    k_harm: 0.1386
+    H_crit: 5.0
+
+simulation:
+  base_seed: 123456
+  n_cell_max: 6
+  store_full_traces: false
+
+monte_carlo:
+  n_rollouts: 20                # Very fast
+  bootstrap_samples: 100
+  n_jobs: 4
+  use_memmap: false             # Small enough for RAM
+  aggregate_on_the_fly: true
+
+output:
+  save_events: true
+  save_I_grids: true
+  save_path: "artifacts/rollouts/"
+  save_visualizations: true
