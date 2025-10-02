@@ -247,50 +247,47 @@ class ProtestEnv(gym.Env):
             obstacle_mask: Boolean array (True = impassable)
         """
         obstacle_source = self.config['grid'].get('obstacle_source', 'generate')
-
+        
         if obstacle_source == 'osm':
-            # Try loading from OSM
-            print("Loading Nairobi CBD map from OpenStreetMap...")
-            osm_data = load_nairobi_cbd_map(
-                self.config,
-                force_download=self.config.get('osm', {}).get('force_download', False)
-            )
-
-            if osm_data is not None:
-                # Store metadata for CV integration
-                self.osm_metadata = osm_data['metadata']
-                self.buildings_gdf = osm_data.get('buildings_gdf')
-                self.streets_graph = osm_data.get('streets_graph')
-
-                print(f" Loaded OSM map: {self.osm_metadata['width']}×"
-                      f"{self.osm_metadata['height']} grid")
-                print(f"  CRS: {self.osm_metadata['crs']}")
-                print(f"  Coverage: {self.osm_metadata['cell_size_m']*self.width:.0f}m × "
-                      f"{self.osm_metadata['cell_size_m']*self.height:.0f}m")
-                
-                return osm_data['obstacle_mask']
-            else:
-                print(" [WARN] OSM loading failed, falling back to generated obstacles.")
-
-        # Simple generated obstacles (random blocks)
+            # OSM DISABLED FOR STABILITY - Use synthetic obstacles
+            print("[WARNING] OSM loading disabled for system stability")
+            print("  Using synthetic obstacles (tested and stable)")
+            obstacle_source = 'generate'
+        
+        # Generate simple rectangular obstacles (tested Day 1 code)
         print("Generating synthetic obstacles...")
         mask = np.zeros((self.height, self.width), dtype=bool)
-
+        
         # Add border walls
         mask[0, :] = True
         mask[-1, :] = True
         mask[:, 0] = True
         mask[:, -1] = True
-
-        # Add a few internal obstacles (buildings) - scaled for larger grid
+        
+        # Add internal obstacles (buildings) - scaled for grid size
         scale_factor = self.width / 100  # Scale from original 100×100
-
+        
+        # Building 1 (northwest)
         mask[int(20*scale_factor):int(30*scale_factor), 
              int(20*scale_factor):int(35*scale_factor)] = True
+        
+        # Building 2 (southeast)
         mask[int(60*scale_factor):int(75*scale_factor), 
              int(50*scale_factor):int(70*scale_factor)] = True
+        
+        # Building 3 (northeast)
         mask[int(40*scale_factor):int(50*scale_factor), 
              int(70*scale_factor):int(80*scale_factor)] = True
+        
+        # Additional building 4 (southwest) for realism
+        mask[int(65*scale_factor):int(78*scale_factor), 
+             int(15*scale_factor):int(28*scale_factor)] = True
+        
+        # Central plaza obstacle
+        mask[int(45*scale_factor):int(55*scale_factor), 
+             int(45*scale_factor):int(55*scale_factor)] = True
+        
+        print(f"   Generated {mask.sum()} obstacle cells ({100*mask.sum()/mask.size:.1f}%)")
         
         return mask
 
