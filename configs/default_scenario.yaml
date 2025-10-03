@@ -66,19 +66,33 @@ agents:
         - [75, 50]
         - [40, 40]
     speed_m_s: 1.5
-    deploy_prob: 0.01
+    deploy_prob: 0.05    # INCREASED from 0.01 (5% vs 1%)
     deploy_cooldown: 50
 
-# Hazards (tested parameters)
+# Hazards (FIXED FOR REALISM)
 hazards:
   gas:
-    diffusion_coeff: 0.2
-    decay_rate: 0.05
-    inj_intensity: 5.0
-    k_harm: 0.1386              # Calibrated: 50% harm/s at C=5
-    H_crit: 5.0
+    diffusion_coeff: 0.08        # REDUCED: Slower spread (was 0.2)
+    decay_rate: 0.005            # MUCH SLOWER: 0.5% per step (was 0.05)
+    inj_intensity: 15.0          # INCREASED: Stronger (was 5.0)
+    k_harm: 0.2772               # DOUBLED: More harm per concentration (was 0.1386)
+    H_crit: 2.5                  # REDUCED: Easier incapacitation (was 5.0)
     concentration_min: 0.0
     concentration_max: 100.0
+
+  water_cannon:
+    enabled: true
+    strength: 3             # integer cells agents are pushed
+    radius: 6               # radius in cells (square radius used)
+    stun_prob: 0.10         # probability to stun an affected agent
+    cooldown: 30            # police cooldown steps for water cannon
+
+  shooting:
+    enabled: true
+    prob_per_step: 0.002    # 0.2% chance per police per step to attempt shoot
+    max_targets_per_event: 1
+    fatal: false            # if True -> incapacitate, else high chance incapacitate
+
 
 # Simulation
 simulation:
@@ -90,7 +104,7 @@ simulation:
 monte_carlo:
   n_rollouts: 200               # Production target
   bootstrap_samples: 1000       # Full bootstrap
-  n_jobs: 4                     # REDUCED from 8 (safer)
+  n_jobs: 4                     # Parallelization
   
   n_rollouts_dev: 50            # Development
   bootstrap_samples_dev: 200

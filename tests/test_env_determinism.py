@@ -1,7 +1,7 @@
 """
 test_env_determinism.py - Critical tests for reproducibility
 
-Day 1 priority: Ensure Monte Carlo reliability through deterministic behavior
+Version 1 test: Ensure Monte Carlo reliability through deterministic behavior
 """
 
 import pytest

@@ -118,7 +118,7 @@ class ProtestVisualizer:
         
         if save_path:
             plt.savefig(save_path, dpi=self.dpi, bbox_inches='tight')
-            print(f"✓ Saved environment state to {save_path}")
+            print(f" Saved environment state to {save_path}")
         
         return fig
     
@@ -204,7 +204,7 @@ class ProtestVisualizer:
         
         if save_path:
             plt.savefig(save_path, dpi=self.dpi, bbox_inches='tight')
-            print(f"✓ Saved Monte Carlo results to {save_path}")
+            print(f" Saved Monte Carlo results to {save_path}")
         
         return fig
     
@@ -273,10 +273,60 @@ class ProtestVisualizer:
         
         if save_path:
             plt.savefig(save_path, dpi=self.dpi, bbox_inches='tight')
-            print(f"✓ Saved agent profiles to {save_path}")
+            print(f" Saved agent profiles to {save_path}")
         
         return fig
     
+    def plot_time_series(self, hazard_history: List[float],
+                         incapacitated_timeline: List[int],
+                         mean_harm_timeline: List[float],
+                         save_path: Optional[str] = None):
+        """
+        Plot key time series diagnostics:
+        - Hazard concentration spikes
+        - Number of incapacitated agents
+        - Mean harm per agent
+
+        Args:
+            hazard_history: Max hazard concentration per step
+            incapacitated_timeline: Number of incapacitated agents per step
+            mean_harm_timeline: Mean harm per agent per step
+            save_path: Optional path to save figure
+        """
+        fig, axes = plt.subplots(3, 1, figsize=(10 * self.figsize_scale, 10 * self.figsize_scale),
+                                sharex=True)
+
+        # 1. Hazard spikes
+        axes[0].plot(hazard_history, label="Max hazard concentration")
+        axes[0].set_ylabel("Hazard level")
+        axes[0].set_title("Hazard concentration spikes over time", fontsize=12, fontweight="bold")
+        axes[0].legend()
+        axes[0].grid(alpha=0.3)
+
+        # 2. Incapacitated agents
+        axes[1].plot(incapacitated_timeline, color="red", label="Incapacitated agents")
+        axes[1].set_ylabel("Number of agents")
+        axes[1].set_title("Incapacitated agents over time", fontsize=12, fontweight="bold")
+        axes[1].legend()
+        axes[1].grid(alpha=0.3)
+
+        # 3. Mean harm
+        axes[2].plot(mean_harm_timeline, color="orange", label="Mean harm per agent")
+        axes[2].set_xlabel("Step")
+        axes[2].set_ylabel("Mean harm")
+        axes[2].set_title("Mean harm per agent over time", fontsize=12, fontweight="bold")
+        axes[2].legend()
+        axes[2].grid(alpha=0.3)
+
+        plt.suptitle("Simulation Time Series Diagnostics", fontsize=16, fontweight="bold", y=0.98)
+        plt.tight_layout()
+
+        if save_path:
+            plt.savefig(save_path, dpi=self.dpi, bbox_inches="tight")
+            print(f" Saved time series plots to {save_path}")
+
+        return fig
+
     def plot_osm_map(self, env, save_path: Optional[str] = None):
         """
         Plot OSM map with building footprints.
@@ -325,7 +375,7 @@ class ProtestVisualizer:
         
         if save_path:
             plt.savefig(save_path, dpi=self.dpi, bbox_inches='tight')
-            print(f"✓ Saved OSM map to {save_path}")
+            print(f" Saved OSM map to {save_path}")
         
         return fig
     
@@ -362,9 +412,19 @@ class ProtestVisualizer:
             self.plot_osm_map(env, save_path=output_dir / "04_osm_map.png")
             plt.close()
         
-        print(f"\n✓ Validation report complete!")
+        print(f"\n Validation report complete!")
         print(f"  Generated {3 + (1 if env.osm_metadata else 0)} figures")
         print(f"  Location: {output_dir}/")
+
+        # 5. Time series diagnostics (if available)
+        if 'hazard_history' in results:
+            self.plot_time_series(
+                hazard_history=results['hazard_history'],
+                incapacitated_timeline=results['incapacitated_timeline'],
+                mean_harm_timeline=results['mean_harm_timeline'],
+                save_path=output_dir / "05_time_series.png"
+            )
+            plt.close()
 
 
 def quick_visualize_environment(env, title: str = "Environment State"):

@@ -2,14 +2,14 @@
   "n_rollouts": 200,
   "base_seed": 42,
   "summary": {
-    "mean_episode_length": 2000.0,
-    "std_episode_length": 0.0,
-    "mean_agents_harmed": 75.335,
-    "std_agents_harmed": 2.8675381427280087,
-    "min_episode_length": 2000,
-    "max_episode_length": 2000
+    "mean_episode_length": 161.8,
+    "std_episode_length": 53.94812322963608,
+    "mean_agents_harmed": 72.055,
+    "std_agents_harmed": 10.164741757664087,
+    "min_episode_length": 76,
+    "max_episode_length": 464
   },
-  "runtime_seconds": 1413.9284145832062,
+  "runtime_seconds": 282.8181862831116,
   "grid_shape": [
     100,
     100
@@ -131,19 +131,32 @@
           ]
         },
         "speed_m_s": 1.5,
-        "deploy_prob": 0.01,
+        "deploy_prob": 0.05,
         "deploy_cooldown": 50
       }
     },
     "hazards": {
       "gas": {
-        "diffusion_coeff": 0.2,
-        "decay_rate": 0.05,
-        "inj_intensity": 5.0,
-        "k_harm": 0.1386,
-        "H_crit": 5.0,
+        "diffusion_coeff": 0.08,
+        "decay_rate": 0.005,
+        "inj_intensity": 15.0,
+        "k_harm": 0.2772,
+        "H_crit": 2.5,
         "concentration_min": 0.0,
         "concentration_max": 100.0
+      },
+      "water_cannon": {
+        "enabled": true,
+        "strength": 3,
+        "radius": 6,
+        "stun_prob": 0.1,
+        "cooldown": 30
+      },
+      "shooting": {
+        "enabled": true,
+        "prob_per_step": 0.002,
+        "max_targets_per_event": 1,
+        "fatal": false
       }
     },
     "simulation": {

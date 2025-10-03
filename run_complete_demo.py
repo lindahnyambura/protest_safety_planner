@@ -2,7 +2,7 @@
 """
 run_complete_demo.py - STABLE FR1 + FR2 Demonstration
 
-Production-ready validation with:
+Produces FR1 & FR2 validation with:
 - Synthetic obstacles (tested, stable)
 - Heterogeneous agents (3 profiles)
 - Single episode demonstration
@@ -118,6 +118,12 @@ try:
     print(f"    Mean agent harm: {info['agent_states']['mean_harm']:.3f}")
     print(f"    Agents incapacitated: {info['agent_states']['n_incapacitated']}")
 
+    # Gas Deployment Analysis
+    print(f"\n  Gas Deployment Analysis:")
+    gas_deployments = [e for e in env.events_log if e['event_type'] == 'gas_deployment']
+    print(f"    Total deployments: {len(gas_deployments)}")
+    print(f"    Max hazard concentration: {env.hazard_field.concentration.max():.2f}")
+
 except Exception as e:
     print(f"  ✗ Episode failed: {e}")
     import traceback
@@ -204,14 +210,14 @@ print("\n" + "="*70)
 print("VALIDATION COMPLETE ✓")
 print("="*70)
 
-print("\n📊 FR1: Stylized Digital Twin")
+print("\n FR1: Stylized Digital Twin")
 print(f"  Grid: {env.width}×{env.height} cells ({env.cell_size}m resolution)")
 print(f"  Agents: {len(env.agents)} ({len(env.protesters)} protesters, {len(env.police_agents)} police)")
 print(f"  Heterogeneity: {len(profile_counts)} agent profiles")
 print(f"  Episode performance: {steps_per_sec:.1f} steps/sec")
 print(f"  Obstacles: Synthetic (tested, stable)")
 
-print("\n📈 FR2: Monte Carlo Aggregator")
+print("\n FR2: Monte Carlo Aggregator")
 print(f"  Rollouts: {results['n_rollouts']}")
 print(f"  Runtime: {results['runtime_seconds']:.1f}s ({results['runtime_seconds']/60:.1f} min)")
 print(f"  Mean harm probability: {results['p_sim'].mean():.4f}")
@@ -219,7 +225,7 @@ print(f"  Max harm probability: {results['p_sim'].max():.4f}")
 print(f"  High-risk cells (p>0.1): {(results['p_sim'] > 0.1).sum()} / {results['p_sim'].size}")
 print(f"  Bootstrap CIs: Computed ({results['n_rollouts']} samples)")
 
-print("\n📁 Outputs Generated:")
+print("\n Outputs Generated:")
 print(f"  Monte Carlo data:")
 print(f"    artifacts/rollouts/production_run/p_sim.npy")
 print(f"    artifacts/rollouts/production_run/p_sim_ci_lower.npy")
@@ -231,13 +237,13 @@ print(f"    artifacts/validation/01_environment_state.png")
 print(f"    artifacts/validation/02_monte_carlo_results.png")
 print(f"    artifacts/validation/03_agent_profiles.png")
 
-print("\n✅ System Status: STABLE & PRODUCTION-READY")
+print("\n System Status: STABLE & PRODUCTION-READY")
 print("   - Deterministic (same seed = same results)")
 print("   - Tested parallelization (no system freeze)")
 print("   - Heterogeneous agents working")
 print("   - Monte Carlo bootstrap validated")
 
-print("\n🎯 Next Steps:")
+print("\n Next Steps:")
 print("  1. Review figures in artifacts/validation/")
 print("  2. Verify p_sim values are reasonable")
 print("  3. Run tests: pytest tests/ -v")

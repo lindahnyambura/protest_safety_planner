@@ -1,7 +1,12 @@
 """
 protest_env.py - Core ProtestEnv Gymnasium environment
 
-implementation: Grid initialization, basic agent movement, deterministic seeding
+Implementation: Stylized digital twin for protest scenarios.
+Grid-based ABM with:
+- Discrete 2D grid (100x100 default)
+- Heterogeneous agents (protesters, police)
+- Hazard fields (gas diffusion, water cannon, shooting, )
+- Deterministic seeding for Monte Carlo
 """
 
 import numpy as np
@@ -14,6 +19,7 @@ from pathlib import Path
 
 from .agent import Agent, PoliceAgent, AgentState
 from .hazards import HazardField
+from .hazard_manager import HazardManager
 from .map_loader import load_nairobi_cbd_map
 
 
@@ -150,16 +156,24 @@ class ProtestEnv(gym.Env):
         self.obstacle_mask = self._load_or_generate_obstacles()
         
         # Initialize hazard field
-        hazard_cfg = self.config.get('hazards', {}).get('gas', {})
-        self.hazard_field = HazardField(
-            height=self.height,
-            width=self.width,
-            diffusion_coeff=hazard_cfg.get('diffusion_coeff', 0.2),
-            decay_rate=hazard_cfg.get('decay_rate', 0.05),
-            k_harm=hazard_cfg.get('k_harm', 0.1386),
-            delta_t=self.delta_t
-        )
+        # hazard_cfg = self.config.get('hazards', {}).get('gas', {})
+        # self.hazard_field = HazardField(
+        #     height=self.height,
+        #     width=self.width,
+        #     diffusion_coeff=hazard_cfg.get('diffusion_coeff', 0.2),
+        #     decay_rate=hazard_cfg.get('decay_rate', 0.05),
+        #     k_harm=hazard_cfg.get('k_harm', 0.1386),
+        #     delta_t=self.delta_t
+        # )
         
+        # Initialize hazard manager (gas + instant hazards)
+        hazard_cfg = self.config.get('hazards', {})
+        # Pass top-level hazards config and delta_t for gas init
+        hm_cfg = hazard_cfg.copy()
+        hm_cfg['delta_t'] = self.delta_t
+        self.hazards = HazardManager(height=self.height, width=self.width, config=hm_cfg, rng=self.rng)
+        # Backward compatibility: existing code expects self.hazard_field
+        self.hazard_field = self.hazards.gas
         
         # Spawn agents
         self._spawn_agents()
@@ -212,7 +226,11 @@ class ProtestEnv(gym.Env):
         self._execute_movement(actions)
         
         # 3. Update hazard field (diffusion, decay, sources)
-        self.hazard_field.update(self.delta_t)
+        # self.hazard_field.update(self.delta_t)
+        # Update all hazards (gas diffusion + instant hazard bookkeeping)
+        self.hazards.update(self.delta_t)
+        # keep the old alias
+        self.hazard_field = self.hazards.gas
         
         # 4. Update agent exposures and harm
         harm_grid = self._update_agent_harm()

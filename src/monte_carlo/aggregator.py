@@ -100,7 +100,7 @@ class MonteCarloAggregator:
         rollout_time = time.time() - start_time
         
         if verbose:
-            print(f"\n✓ Completed {self.n_rollouts} rollouts in {rollout_time:.1f}s")
+            print(f"\n Completed {self.n_rollouts} rollouts in {rollout_time:.1f}s")
             print(f"  Average: {rollout_time/self.n_rollouts:.2f}s per rollout")
         
         # Compute p_sim
@@ -278,7 +278,7 @@ class MonteCarloAggregator:
         with open(run_dir / 'metadata.json', 'w') as f:
             json.dump(metadata, f, indent=2)
         
-        print(f"\n✓ Results saved to {run_dir}/")
+        print(f"\n Results saved to {run_dir}/")
     
     @staticmethod
     def load_results(run_dir: str) -> Dict:

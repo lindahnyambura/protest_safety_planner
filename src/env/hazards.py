@@ -1,7 +1,12 @@
 """
 hazards.py - Hazard field dynamics (gas diffusion, decay)
 
-Day 1 implementation: Vectorized discrete diffusion with scipy
+Hazard concentration field with discrete diffusion and decay.
+Models gas dispersal using:
+- Discrete Laplacian diffusion (von Neumann neighborhood)
+- Exponential decay
+- Source injection (police deployments)
+- Probability of harm to agents based on local concentration
 """
 
 import numpy as np

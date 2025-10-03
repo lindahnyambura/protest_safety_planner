@@ -1,8 +1,8 @@
 """
 agent.py - Agent classes for protesters and police
 
-Day 1: Basic agent movement with fractional speed, homogeneous protesters
-Day 2: Add agent heterogeneity (3 types)
+Version 1: Basic agent movement with fractional speed, homogeneous protesters
+Version 2: Add agent heterogeneity (3 types)
 """
 
 import numpy as np
@@ -356,65 +356,141 @@ class PoliceAgent(Agent):
     
     def decide_action(self, env) -> int:
         """
-        Police decision logic:
-        1. Move toward crowd centroid
-        2. Deploy gas if in dense area and cooldown ready
-        
-        Args:
-            env: ProtestEnv instance
-            
-        Returns:
-            action: Direction to move (0-8)
+        Police decision logic (fixed + intercept behavior):
+        1. Compute crowd centroid
+        2. Find nearest exit and intercept point (midpoint)
+        3. Position with small offset so multiple police spread along a line
+        4. Deploy gas/water/shooting via env.hazards with cooldowns & probs
         """
-        # 1. Compute crowd centroid (target)
-        protester_positions = [a.pos for a in env.protesters if a.state == 'moving']
-        
+        # Ensure we have x,y defined early (fixes NameError)
+        x, y = self.pos
+
+        # 1. Get moving protesters positions
+        protester_positions = [a.pos for a in env.protesters if a.state == AgentState.MOVING]
         if not protester_positions:
             return 0  # STAY if no active protesters
         
-        # Centroid of protester crowd
-        centroid_x = np.mean([p[0] for p in protester_positions])
-        centroid_y = np.mean([p[1] for p in protester_positions])
-        
-        # Update goal to centroid
-        self.goal = (int(centroid_x), int(centroid_y))
-        
-        # 2. Score moves toward centroid
+        # 2. Crowd centroid (as float)
+        centroid = np.mean(protester_positions, axis=0)  # array([x, y])
+
+        # 3. Find nearest exit from config
+        exits = env.config['agents']['protesters'].get('goals', {}).get('exit_points', [])
+        if not exits:
+            # fallback to center if no exits configured
+            nearest_exit = np.array([env.width // 2, env.height // 2], dtype=float)
+        else:
+            dists = [np.hypot(centroid[0] - ex[0], centroid[1] - ex[1]) for ex in exits]
+            nearest_exit = np.array(exits[int(np.argmin(dists))], dtype=float)
+
+        # 4. Intercept point: halfway between centroid and chosen exit
+        intercept = ((centroid + nearest_exit) / 2.0).astype(int)
+
+        # 5. Compute a small perpendicular offset to spread police along a short line
+        #    Use police id to make offset deterministic and reproducible
+        dir_vec = nearest_exit - centroid
+        perp = np.array([-dir_vec[1], dir_vec[0]])
+        perp_norm = perp / (np.linalg.norm(perp) + 1e-8)
+
+        # offset magnitude (cells)
+        offset_magnitude = (self.id % 7) - 3  # values [-3..3] -> spreads police deterministically
+        offset = (perp_norm * offset_magnitude).astype(int)
+
+        target = intercept + offset
+        target_x = int(np.clip(target[0], 0, env.width - 1))
+        target_y = int(np.clip(target[1], 0, env.height - 1))
+
+        # set goal toward intercept-target
+        self.goal = (target_x, target_y)
+
+        # 6. Score moves toward goal (use base class scoring)
         scores = self._score_neighbors(env)
         action = self._select_action_stochastic(scores)
-        
-        # 3. Deploy gas if conditions met
-        if self.deploy_cooldown == 0:
+
+        # 7. Deploy gas (respect cooldown)
+        if not hasattr(self, 'deploy_cooldown'):
+            self.deploy_cooldown = 0
+        if self.deploy_cooldown <= 0:
+            # try gas
             self._attempt_gas_deployment(env)
         else:
             self.deploy_cooldown -= 1
-        
-        return action
+
+        # 8. Water cannon: separate cooldown + probability, via config hazards.water_cannon
+        wc_cfg = env.config.get('hazards', {}).get('water_cannon', {})
+        if wc_cfg.get('enabled', False):
+            if not hasattr(self, 'wc_cooldown'):
+                self.wc_cooldown = 0
+            if self.wc_cooldown <= 0:
+                # require some local density to use water cannon
+                local_density = env.occupancy_count[y, x]
+                wc_prob = wc_cfg.get('prob', 0.01)
+                if local_density >= wc_cfg.get('min_density', 6) and self.rng.random() < wc_prob:
+                    # push direction: away from crowd centroid (police aim between crowd and exit)
+                    dir_x = int(np.sign(centroid[0] - x))
+                    dir_y = int(np.sign(centroid[1] - y))
+                    # If dir is zero (coincident), default push away from centroid->exit axis:
+                    if dir_x == 0 and dir_y == 0:
+                        dir_x = int(np.sign(nearest_exit[0] - x))
+                        dir_y = int(np.sign(nearest_exit[1] - y))
+                    env.hazards.deploy_water_cannon(
+                        env=env,
+                        x=x,
+                        y=y,
+                        direction=(dir_x, dir_y),
+                        strength=wc_cfg.get('strength', 3),
+                        radius=wc_cfg.get('radius', 6),
+                        stun_prob=wc_cfg.get('stun_prob', 0.1),
+                        agent_id=self.id
+                    )
+                    self.wc_cooldown = wc_cfg.get('cooldown', 30)
+            else:
+                self.wc_cooldown = max(0, self.wc_cooldown - 1)
+
+        # 9. Shooting: very rare, via hazards.shooting_event
+        shoot_cfg = env.config.get('hazards', {}).get('shooting', {})
+        if shoot_cfg.get('enabled', False):
+            if not hasattr(self, 'shoot_cooldown'):
+                self.shoot_cooldown = 0
+            p_shoot = shoot_cfg.get('prob_per_step', 0.002)
+            if self.shoot_cooldown <= 0 and self.rng.random() < p_shoot:
+                # choose nearest protester (if any)
+                if env.protesters:
+                    # only consider moving protesters if possible
+                    candidates = [p for p in env.protesters if p.state == AgentState.MOVING]
+                    if not candidates:
+                        candidates = env.protesters
+                    target = min(candidates, key=lambda a: (a.pos[0] - x) ** 2 + (a.pos[1] - y) ** 2)
+                    env.hazards.shooting_event(env=env, shooter_agent=self, targets=[target], fatal=shoot_cfg.get('fatal', False))
+                    # set cooldown to avoid rapid repeats
+                    self.shoot_cooldown = shoot_cfg.get('cooldown', 100)
+            else:
+                self.shoot_cooldown = max(0, getattr(self, 'shoot_cooldown', 0) - 1)
+
+        return int(action)
+
     
     def _attempt_gas_deployment(self, env):
         """
-        Attempt to deploy gas at current location.
-        
+        Attempt to deploy gas at current location using HazardManager.
         Conditions:
-        - Local density >= 5 agents
+        - Local density >= threshold
         - Random check with deploy_prob
         """
-        x, y = self.pos
-        local_density = env.occupancy_count[y, x]
         
-        if local_density >= 5 and self.rng.random() < self.deploy_prob:
-            # Deploy gas
-            inj_intensity = self.config['hazards']['gas']['inj_intensity']
-            env.hazard_field.sources[y, x] = inj_intensity
-            
-            # Reset cooldown
+        x, y = self.pos
+        # Count nearby protesters (3-cell radius)
+        nearby_protesters = 0
+        for dy in range(-3, 4):
+            for dx in range(-3, 4):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < env.width and 0 <= ny < env.height:
+                    nearby_protesters += sum(1 for a in env.agents 
+                                            if a.pos == (nx, ny) and a.agent_type == 'protester')
+    
+        threshold = 10  # deploy threshold (configurable)
+        if nearby_protesters >= threshold and self.rng.random() < self.deploy_prob:
+            inj_intensity = self.config['hazards']['gas'].get('inj_intensity', 5.0)
+            # Use HazardManager
+            env.hazards.deploy_gas(env=env, x=x, y=y, intensity=inj_intensity, agent_id=self.id)
             self.deploy_cooldown = self.deploy_cooldown_max
-            
-            # Log event (critical for reproducibility)
-            env.events_log.append({
-                'timestep': env.step_count,
-                'event_type': 'gas_deployment',
-                'agent_id': self.id,
-                'location': (x, y),
-                'intensity': inj_intensity
-            })
+            # note: HazardManager logs the event; no duplicate logging here
