@@ -1,183 +1,24 @@
 {
-  "n_rollouts": 200,
+  "n_rollouts": 100,
   "base_seed": 42,
   "summary": {
-    "mean_episode_length": 161.8,
-    "std_episode_length": 53.94812322963608,
-    "mean_agents_harmed": 72.055,
-    "std_agents_harmed": 10.164741757664087,
-    "min_episode_length": 76,
-    "max_episode_length": 464
+    "mean_episode_length": 903.82,
+    "std_episode_length": 635.1501614579028,
+    "mean_agents_harmed": 60.87,
+    "std_agents_harmed": 4.489220422300513,
+    "mean_agents_incapacitated": 57.65,
+    "incapacitation_rate": 0.5765,
+    "min_episode_length": 291,
+    "max_episode_length": 2000
   },
-  "runtime_seconds": 282.8181862831116,
+  "convergence": {
+    "mae_50_to_100": 0.00040300000000000004
+  },
+  "runtime_seconds": 1536.3757450580597,
+  "config_hash": "3853e328a222df77",
+  "timestamp": "2025-10-07 22:45:31",
   "grid_shape": [
     100,
     100
-  ],
-  "config": {
-    "grid": {
-      "width": 100,
-      "height": 100,
-      "cell_size_m": 1.0,
-      "obstacle_source": "generate",
-      "origin": "top_left"
-    },
-    "time": {
-      "delta_t": 1.0,
-      "max_steps": 2000,
-      "video_frame_dt": 0.033
-    },
-    "agents": {
-      "protesters": {
-        "count": 100,
-        "spawn": {
-          "type": "clusters",
-          "centers": [
-            [
-              20,
-              20
-            ],
-            [
-              30,
-              70
-            ],
-            [
-              70,
-              30
-            ]
-          ],
-          "radius": 8
-        },
-        "types": {
-          "cautious": {
-            "ratio": 0.3,
-            "speed_m_s": 1.0,
-            "risk_tolerance": 0.1
-          },
-          "average": {
-            "ratio": 0.5,
-            "speed_m_s": 1.2,
-            "risk_tolerance": 0.3
-          },
-          "bold": {
-            "ratio": 0.2,
-            "speed_m_s": 1.4,
-            "risk_tolerance": 0.6
-          }
-        },
-        "goals": {
-          "strategy": "nearest_exit",
-          "exit_points": [
-            [
-              5,
-              95
-            ],
-            [
-              95,
-              95
-            ],
-            [
-              50,
-              5
-            ]
-          ]
-        }
-      },
-      "police": {
-        "count": 10,
-        "spawn": {
-          "type": "fixed",
-          "positions": [
-            [
-              50,
-              55
-            ],
-            [
-              25,
-              35
-            ],
-            [
-              75,
-              75
-            ],
-            [
-              75,
-              25
-            ],
-            [
-              25,
-              40
-            ],
-            [
-              50,
-              25
-            ],
-            [
-              50,
-              75
-            ],
-            [
-              25,
-              50
-            ],
-            [
-              75,
-              50
-            ],
-            [
-              40,
-              40
-            ]
-          ]
-        },
-        "speed_m_s": 1.5,
-        "deploy_prob": 0.05,
-        "deploy_cooldown": 50
-      }
-    },
-    "hazards": {
-      "gas": {
-        "diffusion_coeff": 0.08,
-        "decay_rate": 0.005,
-        "inj_intensity": 15.0,
-        "k_harm": 0.2772,
-        "H_crit": 2.5,
-        "concentration_min": 0.0,
-        "concentration_max": 100.0
-      },
-      "water_cannon": {
-        "enabled": true,
-        "strength": 3,
-        "radius": 6,
-        "stun_prob": 0.1,
-        "cooldown": 30
-      },
-      "shooting": {
-        "enabled": true,
-        "prob_per_step": 0.002,
-        "max_targets_per_event": 1,
-        "fatal": false
-      }
-    },
-    "simulation": {
-      "base_seed": 123456,
-      "n_cell_max": 6,
-      "store_full_traces": false
-    },
-    "monte_carlo": {
-      "n_rollouts": 200,
-      "bootstrap_samples": 1000,
-      "n_jobs": 4,
-      "n_rollouts_dev": 50,
-      "bootstrap_samples_dev": 200,
-      "use_memmap": false,
-      "aggregate_on_the_fly": true
-    },
-    "output": {
-      "save_events": true,
-      "save_I_grids": true,
-      "save_path": "artifacts/rollouts/",
-      "save_visualizations": true
-    }
-  }
+  ]
 }

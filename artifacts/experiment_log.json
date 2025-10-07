@@ -1,0 +1,34 @@
+{
+  "experiment_id": "FR1_FR2_validation_run",
+  "timestamp": "2025-10-07 22:45:37",
+  "config_hash": "3853e328a222df77",
+  "git_commit": "f3a0b53260cb413cca910155ff666e371a2920a4",
+  "parameters": {
+    "n_rollouts": 100,
+    "n_bootstrap": 200,
+    "inj_intensity": 12.0,
+    "k_harm": 0.0083,
+    "cell_size_m": 5.0
+  },
+  "results_summary": {
+    "mean_episode_length": 903.82,
+    "std_episode_length": 635.1501614579028,
+    "mean_agents_harmed": 60.87,
+    "std_agents_harmed": 4.489220422300513,
+    "mean_agents_incapacitated": 57.65,
+    "incapacitation_rate": 0.5765,
+    "min_episode_length": 291,
+    "max_episode_length": 2000
+  },
+  "calibration": {
+    "mean_brier": 0.0013407500000000001,
+    "median_brier": 0.0
+  },
+  "convergence": {
+    "mae_50_to_100": 0.00040300000000000004
+  },
+  "demo_episode": {
+    "incapacitation_rate": 0.49,
+    "final_step": 307,
+    "gas_deployments": 70,
+    "peak_harm_cells": 

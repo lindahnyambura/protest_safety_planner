@@ -33,19 +33,25 @@ class Agent:
     # Agent type profiles (heterogeneity)
     AGENT_PROFILES = {
         'cautious': {
-            'speed_multiplier': 0.83,      # 1.0 m/s (slower)
-            'risk_tolerance': 0.1,         # Very cautious
-            'w_hazard_multiplier': 1.5     # Extra weight on hazard avoidance
+            'speed_multiplier': 0.83,      # 1.0 m/s (typical cautious walking speed)
+            'risk_tolerance': 0.1,         # Flees at low hazard concentration
+            'w_hazard_multiplier': 1.5,     # 50% more sensitive to hazards
+            'lookahead_multiplier': 1.5,  # More concerned about future hazards'
+            'profile_multiplier': 1.5
         },
         'average': {
-            'speed_multiplier': 1.0,       # 1.2 m/s (baseline)
+            'speed_multiplier': 1.0,       # 1.2 m/s (normal walking speed)
             'risk_tolerance': 0.3,         # Moderate caution
-            'w_hazard_multiplier': 1.0     # Standard weight
+            'w_hazard_multiplier': 1.0,     # Standard weight
+            'lookahead_multiplier': 1.0,  # Standard lookahead
+            'profile_multiplier': 1.0
         },
         'bold': {
-            'speed_multiplier': 1.17,      # 1.4 m/s (faster)
+            'speed_multiplier': 1.17,      # 1.4 m/s (fast walking/jogging speed)
             'risk_tolerance': 0.6,         # Risk-taking
-            'w_hazard_multiplier': 0.5     # Less concerned about hazards
+            'w_hazard_multiplier': 0.5 ,    # Less concerned about hazards
+            'lookahead_multiplier': 0.5,  # Less concerned about future hazards
+            'profile_multiplier': 0.5
         }
     }
     
@@ -100,6 +106,12 @@ class Agent:
         # Use profile risk tolerance
         self.risk_tolerance: np.float32 = np.float32(profile['risk_tolerance'])
         
+        # Apply profile multiplier
+        self.profile_multiplier: float = profile.get('profile_multiplier', 1.0)
+        
+        # Apply profile lookahead multiplier
+        self.lookahead_multiplier: float = profile.get('lookahead_multiplier', 1.0)
+
         # State
         self.state: str = AgentState.MOVING
         
@@ -132,7 +144,7 @@ class Agent:
         
         # Scoring weights (locked parameters, modified by profile)
         self.w_goal: float = 1.0
-        self.w_hazard: float = 5.0 * (1.0 - self.risk_tolerance) * profile['w_hazard_multiplier']
+        self.w_hazard: float = 15.0 * (1.0 - self.risk_tolerance) * profile['w_hazard_multiplier'] # Now average agent: w_hazard = 15 × 0.7 × 1.0 = 10.5 (much stronger)
         self.w_occupancy: float = 0.5
         self.w_inertia: float = 0.2
         self.beta: float = 5.0  # Boltzmann temperature model)
@@ -171,6 +183,10 @@ class Agent:
             self.state = AgentState.SAFE
             return 0
         
+        # Update goal dynamically
+        exits = env.config['agents']['protesters']['goals']['exit_points']
+        self.update_goal(env, exits)
+
         # Score all possible moves
         scores = self._score_neighbors(env)
         
@@ -179,6 +195,92 @@ class Agent:
         
         return action
     
+    def update_goal(self, env, exits: list):
+        """
+        Dynamically select safest reachable exit.
+        Re-evaluates goal every N steps or when hazards detected nearby.
+        Args:
+            env: ProtestEnv instance
+            exits: List of (x, y) exit positions
+        """
+        # Only update goal every 10 steps (avoid oscillation)
+        if not hasattr(self, '_goal_update_counter'):
+            self._goal_update_counter = 0
+        
+        self._goal_update_counter += 1
+        if self._goal_update_counter < 10:
+            return # Keep current goal
+        
+        self._goal_update_counter = 0
+
+        # Evaluate exits based on distance and hazard exposure
+        best_exit = None
+        best_score = -np.inf
+
+        for exit_pos in exits:
+            # Distance cost
+            dist = np.hypot(self.pos[0] - exit_pos[0], 
+                            self.pos[1] - exit_pos[1])
+
+            # Hazard cost (check path to exit)
+            path_hazard = self._estimate_path_hazard(env, exit_pos)
+        
+            # Congestion cost (agents near exit)
+            exit_congestion = self._count_agents_near(env, exit_pos, radius=5)
+
+            # Combined score (lower is better)
+            score = -dist - 10.0 * path_hazard - 0.5 * exit_congestion
+
+            if score > best_score:
+                best_score = score
+                best_exit = exit_pos
+            
+            # Update goal if significantly better exit found
+            current_dist = np.hypot(self.pos[0] - self.goal[0], 
+                                    self.pos[1] - self.goal[1])
+            new_dist = np.hypot(self.pos[0] - best_exit[0], 
+                                self.pos[1] - best_exit[1])
+            
+            # Only switch if new exit is 20% better or current path is very hazardous
+            if (best_score > 1.2 * (-current_dist)) or path_hazard > self.risk_tolerance:
+                self.goal = best_exit
+
+    def _estimate_path_hazard(self, env, target: Tuple[int, int]) -> float:
+        """
+        Estimate hazard along straight-line path to target.
+
+        Simple heuristic: sample 10 points along line to target.
+        """
+
+        x0, y0 = self.pos
+        x1, y1 = target
+    
+        hazard_sum = 0.0
+        n_samples = 10
+
+        for i in range(n_samples):
+            t = i / (n_samples - 1)
+            x = int(x0 + t * (x1 - x0))
+            y = int(y0 + t * (y1 - y0))
+        
+            if 0 <= x < env.width and 0 <= y < env.height:
+                concentration = env.hazard_field.concentration[y, x]
+                hazard_sum += concentration
+        
+        return hazard_sum / n_samples
+    
+    def _count_agents_near(self, env, pos: Tuple[int, int], radius: int) -> int:
+        """
+        Count agents within radius of position.
+        """
+        count = 0
+        for agent in env.agents:
+            if agent.state == AgentState.MOVING:
+                dist = np.hypot(agent.pos[0] - pos[0], agent.pos[1] - pos[1])
+                if dist <= radius:
+                    count += 1
+        return count
+
     def _at_goal(self) -> bool:
         """Check if agent reached goal."""
         return (abs(self.pos[0] - self.goal[0]) <= 1 and 
@@ -232,13 +334,55 @@ class Agent:
                                self.pos[1] - self.goal[1])
         new_dist = np.hypot(x - self.goal[0], y - self.goal[1])
         return -(new_dist - current_dist)  # Negative of distance increase
-    
+
+
     def _utility_hazard(self, x: int, y: int, env) -> float:
-        """Utility for hazard avoidance."""
-        concentration = env.hazard_field.concentration[y, x]
-        # Convert to harm probability estimate
-        p_harm_est = 1 - np.exp(-env.hazard_field.k_harm * concentration * env.delta_t)
-        return -p_harm_est  # Negative utility for risk
+        """
+        Multi-step lookahead hazard utility.
+    
+        Converts concentration → probability at each surveyed cell,
+        then combines with discounting (Lovreglio et al. 2016).
+
+        Returns negative cost (will be multiplied by w_hazard).
+        """
+        # Immediate hazard
+        c0 = env.hazard_field.concentration[y, x]
+        p0 = 1 - np.exp(-env.hazard_field.k_harm * c0 * env.delta_t)
+        p0 = np.clip(p0, 0, 0.999999)  # Numerical stability
+    
+        # 1-step lookahead (8 neighbors)
+        sum_p1 = 0.0
+        count1 = 0
+        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(1,-1),(-1,1),(1,1)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < env.width and 0 <= ny < env.height:
+                c1 = env.hazard_field.concentration[ny, nx]
+                p1 = 1 - np.exp(-env.hazard_field.k_harm * c1 * env.delta_t)
+                sum_p1 += p1
+                count1 += 1
+        p1_avg = sum_p1 / count1 if count1 > 0 else 0.0
+    
+        # 2-step lookahead (radius=2, ~24 cells)
+        sum_p2 = 0.0
+        count2 = 0
+        for dx in range(-2, 3):
+            for dy in range(-2, 3):
+                if abs(dx) <= 1 and abs(dy) <= 1:
+                    continue  # Skip cells already in 1-step
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < env.width and 0 <= ny < env.height:
+                    c2 = env.hazard_field.concentration[ny, nx]
+                    p2 = 1 - np.exp(-env.hazard_field.k_harm * c2 * env.delta_t)
+                    sum_p2 += p2
+                    count2 += 1
+        p2_avg = sum_p2 / count2 if count2 > 0 else 0.0
+    
+        # Combine with discounting (profile-specific)
+        alpha1 = 0.5 * self.profile_multiplier  # Cautious: higher, Bold: lower
+        alpha2 = 0.25 * self.profile_multiplier
+    
+        utility = -(p0 + alpha1 * p1_avg + alpha2 * p2_avg)
+        return utility
     
     def _utility_occupancy(self, x: int, y: int, env) -> float:
         """Utility for crowd avoidance."""
@@ -314,7 +458,7 @@ class PoliceAgent(Agent):
     """
     Police agent with gas deployment capability.
     
-    Day 1: Rule-based behavior (move toward crowd, deploy gas)
+    Version 1: Rule-based behavior (move toward crowd, deploy gas)
     """
     
     def __init__(self,
@@ -344,9 +488,15 @@ class PoliceAgent(Agent):
             pos=pos,
             goal=pos,  # Police don't have fixed goals
             speed=speed,
-            risk_tolerance=0.7,  # Less risk-averse
-            rng=rng
+            risk_tolerance=0.9,  # Less risk-averse
+            rng=rng,
+            profile_name='bold'  # Fast and less concerned about hazards
         )
+
+        # OVERRIDE PARENT WEIGHTS
+        self.w_hazard = 0.5        # Ignore gas (don't flee own deployment)
+        self.w_goal = 5.0          # Strongly prioritize tactical position
+        self.w_occupancy = 0.1     # Less concerned about crowding
         
         # Police-specific attributes
         self.deploy_prob = deploy_prob
@@ -421,23 +571,19 @@ class PoliceAgent(Agent):
             if not hasattr(self, 'wc_cooldown'):
                 self.wc_cooldown = 0
             if self.wc_cooldown <= 0:
-                # require some local density to use water cannon
-                local_density = env.occupancy_count[y, x]
+                nearby_density = 0
+                for dx in range(-3, 4):
+                    for dy in range(-3, 4):
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < env.width and 0 <= ny < env.height:
+                            nearby_density += env.occupancy_count[ny, nx]
                 wc_prob = wc_cfg.get('prob', 0.01)
-                if local_density >= wc_cfg.get('min_density', 6) and self.rng.random() < wc_prob:
-                    # push direction: away from crowd centroid (police aim between crowd and exit)
-                    dir_x = int(np.sign(centroid[0] - x))
-                    dir_y = int(np.sign(centroid[1] - y))
-                    # If dir is zero (coincident), default push away from centroid->exit axis:
-                    if dir_x == 0 and dir_y == 0:
-                        dir_x = int(np.sign(nearest_exit[0] - x))
-                        dir_y = int(np.sign(nearest_exit[1] - y))
+                if nearby_density >= 15 and self.rng.random() < wc_prob:
                     env.hazards.deploy_water_cannon(
                         env=env,
-                        x=x,
-                        y=y,
-                        direction=(dir_x, dir_y),
-                        strength=wc_cfg.get('strength', 3),
+                        x=x, y=y,
+                        direction=(0, 1),
+                        strength=wc_cfg.get('strength_m', 5.0),
                         radius=wc_cfg.get('radius', 6),
                         stun_prob=wc_cfg.get('stun_prob', 0.1),
                         agent_id=self.id
@@ -451,46 +597,49 @@ class PoliceAgent(Agent):
         if shoot_cfg.get('enabled', False):
             if not hasattr(self, 'shoot_cooldown'):
                 self.shoot_cooldown = 0
-            p_shoot = shoot_cfg.get('prob_per_step', 0.002)
+            p_shoot = shoot_cfg.get('prob_per_step', 0.005)
             if self.shoot_cooldown <= 0 and self.rng.random() < p_shoot:
-                # choose nearest protester (if any)
-                if env.protesters:
-                    # only consider moving protesters if possible
-                    candidates = [p for p in env.protesters if p.state == AgentState.MOVING]
-                    if not candidates:
-                        candidates = env.protesters
-                    target = min(candidates, key=lambda a: (a.pos[0] - x) ** 2 + (a.pos[1] - y) ** 2)
-                    env.hazards.shooting_event(env=env, shooter_agent=self, targets=[target], fatal=shoot_cfg.get('fatal', False))
-                    # set cooldown to avoid rapid repeats
+                candidates = [p for p in env.protesters if p.state == AgentState.MOVING]
+                if not candidates:
+                    candidates = env.protesters
+                if candidates:
+                    target = min(candidates, key=lambda a: (a.pos[0] - x)**2 + (a.pos[1] - y)**2)
+                    env.hazards.shooting_event(env=env, shooter_agent=self, targets=[target])
                     self.shoot_cooldown = shoot_cfg.get('cooldown', 100)
             else:
-                self.shoot_cooldown = max(0, getattr(self, 'shoot_cooldown', 0) - 1)
-
+                self.shoot_cooldown = max(0, self.shoot_cooldown - 1)
         return int(action)
 
     
     def _attempt_gas_deployment(self, env):
-        """
-        Attempt to deploy gas at current location using HazardManager.
-        Conditions:
-        - Local density >= threshold
-        - Random check with deploy_prob
-        """
-        
+        """Deploy gas AHEAD toward crowd, not at police position."""
         x, y = self.pos
-        # Count nearby protesters (3-cell radius)
-        nearby_protesters = 0
-        for dy in range(-3, 4):
-            for dx in range(-3, 4):
-                nx, ny = x + dx, y + dy
-                if 0 <= nx < env.width and 0 <= ny < env.height:
-                    nearby_protesters += sum(1 for a in env.agents 
-                                            if a.pos == (nx, ny) and a.agent_type == 'protester')
     
-        threshold = 10  # deploy threshold (configurable)
-        if nearby_protesters >= threshold and self.rng.random() < self.deploy_prob:
-            inj_intensity = self.config['hazards']['gas'].get('inj_intensity', 5.0)
-            # Use HazardManager
-            env.hazards.deploy_gas(env=env, x=x, y=y, intensity=inj_intensity, agent_id=self.id)
-            self.deploy_cooldown = self.deploy_cooldown_max
-            # note: HazardManager logs the event; no duplicate logging here
+        # Get crowd centroid
+        protester_positions = [a.pos for a in env.protesters if a.state == AgentState.MOVING]
+        if not protester_positions:
+            return
+    
+        centroid = np.mean(protester_positions, axis=0)
+    
+        # Deploy at point between police and crowd (not on obstacle)
+        deploy_x = int((x + centroid[0]) / 2)
+        deploy_y = int((y + centroid[1]) / 2)
+    
+        # Ensure deployment location is valid
+        if env.obstacle_mask[deploy_y, deploy_x]:
+            # Find nearest non-obstacle cell
+            for offset in range(1, 10):
+                for dx, dy in [(-offset,0), (offset,0), (0,-offset), (0,offset)]:
+                    test_x, test_y = deploy_x + dx, deploy_y + dy
+                    if (0 <= test_x < env.width and 0 <= test_y < env.height and 
+                        not env.obstacle_mask[test_y, test_x]):
+                        deploy_x, deploy_y = test_x, test_y
+                        break
+                        
+        print(f"Police at {(x,y)}, deploying at {(deploy_x, deploy_y)}, obstacle={env.obstacle_mask[deploy_y, deploy_x]}")
+        # Deploy gas
+        inj_intensity = self.config['hazards']['gas'].get('inj_intensity', 12.0)
+        env.hazards.deploy_gas(env=env, x=deploy_x, y=deploy_y, 
+                            intensity=inj_intensity, agent_id=self.id)
+        self.deploy_cooldown = self.deploy_cooldown_max

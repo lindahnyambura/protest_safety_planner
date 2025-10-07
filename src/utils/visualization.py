@@ -452,3 +452,70 @@ def quick_visualize_monte_carlo(results: Dict):
     fig = visualizer.plot_monte_carlo_results(results)
     plt.show()
     return fig
+
+def plot_convergence(self, convergence_data, save_path=None):
+    """Plot p_sim convergence vs N rollouts."""
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    
+    n_values = [d['n'] for d in convergence_data]
+    
+    # Mean p(harm)
+    axes[0].plot(n_values, [d['mean_p'] for d in convergence_data], 'o-')
+    axes[0].set_xlabel('N rollouts')
+    axes[0].set_ylabel('Mean p(harm)')
+    axes[0].set_title('Convergence: Mean')
+    
+    # Max p(harm)
+    axes[1].plot(n_values, [d['max_p'] for d in convergence_data], 'o-')
+    axes[1].set_xlabel('N rollouts')
+    axes[1].set_ylabel('Max p(harm)')
+    axes[1].set_title('Convergence: Max')
+
+    # Std p(harm)
+    axes[2].plot(n_values, [d['std_p'] for d in convergence_data], 'o-')
+    axes[2].set_xlabel('N rollouts')
+    axes[2].set_ylabel('Std p(harm)')
+    axes[2].set_title('Convergence: Std')
+    
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
+    else:
+        plt.show()
+
+def plot_calibration(self, p_sim, I_rollouts, save_path=None):
+    """Plot reliability diagram for calibration assessment."""
+    # Bin predicted probabilities
+    bins = np.linspace(0, 1, 11)
+    
+    bin_centers = 0.5 * (bins[:-1] + bins[1:])
+    bin_indices = np.digitize(p_sim, bins) - 1
+
+    observed_freq = []
+    predicted_mean = []
+    
+    for i in range(len(bins) - 1):
+        mask = bin_indices == i
+        if np.any(mask):
+            observed = np.mean(I_rollouts[mask])
+            predicted = np.mean(p_sim[mask])
+        else:
+            observed = np.nan
+            predicted = np.nan
+        observed_freq.append(observed)
+        predicted_mean.append(predicted)
+
+    plt.figure(figsize=(5, 5))
+    plt.plot([0, 1], [0, 1], 'k--', label='Perfect calibration')
+    plt.plot(predicted_mean, observed_freq, 'o-', label='Model')
+    plt.xlabel('Predicted probability')
+    plt.ylabel('Observed frequency')
+    plt.title('Reliability Diagram')
+    plt.legend()
+    plt.grid(True)
+    
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
+    else:
+        plt.show()

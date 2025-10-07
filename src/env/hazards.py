@@ -1,12 +1,14 @@
 """
-hazards.py - Hazard field dynamics (gas diffusion, decay)
+hazards.py - Hazard field dynamics (gas diffusion, decay, advection)
 
-Hazard concentration field with discrete diffusion and decay.
-Models gas dispersal using:
-- Discrete Laplacian diffusion (von Neumann neighborhood)
-- Exponential decay
-- Source injection (police deployments)
-- Probability of harm to agents based on local concentration
+Physics-based tear gas dispersion model with:
+- Turbulent diffusion (von Neumann stencil)
+- Wind advection (upwind finite difference)
+- Exponential decay (settling + dispersion)
+- Sustained emission sources (multi-step canisters)
+- Obstacle blocking (gas doesn't penetrate walls)
+
+Literature: Cabello et al. (2025) - Gaussian plume + CFD validation
 """
 
 import numpy as np
@@ -15,12 +17,15 @@ from scipy.signal import convolve2d
 
 class HazardField:
     """
-    Hazard concentration field with discrete diffusion and decay.
+    Tear gas concentration field with physics-based dynamics.
     
-    Models gas dispersal using:
-    - Discrete Laplacian diffusion (von Neumann neighborhood)
-    - Exponential decay
-    - Source injection (police deployments)
+    Solves: ∂C/∂t = D∇²C - v·∇C - γC + S(x,y,t)
+    where:
+        C: concentration (mg/m³)
+        D: diffusion coefficient (m²/s)
+        v: wind velocity (m/s)
+        γ: decay rate (s⁻¹)
+        S: source term (mg/m³/s)
     """
     
     def __init__(self, 
@@ -29,30 +34,65 @@ class HazardField:
                  diffusion_coeff: float,
                  decay_rate: float,
                  k_harm: float,
-                 delta_t: float):
+                 delta_t: float,
+                 cell_size_m: float,
+                 wind_direction=(0, 0),
+                 wind_speed_m_s=0.0,
+                 obstacle_mask=None):
         """
         Initialize hazard field.
         
         Args:
-            height: Grid height
-            width: Grid width
-            diffusion_coeff: Diffusion coefficient (grid units)
-            decay_rate: Decay rate (per-step)
-            k_harm: Harm rate parameter for p_harm calculation
-            delta_t: Timestep duration
+            height, width: Grid dimensions (cells)
+            diffusion_coeff: Turbulent diffusion coefficient (m²/s)
+                             Typical: 0.1-0.5 for urban wind (Cabello 2025)
+            decay_rate: Base decay rate (s⁻¹)
+                       Typical: 0.01 for CS gas with wind
+            k_harm: Harm rate coefficient ((mg·s/m³)⁻¹)
+                   Calibrated: 0.0083 for incap after 60s @ 10mg/m³
+            delta_t: Timestep duration (s)
+            cell_size_m: Physical cell size (m)
+            wind_direction: (dx, dy) unit vector
+            wind_speed_m_s: Wind speed (m/s)
+            obstacle_mask: Boolean array (True = walls block gas)
         """
+        # Grid parameters
         self.height = height
         self.width = width
-        self.D = diffusion_coeff
-        self.gamma = decay_rate
-        self.k_harm = k_harm
+        self.cell_size_m = cell_size_m
         self.delta_t = delta_t
         
-        # State arrays (locked data types)
-        self.concentration = np.zeros((height, width), dtype=np.float32)
-        self.sources = np.zeros((height, width), dtype=np.float32)
+        # Physical parameters (store both physical and grid units)
+        self.D_physical = diffusion_coeff  # m²/s
+        self.D_grid = diffusion_coeff / (cell_size_m ** 2)  # grid²/step
         
-        # Precompute Laplacian kernel (von Neumann, 4-neighbor)
+        # Decay (wind-enhanced)
+        self.gamma_base = decay_rate
+        self.gamma_effective = decay_rate * (1.0 + 0.5 * wind_speed_m_s)
+        
+        # Harm model
+        self.k_harm = k_harm
+        
+        # Wind parameters
+        wind_dir_array = np.array(wind_direction, dtype=np.float32)
+        wind_norm = np.linalg.norm(wind_dir_array)
+        if wind_norm > 0:
+            self.wind_direction = wind_dir_array / wind_norm  # Normalize
+        else:
+            self.wind_direction = np.zeros(2, dtype=np.float32)
+        self.wind_speed_m_s = wind_speed_m_s
+        
+        # Obstacle masking
+        if obstacle_mask is None:
+            self.obstacle_mask = np.zeros((height, width), dtype=bool)
+        else:
+            self.obstacle_mask = obstacle_mask.astype(bool)
+        
+        # State arrays
+        self.concentration = np.zeros((height, width), dtype=np.float32)
+        self.active_sources = []  # List of dicts: {x, y, intensity, duration}
+        
+        # Laplacian kernel (von Neumann 4-neighbor)
         self.laplacian_kernel = np.array([
             [0,  1, 0],
             [1, -4, 1],
@@ -61,60 +101,140 @@ class HazardField:
     
     def update(self, delta_t: float):
         """
-        Update hazard field for one timestep.
+        Update concentration field for one timestep.
         
-        Performs:
-        1. Diffusion (discrete Laplacian)
-        2. Decay (exponential)
-        3. Source injection
+        Physics:
+            1. Diffusion: D∇²C
+            2. Advection: -v·∇C (wind transport)
+            3. Decay: -γC (settling + dispersion)
+            4. Emission: +S (sustained sources)
+            5. Obstacle blocking: C=0 inside walls
         
         Args:
-            delta_t: Timestep duration (usually self.delta_t)
+            delta_t: Timestep (should match self.delta_t)
         """
-        # 1. Diffusion: C_new = C + D * Δt * ∇²C
-        # Use scipy convolve2d for vectorized operation (C-optimized)
+        # 1. Inject from active sources
+        source_term = np.zeros((self.height, self.width), dtype=np.float32)
+        remaining_sources = []
+        
+        for src in self.active_sources:
+            x, y = src['x'], src['y']
+            if 0 <= x < self.width and 0 <= y < self.height:
+                source_term[y, x] += src['intensity']
+            
+            # Decrement duration
+            src['duration'] -= 1
+            if src['duration'] > 0:
+                remaining_sources.append(src)
+        
+        self.active_sources = remaining_sources
+        
+        # 2. Compute diffusion (Laplacian with Neumann BC)
         laplacian = convolve2d(
             self.concentration,
             self.laplacian_kernel,
             mode='same',
-            boundary='fill',
-            fillvalue=0
+            boundary='symm'  # No-flux at boundaries (represents walls)
         )
         
-        # 2. Update equation
-        self.concentration += (
-            self.D * delta_t * laplacian            # Diffusion
-            - self.gamma * self.concentration * delta_t  # Decay
-            + self.sources * delta_t                # Injection
+        # 3. Compute wind advection (upwind finite difference)
+        advection = self._compute_advection()
+        
+        # 4. Update equation: Forward Euler integration
+        self.concentration += delta_t * (
+            self.D_grid * laplacian                      # Diffusion
+            - advection                                  # Advection
+            - self.gamma_effective * self.concentration  # Decay
+            + source_term                                # Emission
         )
         
-        # 3. Numerical stability: clamp to valid range
-        self.concentration = np.clip(self.concentration, 0, 100)
+        # 5. Enforce physical constraints
+        self.concentration = np.clip(self.concentration, 0.0, 200.0)  # No negative concentrations
         
-        # 4. Reset sources (pulse injection model)
-        self.sources.fill(0)
+        # 6. Zero concentration inside obstacles (gas doesn't penetrate walls)
+        self.concentration[self.obstacle_mask] = 0.0
     
-    def add_source(self, x: int, y: int, intensity: float):
+    def _compute_advection(self) -> np.ndarray:
         """
-        Add gas source at location (for manual injection).
+        Compute wind advection using upwind finite difference.
+        
+        Upwind scheme: ∂C/∂x ≈ (C[i] - C[i-1])/Δx if wind > 0
+                               (C[i+1] - C[i])/Δx if wind < 0
+        
+        This ensures numerical stability (prevents oscillations).
+        
+        Returns:
+            advection: Wind transport term (mg/m³/s)
+        """
+        if self.wind_speed_m_s == 0:
+            return np.zeros_like(self.concentration)
+        
+        # Convert wind speed to grid units
+        wind_grid = self.wind_speed_m_s / self.cell_size_m
+        wx, wy = self.wind_direction
+        
+        # X-direction advection (upwind)
+        if wx > 0:
+            # Wind blowing east: use backward difference
+            dC_dx = np.diff(self.concentration, axis=1, prepend=self.concentration[:, :1])
+        elif wx < 0:
+            # Wind blowing west: use forward difference
+            dC_dx = np.diff(self.concentration, axis=1, append=self.concentration[:, -1:])
+        else:
+            dC_dx = np.zeros_like(self.concentration)
+        
+        # Y-direction advection (upwind)
+        if wy > 0:
+            # Wind blowing south (in image coords): use backward difference
+            dC_dy = np.diff(self.concentration, axis=0, prepend=self.concentration[:1, :])
+        elif wy < 0:
+            # Wind blowing north: use forward difference
+            dC_dy = np.diff(self.concentration, axis=0, append=self.concentration[-1:, :])
+        else:
+            dC_dy = np.zeros_like(self.concentration)
+        
+        # Combined advection term: v · ∇C
+        advection = wind_grid * (wx * dC_dx + wy * dC_dy)
+        return advection
+    
+    def add_source(self, x: int, y: int, intensity: float, duration_steps: int = 30):
+        """
+        Deploy tear gas canister with sustained emission.
+        
+        Models real canister behavior: emission over 30-60 seconds, not instant pulse.
         
         Args:
-            x, y: Grid coordinates
-            intensity: Injection intensity
+            x, y: Deployment location (grid coordinates)
+            intensity: Emission rate (mg/m³/s)
+            duration_steps: Emission duration (timesteps, default 30s)
         """
         if 0 <= x < self.width and 0 <= y < self.height:
-            self.sources[y, x] = intensity
+            self.active_sources.append({
+                'x': int(x),
+                'y': int(y),
+                'intensity': float(intensity),
+                'duration': int(duration_steps)
+            })
     
     def get_harm_probability(self, x: int, y: int) -> float:
         """
-        Get harm probability at location (for agent decision-making).
+        Compute instantaneous harm probability at location.
+        
+        Used by agents for decision-making (local risk assessment).
         
         Args:
             x, y: Grid coordinates
             
         Returns:
-            p_harm: Probability of harm per timestep
+            p_harm: Probability of harm this timestep [0, 1]
         """
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return 0.0
+        
         concentration = self.concentration[y, x]
-        p_harm = 1 - np.exp(-self.k_harm * concentration * self.delta_t)
+        
+        # Exponential dose-response: p = 1 - exp(-k·c·Δt)
+        p_harm = 1.0 - np.exp(-self.k_harm * concentration * self.delta_t)
+        
+        # Numerical stability
         return float(np.clip(p_harm, 1e-6, 0.999999))

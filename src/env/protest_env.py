@@ -105,6 +105,7 @@ class ProtestEnv(gym.Env):
         self.agents: List[Agent] = []
         self.protesters: List[Agent] = []
         self.police_agents: List[PoliceAgent] = []
+        self.exit_points = config['agents']['protesters']['goals']['exit_points']
         
         # Simulation state
         self.step_count = 0
@@ -155,23 +156,19 @@ class ProtestEnv(gym.Env):
         self.occupancy_count = np.zeros((self.height, self.width), dtype=np.uint8)
         self.obstacle_mask = self._load_or_generate_obstacles()
         
-        # Initialize hazard field
-        # hazard_cfg = self.config.get('hazards', {}).get('gas', {})
-        # self.hazard_field = HazardField(
-        #     height=self.height,
-        #     width=self.width,
-        #     diffusion_coeff=hazard_cfg.get('diffusion_coeff', 0.2),
-        #     decay_rate=hazard_cfg.get('decay_rate', 0.05),
-        #     k_harm=hazard_cfg.get('k_harm', 0.1386),
-        #     delta_t=self.delta_t
-        # )
-        
         # Initialize hazard manager (gas + instant hazards)
         hazard_cfg = self.config.get('hazards', {})
         # Pass top-level hazards config and delta_t for gas init
         hm_cfg = hazard_cfg.copy()
         hm_cfg['delta_t'] = self.delta_t
-        self.hazards = HazardManager(height=self.height, width=self.width, config=hm_cfg, rng=self.rng)
+        self.hazards = HazardManager(
+            height=self.height, 
+            width=self.width, 
+            config=self.config, 
+            rng=self.rng,
+            cell_size_m=self.cell_size,
+            obstacle_mask=self.obstacle_mask)
+        
         # Backward compatibility: existing code expects self.hazard_field
         self.hazard_field = self.hazards.gas
         
@@ -182,7 +179,7 @@ class ProtestEnv(gym.Env):
         self.check_spawned_on_obstacle()
         
         # Update occupancy grid
-        self._update_occupancy_grid()
+        self._update_occupancy_grid_simple()
         
         # Return observation and info
         obs = self._get_observation()
@@ -201,14 +198,15 @@ class ProtestEnv(gym.Env):
             x, y = agent.pos
             if self.obstacle_mask[y, x]:
                 print(f"[DEBUG] Agent {agent.id} spawned on obstacle at {agent.pos} ({agent.agent_type})")
+    
     def step(self, actions: Optional[Dict[int, int]] = None) -> Tuple[Dict, float, bool, bool, Dict]:
         """
         Execute one simulation timestep.
-        
+    
         Args:
             actions: Optional dict mapping agent_id -> action (0-8)
                     If None, agents use internal decision logic
-        
+    
         Returns:
             observation: Updated observation
             reward: Reward signal (not used for Monte Carlo)
@@ -220,32 +218,63 @@ class ProtestEnv(gym.Env):
         if actions is None:
             actions = {}
             for agent in self.agents:
+                # CRITICAL: Let agents update goals dynamically
+                if hasattr(agent, 'update_goal'):  # Protesters have this, police don't
+                    agent.update_goal(self, self.exit_points)
+
                 actions[agent.id] = agent.decide_action(self)
-        
+    
         # 2. Execute movement with conflict resolution
         self._execute_movement(actions)
-        
+    
         # 3. Update hazard field (diffusion, decay, sources)
-        # self.hazard_field.update(self.delta_t)
         # Update all hazards (gas diffusion + instant hazard bookkeeping)
         self.hazards.update(self.delta_t)
         # keep the old alias
         self.hazard_field = self.hazards.gas
-        
+    
+        # 3.5. NEW: Check stun recovery
+        if hasattr(self.hazards, 'check_stun_recovery'):
+            recovered = self.hazards.check_stun_recovery(self)
+            if recovered:
+                print(f"[INFO] {len(recovered)} agents recovered from stun")
+
+        # 3.7. NEW FIX: Despawn protesters reaching exit points
+        exited = []
+        for agent in list(self.protesters):  # Copy since we might modify list
+            if agent.state == AgentState.MOVING and agent.pos in [tuple(ep) for ep in self.exit_points]:
+                agent.state = AgentState.SAFE
+                exited.append(agent)
+                # Remove from active grid
+                self.agents.remove(agent)
+                self.protesters.remove(agent)
+                self.events_log.append({
+                    'timestep': self.step_count,
+                    'event_type': 'agent_exited',
+                    'agent_id': agent.id,
+                    'position': agent.pos
+                })
+
+        if exited:
+            print(f"[INFO] {len(exited)} protesters exited the grid at this step.")
+
+        # Recompute occupancy after despawning
+        self._update_occupancy_grid_simple()
+
         # 4. Update agent exposures and harm
         harm_grid = self._update_agent_harm()
-        
+    
         # 5. Check termination conditions
         terminated, termination_reason = self._check_termination()
         truncated = self.step_count >= self.max_steps
-        
+    
         # 6. Increment step counter
         self.step_count += 1
-        
+    
         # 7. Construct observation and info
         obs = self._get_observation()
         reward = 0.0  # Not used for Monte Carlo evaluation
-        
+    
         info = {
             'step': self.step_count,
             'harm_grid': harm_grid,  # Binary indicators for I_i
@@ -254,7 +283,7 @@ class ProtestEnv(gym.Env):
             'termination_reason': termination_reason if terminated else None,
             'agent_states': self._get_agent_states_summary()
         }
-        
+    
         return obs, reward, terminated, truncated, info
     
     def _load_or_generate_obstacles(self) -> np.ndarray:
@@ -381,7 +410,8 @@ class ProtestEnv(gym.Env):
             )
             self.agents.append(agent)
             self.police_agents.append(agent)
-
+        
+        
     def _assign_agent_profiles(self, n_agents: int, 
                                types_config: Dict) -> List[str]:
         """
@@ -434,31 +464,37 @@ class ProtestEnv(gym.Env):
         if spawn_type == 'clusters':
             centers = spawn_params['centers']
             radius = spawn_params['radius']
-            
             agents_per_cluster = n_agents // len(centers)
-            
+        
             for center in centers:
                 cx, cy = center
-                for _ in range(agents_per_cluster):
-                    # Sample from circular cluster
+                attempts = 0
+                spawned_in_cluster = 0
+
+                while spawned_in_cluster < agents_per_cluster and attempts < 1000:
                     angle = self.rng.uniform(0, 2 * np.pi)
                     r = self.rng.uniform(0, radius)
                     x = int(cx + r * np.cos(angle))
                     y = int(cy + r * np.sin(angle))
-                    
-                    # Ensure within bounds and not on obstacle
-                    x = np.clip(x, 1, self.width - 2)
-                    y = np.clip(y, 1, self.height - 2)
-                    
-                    if not self.obstacle_mask[y, x]:
+                
+                    # Check bounds AND obstacles
+                    if (1 <= x < self.width - 1 and 
+                        1 <= y < self.height - 1 and
+                        not self.obstacle_mask[y, x]):
                         positions.append((x, y))
-            
-            # Handle remainder agents
+                        spawned_in_cluster += 1
+
+                    attempts += 1
+
+                if attempts >= 1000:
+                    print(f"[WARN] Cluster {center}: only spawned {spawned_in_cluster}/{agents_per_cluster}")
+        
+            # Handle remainder + failed spawns
             while len(positions) < n_agents:
                 x = self.rng.integers(1, self.width - 1)
                 y = self.rng.integers(1, self.height - 1)
                 if not self.obstacle_mask[y, x]:
-                    positions.append((x, y))
+                    positions.append((x, y))  
         
         elif spawn_type == 'fixed':
             
@@ -502,10 +538,11 @@ class ProtestEnv(gym.Env):
         
         return tuple(exit_points[0])  # Default
     
+
     def _execute_movement(self, actions: Dict[int, int]):
         """
-        Execute agent movement with conflict resolution.
-        
+        Execute agent movement with conflict resolution and occupancy control.
+
         Args:
             actions: Dict mapping agent_id -> action (0-8)
         """
@@ -521,82 +558,127 @@ class ProtestEnv(gym.Env):
             (1, 1),    # 7: SOUTHEAST
             (-1, 1)    # 8: SOUTHWEST
         ]
-        
-        # Track movement requests
-        move_requests = {}  # target_cell -> list of agents
-        
-        # # Clear occupancy grid
-        # self.occupancy_count.fill(0)
-        
-        # Process each agent
+
+        move_requests = {}  # target_cell -> list of (agent, original_pos)
+
+        # === Step 1: Collect movement requests ===
         for agent in self.agents:
-            # Fractional speed accumulation
             agent.move_accum += agent.speed
-            
-            if agent.move_accum >= 1.0 and agent.state == 'moving':
+
+            if agent.move_accum >= 1.0 and agent.state == AgentState.MOVING:
                 action = actions.get(agent.id, 0)
                 dx, dy = MOVE_OFFSETS[action]
                 target_x = agent.pos[0] + dx
                 target_y = agent.pos[1] + dy
-                
-                # Boundary and obstacle check
-                if (0 <= target_x < self.width and 
-                    0 <= target_y < self.height and 
+
+                # Validate movement bounds and obstacles
+                if (0 <= target_x < self.width and
+                    0 <= target_y < self.height and
                     not self.obstacle_mask[target_y, target_x]):
-                    
+
                     target_cell = (target_x, target_y)
-                    # if target_cell not in move_requests:
-                    #     move_requests[target_cell] = []
-                    # move_requests[target_cell].append(agent)
-                    move_requests.setdefault(target_cell, []).append(agent)
-                
-                agent.move_accum -= 1.0
-        
-        # Resolve conflicts (N_CELL_MAX limit)
+                    move_requests.setdefault(target_cell, []).append((agent, agent.pos))
+
+                agent.move_accum -= 1.0  # consume fractional accumulator
+
+        # === Step 2: Resolve conflicts (N_CELL_MAX enforcement) ===
         PRIORITY = {'police': 0, 'medic': 1, 'protester': 2, 'bystander': 3}
-        
-        for target_cell, candidates in move_requests.items():
-            if len(candidates) <= self.n_cell_max:
-                # All can move
-                for agent in candidates:
+
+        for target_cell, requests in move_requests.items():
+            if len(requests) <= self.n_cell_max:
+                # All can move freely
+                for agent, _ in requests:
                     agent.pos = target_cell
             else:
-                # Conflict resolution: priority + RNG tie-break
-                sorted_candidates = sorted(
-                    candidates,
-                    key=lambda a: (PRIORITY[a.agent_type], self.rng.random())
+                # Conflict: enforce occupancy limit
+                sorted_requests = sorted(
+                    requests,
+                    key=lambda r: (PRIORITY.get(r[0].agent_type, 99), self.rng.random())
                 )
 
-                # DEBUG 02: AGENT OVERFLOW ; Enforce N_CELL_MAX strictly
-                winners = sorted_candidates[:self.n_cell_max]
-                losers = sorted_candidates[self.n_cell_max:]
+                winners = sorted_requests[:self.n_cell_max]
+                losers = sorted_requests[self.n_cell_max:]
 
-                for agent in winners:
+                for agent, _ in winners:
                     agent.pos = target_cell
-                for agent in losers:
-                    # Ensure losers remain in valid cells
-                    x, y = agent.pos
-                    if self.obstacle_mask[y, x]:
-                        # Relocate to a random valid free cell
-                        new_x, new_y = self._find_free_cell()
-                        agent.pos = (new_x, new_y)    
-        
-        # Update occupancy grid
-        self._update_occupancy_grid()
-    
-    def _update_occupancy_grid(self):
-        """Update occupancy count grid from agent positions."""
+                for agent, original_pos in losers:
+                    agent.pos = original_pos
+
+        # === Step 3: Update occupancy ===
+        self._update_occupancy_grid_simple()
+
+        # === Step 4: Post-movement safety enforcement (Fix 3) ===
+        # Recheck overcrowded cells; redistribute excess agents if needed
+        overcrowded_cells = np.argwhere(self.occupancy_count > self.n_cell_max)
+        for (y, x) in overcrowded_cells:
+            agents_here = [a for a in self.agents if a.pos == (x, y)]
+            if len(agents_here) > self.n_cell_max:
+                sorted_agents = sorted(
+                    agents_here,
+                    key=lambda a: (PRIORITY.get(a.agent_type, 99), self.rng.random())
+                )
+                survivors = sorted_agents[:self.n_cell_max]
+                displaced = sorted_agents[self.n_cell_max:]
+
+                for agent in displaced:
+                    fx, fy = self._find_free_cell()
+                    print(f"[DEBUG] Relocating Agent {agent.id} from ({x},{y}) to ({fx},{fy})")
+                    agent.pos = (fx, fy)
+                    self.events_log.append({
+                        'timestep': self.step_count,
+                        'event_type': 'relocation_due_to_overcrowding',
+                        'agent_id': agent.id,
+                        'from': (x, y),
+                        'to': (fx, fy)
+                    })
+
+                print(f"[WARN] Cell ({x},{y}) exceeded N_CELL_MAX={self.n_cell_max}; relocated {len(displaced)} agents.")
+
+        # === Step 5: Final occupancy update ===
+        self._update_occupancy_grid_simple()
+
+    def _update_occupancy_grid_simple(self):
+        """
+        Update the occupancy count grid from current agent positions.
+
+        This version enforces safety, avoids out-of-bounds increments,
+        and logs overcrowding only once per cell per step to prevent spam.
+        """
+        # Reset occupancy map
         self.occupancy_count.fill(0)
+
+        # Accumulate per-cell occupancy safely
         for agent in self.agents:
             x, y = agent.pos
-            # Cap occupancy to N_CELL_MAX
-            if self.occupancy_count[y, x] < self.n_cell_max:
+            if 0 <= x < self.width and 0 <= y < self.height:
                 self.occupancy_count[y, x] += 1
             else:
-                # Too many in one cell, relocate this agent
-                new_x, new_y = self._find_free_cell()
-                agent.pos = (new_x, new_y)
-                self.occupancy_count[new_y, new_x] += 1
+                # Safety guard: out-of-bound positions (should never happen)
+                print(f"[ERROR] Agent {agent.id} at invalid position {agent.pos}")
+                # Optionally re-locate the agent safely
+                fx, fy = self._find_free_cell()
+                agent.pos = (fx, fy)
+                self.occupancy_count[fy, fx] += 1
+
+        # === Diagnostic Section ===
+        max_occupancy = self.occupancy_count.max()
+        if max_occupancy > self.n_cell_max:
+            overcrowded = np.argwhere(self.occupancy_count > self.n_cell_max)
+            msg_lines = [
+                f"[WARN] {len(overcrowded)} cells exceed N_CELL_MAX={self.n_cell_max}"
+            ]
+            for y, x in overcrowded[:10]:  # Limit to first 10 to avoid spam
+                msg_lines.append(f"   Cell ({x},{y}) has {self.occupancy_count[y, x]} agents")
+            print("\n".join(msg_lines))
+
+            # Optional: record in event log for later analysis
+            for y, x in overcrowded:
+                self.events_log.append({
+                    'timestep': self.step_count,
+                    'event_type': 'overcrowding_warning',
+                    'cell': (x, y),
+                    'occupancy': int(self.occupancy_count[y, x])
+                })
 
     def _find_free_cell(self):
         """Helper to find a random free cell (not obstacle, below N_CELL_MAX)."""
@@ -632,7 +714,7 @@ class ProtestEnv(gym.Env):
             
             # Check incapacitation
             if agent.cumulative_harm >= self.config['hazards']['gas'].get('H_crit', 5.0):
-                agent.state = 'incapacitated'
+                agent.state = AgentState.INCAPACITATED
         
         return harm_grid
     
@@ -651,23 +733,21 @@ class ProtestEnv(gym.Env):
         Returns:
             (is_terminated, reason)
         """
-        # All protesters reached goals or incapacitated
-        active_protesters = [
-            a for a in self.protesters 
-            if a.state == 'moving'
-        ]
-        
-        if len(active_protesters) == 0:
+        # Count agent states (use AgentState enum)
+        active = sum(a.state == AgentState.MOVING for a in self.protesters)
+        safe = sum(a.state == AgentState.SAFE for a in self.protesters)
+        incapacitated = sum(a.state == AgentState.INCAPACITATED for a in self.protesters)
+    
+        # All protesters either safe or incapacitated
+        if active == 0:
             return True, "all_protesters_done"
-        
+    
         # Mass casualty (>80% incapacitated)
-        incap_rate = sum(
-            a.state == 'incapacitated' for a in self.protesters
-        ) / len(self.protesters)
-        
-        if incap_rate > 0.8:
-            return True, "mass_casualty"
-        
+        if len(self.protesters) > 0:
+            incap_rate = incapacitated / len(self.protesters)
+            if incap_rate > 0.8:
+                return True, "mass_casualty"
+    
         return False, None
     
     def _get_observation(self) -> Dict:
@@ -709,6 +789,6 @@ def load_config(config_path: str) -> Dict:
     Returns:
         Configuration dictionary
     """
-    with open(config_path, 'r') as f:
+    with open(config_path, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
     return config

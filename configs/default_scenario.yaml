@@ -5,7 +5,7 @@
 grid:
   width: 100                    # Back to tested size
   height: 100
-  cell_size_m: 1.0              # 100m × 100m coverage
+  cell_size_m: 5.0              # 500m × 500m coverage
   obstacle_source: "generate"   # SYNTHETIC ONLY (OSM disabled)
   origin: "top_left"
 
@@ -46,9 +46,11 @@ agents:
     goals:
       strategy: "nearest_exit"
       exit_points:
-        - [5, 95]
-        - [95, 95]
-        - [50, 5]
+        - [5, 5]    # Bottom-left
+        - [95, 5]  # Bottom-right
+        - [5, 95]  # Top-left
+        - [95, 95]  # Top-right
+        - [50, 50]  # Center (will observe the risk of having a center exit)
   
   police:
     count: 10
@@ -72,26 +74,39 @@ agents:
 # Hazards (FIXED FOR REALISM)
 hazards:
   gas:
-    diffusion_coeff: 0.08        # REDUCED: Slower spread (was 0.2)
-    decay_rate: 0.005            # MUCH SLOWER: 0.5% per step (was 0.05)
-    inj_intensity: 15.0          # INCREASED: Stronger (was 5.0)
-    k_harm: 0.2772               # DOUBLED: More harm per concentration (was 0.1386)
-    H_crit: 2.5                  # REDUCED: Easier incapacitation (was 5.0)
+    # Physical diffusion (m^2/s)
+    diffusion_coeff: 0.3        # Urban turbulent dispersion
+    # Decay parameters
+    decay_rate: 0.01             # per second or per time-step (1%)
+    # Emission parameters
+    inj_intensity: 12.0          # mg/m^3 at source (peak)
+    emission_duration: 30       # Seconds per canister
+    # Wind parameters
+    wind_direction: [1, 0]     # East wind (normalized later)
+    wind_speed_m_s: 2.0        # 2 m/s (light breeze)
+    # Harm model: H(c,t) = k * c * delta_t
+    k_harm: 0.0083               # (mg*s/m^3)^-1 -> yields H = 5.0 after 60s at 10 mg/m^3; will try k_harm: 0.15
+    H_crit: 5.0                 # dimensionless threshold for incapacitation 
+    # Concentration clipping (for numerical stability)
     concentration_min: 0.0
     concentration_max: 100.0
 
   water_cannon:
     enabled: true
-    strength: 3             # integer cells agents are pushed
+    prob: 0.02
+    strength_m: 5.0             # Push distance in meters
     radius: 6               # radius in cells (square radius used)
-    stun_prob: 0.10         # probability to stun an affected agent
+    stun_prob: 0.15         # 15% chance of stun / injury  
     cooldown: 30            # police cooldown steps for water cannon
+    # internal mapping:
+    # strength_cells = int(strength_m / cell_size_m)
 
   shooting:
     enabled: true
-    prob_per_step: 0.002    # 0.2% chance per police per step to attempt shoot
+    prob_per_step: 0.0005    # 0.5% chance per police per step to attempt shoot
+    lethality: 0.3            # 30% of shots cause incapacitation (not all fatal)
     max_targets_per_event: 1
-    fatal: false            # if True -> incapacitate, else high chance incapacitate
+    cooldown: 100              # Prevent rapid-fire
 
 
 # Simulation
@@ -99,6 +114,8 @@ simulation:
   base_seed: 123456
   n_cell_max: 6
   store_full_traces: false
+  termination_conditions:
+    comment: "Episode ends when all protesters escaped or incapacitated"
 
 # Monte Carlo (SAFE PARALLELIZATION)
 monte_carlo:
@@ -106,7 +123,7 @@ monte_carlo:
   bootstrap_samples: 1000       # Full bootstrap
   n_jobs: 4                     # Parallelization
   
-  n_rollouts_dev: 50            # Development
+  n_rollouts_dev: 100            # Development
   bootstrap_samples_dev: 200
   
   use_memmap: false             # Small enough for RAM
