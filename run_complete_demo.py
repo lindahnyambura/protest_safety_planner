@@ -166,7 +166,7 @@ print("\n[4/6] Monte Carlo Aggregation (FR2)...")
 
 # Ask user for settings
 print(f"\n  Available settings:")
-print(f"    [1] Development: {config['monte_carlo'].get('n_rollouts_dev', 100)} rollouts (~2-5 min)")
+print(f"    [1] Development: {config['monte_carlo'].get('n_rollouts_dev', 50)} rollouts (~2-5 min)")
 print(f"    [2] Production:  {config['monte_carlo']['n_rollouts']} rollouts (~10-30 min)")
 
 choice = input("  Select [1/2] (default=1): ").strip()
@@ -176,7 +176,7 @@ if choice == '2':
     n_bootstrap = config['monte_carlo']['bootstrap_samples']
     print(f"  Using production settings: {n_rollouts} rollouts")
 else:
-    n_rollouts = config['monte_carlo'].get('n_rollouts_dev', 100)
+    n_rollouts = config['monte_carlo'].get('n_rollouts_dev', 50)
     n_bootstrap = config['monte_carlo'].get('bootstrap_samples_dev', 200)
     print(f"  Using development settings: {n_rollouts} rollouts")
 
@@ -256,6 +256,21 @@ except Exception as e:
 # ============================================================================
 print("\nLogging experiment metadata...")
 
+def convert_to_json_serializable(obj):
+    """ Convert numpy types to native Python types for JSON serialization """
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (list, tuple)):
+        return [convert_to_json_serializable(i) for i in obj]
+    elif isinstance(obj, dict):
+        return {k: convert_to_json_serializable(v) for k, v in obj.items()}
+    else:
+        return obj
+
 try:
     # Get git commit (if available)
     try:
@@ -263,7 +278,7 @@ try:
     except:
         git_commit = "unknown"
     
-    experiment_log = {
+    experiment_log = convert_to_json_serializable({
         'experiment_id': 'FR1_FR2_validation_run',
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
         'config_hash': results.get('config_hash', 'N/A'),
@@ -285,7 +300,7 @@ try:
             'peak_harm_cells': max(harm_timeline),
             'max_concentration': max(hazard_timeline)
         }
-    }
+    })
     
     log_path = Path('artifacts') / 'experiment_log.json'
     log_path.parent.mkdir(parents=True, exist_ok=True)

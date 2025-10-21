@@ -24,7 +24,7 @@ from src.env import ProtestEnv, load_config
 from src.env.agent import AgentState  # CRITICAL: Import for state checks
 
 
-def run_live_episode(config_path='configs/default_scenario.yaml', max_steps=500, seed=42):
+def run_live_episode(config_path='configs/default_scenario.yaml', max_steps=100, seed=42):
     """
     Run episode with live visualization and post-episode diagnostics.
     
@@ -92,6 +92,25 @@ def run_live_episode(config_path='configs/default_scenario.yaml', max_steps=500,
         obstacles_display = env.obstacle_mask.astype(float)
         obstacles_display[obstacles_display == 0] = np.nan
         axes[0].imshow(obstacles_display, cmap='gray', alpha=0.3, origin='upper')
+
+        # Overlay OSM roads if available
+        if hasattr(env, "roads_all") and env.roads_all is not None:
+            roads_all = env.roads_all
+
+            # Separate main vs local for color
+            if "road_type" in roads_all.columns:
+                main_roads = roads_all[roads_all["road_type"] == "main"]
+                local_roads = roads_all[roads_all["road_type"] == "local"]
+            else:
+                # Fallback: all roads same style
+                main_roads, local_roads = roads_all, None
+
+            # Plot roads on Panel 1
+            if local_roads is not None and not local_roads.empty:
+                local_roads.plot(ax=axes[0], color="gray", linewidth=0.4, alpha=0.7, label="Local roads", zorder=3)
+            if main_roads is not None and not main_roads.empty:
+                main_roads.plot(ax=axes[0], color="red", linewidth=1.0, alpha=0.9, label="Main roads", zorder=4)
+
 
         # Green translucent overlays for exits
         for exit_pos in exits:
@@ -292,6 +311,18 @@ def print_episode_summary(env, info, harm_timeline, hazard_history,
     print(f"\nDiagnostic Check:")
     print(f"  Max concentration ever: {max_conc_ever:.2f}")
     print(f"  Steps with visible gas (>1.0): {steps_with_gas}")
+    
+    # Exit reach analysis
+    if hasattr(env, "protesters"):
+        reached_exits = {}
+        for a in env.protesters:
+            if getattr(a, "state", None) == AgentState.SAFE:
+                g = tuple(a.goal)
+                reached_exits[g] = reached_exits.get(g, 0) + 1
+        print(f"\nAgents who reached each exit:")
+        for g, count in reached_exits.items():
+            print(f"  Exit {g}: {count}")
+
     print("="*60)
 
 
@@ -337,7 +368,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Live protest simulation visualization')
     parser.add_argument('--config', type=str, default='configs/default_scenario.yaml',
                        help='Path to config file')
-    parser.add_argument('--steps', type=int, default=500,
+    parser.add_argument('--steps', type=int, default=100,
                        help='Maximum steps to simulate')
     parser.add_argument('--seed', type=int, default=42,
                        help='Random seed')

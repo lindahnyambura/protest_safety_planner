@@ -6,6 +6,7 @@ Version 2: Add agent heterogeneity (3 types)
 """
 
 import numpy as np
+import math
 from typing import Tuple, Dict, Optional
 from dataclasses import dataclass
 
@@ -18,6 +19,7 @@ class AgentState:
     INCAPACITATED = 'incapacitated'
     ARRESTED = 'arrested'
     SAFE = 'safe'
+    WAITING = 'waiting'
 
 
 class Agent:
@@ -76,7 +78,8 @@ class Agent:
                  speed: float,
                  risk_tolerance: float,
                  rng: np.random.Generator,
-                 profile_name: str = 'average'):
+                 profile_name: str = 'average',
+                 wait_timer: int = 0):
         """
         Initialize agent.
         
@@ -127,44 +130,22 @@ class Agent:
         self.rng = rng
         
         # Scoring weights (locked parameters, modified by profile)
-        self.w_goal: float = 1.0
-        self.w_hazard: float = 5.0 * (1.0 - self.risk_tolerance) * profile['w_hazard_multiplier']
-        self.w_occupancy: float = 0.5
-        self.w_inertia: float = 0.2
-        self.beta: float = 5.0  # Boltzmann temperature model)
-        self.cumulative_harm: np.float32 = np.float32(0.0)
-        self.harm_events: int = 0
-        
-        # Movement mechanics
-        self.move_accum: np.float32 = np.float32(0.0)
-        self.last_move_direction: Optional[int] = None
-        
-        # RNG for stochastic decisions
-        self.rng = rng
-        
-        # Scoring weights (locked parameters, modified by profile)
+        # w_goal: preference for goal proximity
+        # w_hazard: penalty for entering hazardous zones (scaled by risk_tolerance and profile)
+        # w_occupancy: penalty for crowded cells
+        # w_inertia: bias toward continuing previous direction
+        # beta: Boltzmann temperature for stochastic action choice
         self.w_goal: float = 1.0
         self.w_hazard: float = 15.0 * (1.0 - self.risk_tolerance) * profile['w_hazard_multiplier'] # Now average agent: w_hazard = 15 × 0.7 × 1.0 = 10.5 (much stronger)
         self.w_occupancy: float = 0.5
         self.w_inertia: float = 0.2
-        self.beta: float = 5.0  # Boltzmann temperature model)
-        self.cumulative_harm: np.float32 = np.float32(0.0)
-        self.harm_events: int = 0
+        self.beta: float = 5.0  # Boltzmann temperature model - controls randomness in movement choice
+        # self.cumulative_harm: np.float32 = np.float32(0.0)
+        # self.harm_events: int = 0
+
+        # Wait timer
+        self.wait_timer: int = wait_timer
         
-        # Movement mechanics
-        self.move_accum: np.float32 = np.float32(0.0)  # Fractional speed accumulator
-        self.last_move_direction: Optional[int] = None  # For inertia
-        
-        # RNG for stochastic decisions
-        self.rng = rng
-        
-        # Scoring weights (locked parameters)
-        self.w_goal: float = 1.0
-        self.w_hazard: float = 5.0 * (1.0 - risk_tolerance)
-        self.w_occupancy: float = 0.5
-        self.w_inertia: float = 0.2
-        self.beta: float = 5.0  # Boltzmann temperature
-    
     def decide_action(self, env) -> int:
         """
         Decide next action based on scoring function.
@@ -197,53 +178,145 @@ class Agent:
     
     def update_goal(self, env, exits: list):
         """
-        Dynamically select safest reachable exit.
-        Re-evaluates goal every N steps or when hazards detected nearby.
-        Args:
-            env: ProtestEnv instance
-            exits: List of (x, y) exit positions
+        Dynamically select a (probabilistic) safe reachable exit.
+        - Uses superlinear congestion cost.
+        - Uses softmax sampling over exit utilities to encourage dispersion.
+        - Hysteresis: only resample every `goal_update_period` steps unless
+          current path hazard exceeds `risk_tolerance_immediate`.
         """
-        # Only update goal every 10 steps (avoid oscillation)
+        
+        # === Parameters (tweakable) ===
+        goal_update_period = getattr(self, "goal_update_period", 20)  # default every 20 steps
+        beta_exit = getattr(self, "beta_exit", 0.2)                  # softmax inverse-temperature
+        congestion_exp = getattr(self, "congestion_exp", 2.0)       # superlinear exponent
+        congestion_thresh = getattr(self, "congestion_thresh", None) # optional thresholded behavior
+        usage_penalty_k = getattr(self, "usage_penalty_k", 2.0)     # scale exit usage penalty
+        immediate_reassess_hazard_factor = getattr(self, "risk_tolerance_immediate", 1.5)
+        hysteresis_factor = getattr(self, "goal_hysteresis_factor", 1.05)
+        
+        
+        # initialize counters if needed
         if not hasattr(self, '_goal_update_counter'):
             self._goal_update_counter = 0
-        
         self._goal_update_counter += 1
-        if self._goal_update_counter < 10:
-            return # Keep current goal
+
+        # If not time yet, only re-evaluate if current path hazard is large
+        do_resample = False
+        if self._goal_update_counter >= goal_update_period:
+            do_resample = True
+            self._goal_update_counter = 0
+        else:
+            # quick check: if current path hazard to current goal is very large, force resample
+            try:
+                curr_path_hazard = self._estimate_path_hazard(env, tuple(self.goal))
+            except Exception:
+                curr_path_hazard = 0.0
+            if curr_path_hazard > immediate_reassess_hazard_factor * getattr(self, "risk_tolerance", 0.3):
+                do_resample = True
+                # reset counter so we don't immediately re-sample again next step
+                self._goal_update_counter = 0
+
+        if not do_resample:
+            return  # keep current goal
         
-        self._goal_update_counter = 0
-
-        # Evaluate exits based on distance and hazard exposure
-        best_exit = None
-        best_score = -np.inf
-
-        for exit_pos in exits:
+        # Precompute exit usage counts (how many agents currently targeting each exit)
+        exit_usage = [self._count_agents_targeting(env, exit_pos) for exit_pos in exits]
+        total_agents = max(1, len(getattr(env, "agents", [])))
+        
+        # Score all exits
+        exit_scores = []
+        for idx, exit_pos in enumerate(exits):
             # Distance cost
-            dist = np.hypot(self.pos[0] - exit_pos[0], 
-                            self.pos[1] - exit_pos[1])
+            dist = math.hypot(self.pos[0] - exit_pos[0], self.pos[1] - exit_pos[1])
+            norm_dist = dist / max(env.width, env.height)   # normalize to [0, 1]
 
-            # Hazard cost (check path to exit)
+            # Path hazard
             path_hazard = self._estimate_path_hazard(env, exit_pos)
+
+            # Congestion: local agent count near exit
+            congestion = self._count_agents_near(env, exit_pos, radius=5)
+            cost_congestion = 0.5 * (congestion ** congestion_exp)
+
+            # Usage penalty (relative to total agents) - prevents runaway usage
+            usage_penalty = usage_penalty_k * (exit_usage[idx] / float(total_agents))
+
+            # Combined utility (higher = better)
+            # We invert cost terms to negative, combine with weights
+            # Adjust scaling factors so utilities are in reasonable range
+            utility = (
+                - (norm_dist * 10.0)       # distance cost
+                - (5.0 * path_hazard)      # hazard cost
+                - cost_congestion          # congestion cost
+                - (20.0 * usage_penalty)   # usage penalty
+            )
+            exit_scores.append(utility)
         
-            # Congestion cost (agents near exit)
-            exit_congestion = self._count_agents_near(env, exit_pos, radius=5)
+        # Convert to probabilities via stabilized softmax
+        scores = np.array(exit_scores, dtype=np.float64)
+        # numerical stabilization
+        max_s = np.max(scores)
+        exp_scores = np.exp(beta_exit * (scores - max_s))
+        probs = exp_scores / (np.sum(exp_scores) + 1e-12)
 
-            # Combined score (lower is better)
-            score = -dist - 10.0 * path_hazard - 0.5 * exit_congestion
+        # Sample exit according to probs (stochastic choice)
+        chosen_idx = self.rng.choice(len(exits), p=probs)
+        chosen_exit = tuple(exits[chosen_idx])
 
-            if score > best_score:
-                best_score = score
-                best_exit = exit_pos
-            
-            # Update goal if significantly better exit found
-            current_dist = np.hypot(self.pos[0] - self.goal[0], 
-                                    self.pos[1] - self.goal[1])
-            new_dist = np.hypot(self.pos[0] - best_exit[0], 
-                                self.pos[1] - best_exit[1])
-            
-            # Only switch if new exit is 20% better or current path is very hazardous
-            if (best_score > 1.2 * (-current_dist)) or path_hazard > self.risk_tolerance:
-                self.goal = best_exit
+        # --- DEBUG PRINT: now probs and chosen_exit exist ---
+        if getattr(self, "id", -1) < 5:
+            print(f"[Agent {self.id}] exit_scores={np.round(exit_scores,3)} probs={np.round(probs,3)} chosen={chosen_exit}")
+        
+        # Hysteresis: only switch if chosen exit gives a sufficient improvement over current
+        # (avoid flip-flopping if probabilities similar). We measure expected utility difference.
+        current_goal = tuple(self.goal) if hasattr(self, "goal") else None
+        if current_goal is None:
+            self.goal = chosen_exit
+            return
+        
+        # compute current_goal_score for comparison
+        try:
+            curr_idx = exits.index(list(current_goal))
+        except ValueError:
+            curr_idx = None
+
+        if curr_idx is not None:
+            current_score = scores[curr_idx]
+        else:
+            # fallback revision of utility for current goal
+            d0 = math.hypot(self.pos[0] - current_goal[0], self.pos[1] - current_goal[1])
+            norm_d0 = d0 / max(env.width, env.height)
+            ph0 = self._estimate_path_hazard(env, current_goal)
+            cong0 = self._count_agents_near(env, current_goal, radius=5)
+            cc0 = 0.5 * (cong0 ** congestion_exp)
+            up0 = self._count_agents_targeting(env, current_goal) / float(total_agents)
+            usage0 = usage_penalty_k * up0
+            current_score = (
+                - (norm_d0 * 10.0)
+                - (5.0 * ph0)
+                - cc0
+                - (20.0 * usage0)
+            )
+        
+        # require at least a fractional improvement to switch (hysteresis factor)
+        if scores[chosen_idx] > hysteresis_factor * current_score or \
+            self._estimate_path_hazard(env, current_goal) > getattr(self, "risk_tolerance", 0.3) * 2.0:
+                self.goal = chosen_exit
+        # else: keep current goal
+
+    
+    def _count_agents_targeting(self, env, exit_pos, radius: int = 2) -> int:
+        """
+        Count how many agents currently have `exit_pos` as their goal (within small tolerance).
+        Used to estimate intentional congestion.
+        """
+        cnt = 0
+        for a in getattr(env, "agents", []):
+            try:
+                if hasattr(a, "goal") and tuple(a.goal) == tuple(exit_pos):
+                    cnt += 1
+            except Exception:
+                continue
+        return cnt
 
     def _estimate_path_hazard(self, env, target: Tuple[int, int]) -> float:
         """

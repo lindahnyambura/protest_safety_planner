@@ -20,7 +20,6 @@ from pathlib import Path
 from .agent import Agent, PoliceAgent, AgentState
 from .hazards import HazardField
 from .hazard_manager import HazardManager
-from .map_loader import load_nairobi_cbd_map
 
 
 @dataclass
@@ -223,6 +222,16 @@ class ProtestEnv(gym.Env):
                     agent.update_goal(self, self.exit_points)
 
                 actions[agent.id] = agent.decide_action(self)
+
+            # --- Goal distribution diagnostics (added block) ---
+            if self.step_count in {50, 100, 200}:
+                goal_counts = {}
+                for a in self.protesters:
+                    g = tuple(a.goal)
+                    goal_counts[g] = goal_counts.get(g, 0) + 1
+                print(f"\n[Diagnostics] Step {self.step_count} Goal Distribution:")
+                for g, count in goal_counts.items():
+                    print(f"  Exit {g}: {count} agents")
     
         # 2. Execute movement with conflict resolution
         self._execute_movement(actions)
@@ -288,54 +297,72 @@ class ProtestEnv(gym.Env):
     
     def _load_or_generate_obstacles(self) -> np.ndarray:
         """
-        Load obstacle mask from OSM or generate simple obstacles.
-        
+        Load obstacle mask from real Nairobi CBD (if available) or generate synthetic.
         Returns:
             obstacle_mask: Boolean array (True = impassable)
         """
         obstacle_source = self.config['grid'].get('obstacle_source', 'generate')
-        
-        if obstacle_source == 'osm':
-            # OSM DISABLED FOR STABILITY - Use synthetic obstacles
-            print("[WARNING] OSM loading disabled for system stability")
-            print("  Using synthetic obstacles (tested and stable)")
-            obstacle_source = 'generate'
-        
-        # Generate simple rectangular obstacles (tested Day 1 code)
-        print("Generating synthetic obstacles...")
+
+        if obstacle_source == 'nairobi':
+            try:
+                from .real_nairobi_loader import load_real_nairobi_cbd_map
+                result = load_real_nairobi_cbd_map(self.config)
+
+                if result and result.get('is_real_osm'):
+                    mask = result['obstacle_mask']
+
+                    # Flip vertically if raster origin mismatch (rasterio uses bottom-left)
+                    if self.grid_metadata.origin == 'top_left':
+                        mask = np.flipud(mask)
+
+                    # Optional: warn if obstacle coverage too high
+                    coverage = 100 * mask.sum() / mask.size
+                    if coverage > 70:
+                        print(f"[WARN] High obstacle coverage ({coverage:.1f}%) – agent spawning may fail.")
+
+                    print(f" Using REAL Nairobi CBD map ({coverage:.1f}% coverage).")
+                    self.osm_metadata = result.get('metadata', {})
+                    self.buildings_gdf = result.get('buildings_gdf')
+                    self.streets_graph = result.get('streets_graph')
+                    return mask
+
+            except Exception as e:
+                print(f"[ERROR] Failed to load real Nairobi CBD map: {e}")
+
+        # Fallback: Synthetic obstacles
+        print(" Generating synthetic obstacles...")
         mask = np.zeros((self.height, self.width), dtype=bool)
-        
+
         # Add border walls
         mask[0, :] = True
         mask[-1, :] = True
         mask[:, 0] = True
         mask[:, -1] = True
-        
+
         # Add internal obstacles (buildings) - scaled for grid size
         scale_factor = self.width / 100  # Scale from original 100×100
-        
+
         # Building 1 (northwest)
-        mask[int(20*scale_factor):int(30*scale_factor), 
-             int(20*scale_factor):int(35*scale_factor)] = True
-        
+        mask[int(20*scale_factor):int(30*scale_factor),
+            int(20*scale_factor):int(35*scale_factor)] = True
+
         # Building 2 (southeast)
-        mask[int(60*scale_factor):int(75*scale_factor), 
-             int(50*scale_factor):int(70*scale_factor)] = True
-        
+        mask[int(60*scale_factor):int(75*scale_factor),
+            int(50*scale_factor):int(70*scale_factor)] = True
+
         # Building 3 (northeast)
-        mask[int(40*scale_factor):int(50*scale_factor), 
-             int(70*scale_factor):int(80*scale_factor)] = True
-        
-        # Additional building 4 (southwest) for realism
-        mask[int(65*scale_factor):int(78*scale_factor), 
-             int(15*scale_factor):int(28*scale_factor)] = True
-        
-        # Central plaza obstacle
-        mask[int(45*scale_factor):int(55*scale_factor), 
-             int(45*scale_factor):int(55*scale_factor)] = True
-        
-        print(f"   Generated {mask.sum()} obstacle cells ({100*mask.sum()/mask.size:.1f}%)")
-        
+        mask[int(40*scale_factor):int(50*scale_factor),
+            int(70*scale_factor):int(80*scale_factor)] = True
+
+        # Additional building 4 (southwest)
+        mask[int(65*scale_factor):int(78*scale_factor),
+            int(15*scale_factor):int(28*scale_factor)] = True
+
+        # Central plaza
+        mask[int(45*scale_factor):int(55*scale_factor),
+            int(45*scale_factor):int(55*scale_factor)] = True
+
+        print(f"   Generated {mask.sum()} obstacle cells ({100*mask.sum()/mask.size:.1f}%) [synthetic]")
         return mask
 
     def _spawn_agents(self):
@@ -541,7 +568,8 @@ class ProtestEnv(gym.Env):
 
     def _execute_movement(self, actions: Dict[int, int]):
         """
-        Execute agent movement with conflict resolution and occupancy control.
+        Execute agent movement with conflict resolution, priority queuing,
+        and occupancy control.
 
         Args:
             actions: Dict mapping agent_id -> action (0-8)
@@ -560,9 +588,19 @@ class ProtestEnv(gym.Env):
         ]
 
         move_requests = {}  # target_cell -> list of (agent, original_pos)
+        PRIORITY = {'police': 0, 'medic': 1, 'protester': 2, 'bystander': 3}
 
         # === Step 1: Collect movement requests ===
         for agent in self.agents:
+            # Skip waiting agents (they're delayed from previous congestion)
+            if getattr(agent, "state", None) == AgentState.WAITING:
+                # Optionally decay waiting timer if congestion clears
+                agent.wait_timer = max(0, getattr(agent, "wait_timer", 0) - 1)
+                # If timer is now 0, resume normal movement next step
+                if agent.wait_timer == 0:
+                    agent.state = AgentState.MOVING
+                continue
+
             agent.move_accum += agent.speed
 
             if agent.move_accum >= 1.0 and agent.state == AgentState.MOVING:
@@ -571,7 +609,7 @@ class ProtestEnv(gym.Env):
                 target_x = agent.pos[0] + dx
                 target_y = agent.pos[1] + dy
 
-                # Validate movement bounds and obstacles
+                # Validate bounds and obstacle mask
                 if (0 <= target_x < self.width and
                     0 <= target_y < self.height and
                     not self.obstacle_mask[target_y, target_x]):
@@ -581,19 +619,21 @@ class ProtestEnv(gym.Env):
 
                 agent.move_accum -= 1.0  # consume fractional accumulator
 
-        # === Step 2: Resolve conflicts (N_CELL_MAX enforcement) ===
-        PRIORITY = {'police': 0, 'medic': 1, 'protester': 2, 'bystander': 3}
-
+        # === Step 2: Resolve conflicts (per target cell) ===
         for target_cell, requests in move_requests.items():
             if len(requests) <= self.n_cell_max:
                 # All can move freely
                 for agent, _ in requests:
                     agent.pos = target_cell
             else:
-                # Conflict: enforce occupancy limit
+                # Over-capacity: enforce priority queuing
                 sorted_requests = sorted(
                     requests,
-                    key=lambda r: (PRIORITY.get(r[0].agent_type, 99), self.rng.random())
+                    key=lambda r: (
+                        PRIORITY.get(r[0].agent_type, 99),
+                        -getattr(r[0], "wait_timer", 0),  # agents waiting longer get precedence
+                        self.rng.random()
+                    )
                 )
 
                 winners = sorted_requests[:self.n_cell_max]
@@ -601,41 +641,46 @@ class ProtestEnv(gym.Env):
 
                 for agent, _ in winners:
                     agent.pos = target_cell
+                    agent.state = AgentState.MOVING
+                    agent.wait_timer = 0  # reset waiting time if they moved
+
                 for agent, original_pos in losers:
                     agent.pos = original_pos
+                    agent.state = AgentState.WAITING
+                    agent.wait_timer = getattr(agent, "wait_timer", 0) + 1  # increment waiting time
 
         # === Step 3: Update occupancy ===
         self._update_occupancy_grid_simple()
 
-        # === Step 4: Post-movement safety enforcement (Fix 3) ===
-        # Recheck overcrowded cells; redistribute excess agents if needed
+        # === Step 4: Post-movement congestion diagnostics (non-relocating) ===
         overcrowded_cells = np.argwhere(self.occupancy_count > self.n_cell_max)
         for (y, x) in overcrowded_cells:
             agents_here = [a for a in self.agents if a.pos == (x, y)]
             if len(agents_here) > self.n_cell_max:
+                # No teleportation — just mark excess as waiting
                 sorted_agents = sorted(
                     agents_here,
-                    key=lambda a: (PRIORITY.get(a.agent_type, 99), self.rng.random())
+                    key=lambda a: (
+                        PRIORITY.get(a.agent_type, 99),
+                        -getattr(a, "wait_timer", 0),
+                        self.rng.random()
+                    )
                 )
                 survivors = sorted_agents[:self.n_cell_max]
                 displaced = sorted_agents[self.n_cell_max:]
 
-                for agent in displaced:
-                    fx, fy = self._find_free_cell()
-                    print(f"[DEBUG] Relocating Agent {agent.id} from ({x},{y}) to ({fx},{fy})")
-                    agent.pos = (fx, fy)
-                    self.events_log.append({
-                        'timestep': self.step_count,
-                        'event_type': 'relocation_due_to_overcrowding',
-                        'agent_id': agent.id,
-                        'from': (x, y),
-                        'to': (fx, fy)
-                    })
+                for a in survivors:
+                    a.state = AgentState.MOVING
+                    a.wait_timer = 0
+                for a in displaced:
+                    a.state = AgentState.WAITING
+                    a.wait_timer = getattr(a, "wait_timer", 0) + 1
 
-                print(f"[WARN] Cell ({x},{y}) exceeded N_CELL_MAX={self.n_cell_max}; relocated {len(displaced)} agents.")
+                print(f"[WARN] Cell ({x},{y}) overcrowded; {len(displaced)} agents waiting instead of relocating.")
 
         # === Step 5: Final occupancy update ===
         self._update_occupancy_grid_simple()
+
 
     def _update_occupancy_grid_simple(self):
         """

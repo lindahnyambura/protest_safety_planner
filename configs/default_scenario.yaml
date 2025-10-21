@@ -6,7 +6,7 @@ grid:
   width: 100                    # Back to tested size
   height: 100
   cell_size_m: 5.0              # 500m × 500m coverage
-  obstacle_source: "generate"   # SYNTHETIC ONLY (OSM disabled)
+  obstacle_source: "nairobi"   # OSM data loader
   origin: "top_left"
 
 # Time configuration
@@ -50,7 +50,7 @@ agents:
         - [95, 5]  # Bottom-right
         - [5, 95]  # Top-left
         - [95, 95]  # Top-right
-        - [50, 50]  # Center (will observe the risk of having a center exit)
+        # - [50, 50]  # Center (will observe the risk of having a center exit)
   
   police:
     count: 10
@@ -123,7 +123,7 @@ monte_carlo:
   bootstrap_samples: 1000       # Full bootstrap
   n_jobs: 4                     # Parallelization
   
-  n_rollouts_dev: 100            # Development
+  n_rollouts_dev: 50            # Development
   bootstrap_samples_dev: 200
   
   use_memmap: false             # Small enough for RAM

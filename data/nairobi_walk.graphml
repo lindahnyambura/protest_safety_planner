@@ -1,0 +1,2802 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d16" for="edge" attr.name="service" attr.type="string" />
+  <key id="d15" for="edge" attr.name="lanes" attr.type="string" />
+  <key id="d14" for="edge" attr.name="ref" attr.type="string" />
+  <key id="d13" for="edge" attr.name="maxspeed" attr.type="string" />
+  <key id="d12" for="edge" attr.name="junction" attr.type="string" />
+  <key id="d11" for="edge" attr.name="length_m" attr.type="string" />
+  <key id="d10" for="edge" attr.name="geometry" attr.type="string" />
+  <key id="d9" for="edge" attr.name="length" attr.type="string" />
+  <key id="d8" for="edge" attr.name="reversed" attr.type="string" />
+  <key id="d7" for="edge" attr.name="oneway" attr.type="string" />
+  <key id="d6" for="edge" attr.name="name" attr.type="string" />
+  <key id="d5" for="edge" attr.name="highway" attr.type="string" />
+  <key id="d4" for="edge" attr.name="osmid" attr.type="string" />
+  <key id="d3" for="node" attr.name="y" attr.type="string" />
+  <key id="d2" for="node" attr.name="x" attr.type="string" />
+  <key id="d1" for="graph" attr.name="simplified" attr.type="string" />
+  <key id="d0" for="graph" attr.name="crs" attr.type="string" />
+  <graph edgedefault="directed">
+    <node id="3740165604">
+      <data key="d2">257116.59842604</data>
+      <data key="d3">9857670.495996563</data>
+    </node>
+    <node id="11895738195">
+      <data key="d2">257095.7903228769</data>
+      <data key="d3">9857645.446822166</data>
+    </node>
+    <node id="260573357">
+      <data key="d2">257104.38682508247</data>
+      <data key="d3">9857708.204035178</data>
+    </node>
+    <node id="2473334095">
+      <data key="d2">257098.84250446354</data>
+      <data key="d3">9857721.406293495</data>
+    </node>
+    <node id="260573434">
+      <data key="d2">257132.4976797297</data>
+      <data key="d3">9857720.71611536</data>
+    </node>
+    <node id="12168049895">
+      <data key="d2">257140.36533777206</data>
+      <data key="d3">9857724.527878206</data>
+    </node>
+    <node id="6370196748">
+      <data key="d2">257146.20846223066</data>
+      <data key="d3">9857713.405371916</data>
+    </node>
+    <node id="260573445">
+      <data key="d2">257153.80335945822</data>
+      <data key="d3">9857697.705054061</data>
+    </node>
+    <node id="280120823">
+      <data key="d2">257226.99301315573</data>
+      <data key="d3">9857733.970755411</data>
+    </node>
+    <node id="566547958">
+      <data key="d2">257231.30801992366</data>
+      <data key="d3">9857726.253774809</data>
+    </node>
+    <node id="504962133">
+      <data key="d2">257369.58672876112</data>
+      <data key="d3">9857806.985461356</data>
+    </node>
+    <node id="2888466060">
+      <data key="d2">257341.2221586291</data>
+      <data key="d3">9857791.752183514</data>
+    </node>
+    <node id="504962123">
+      <data key="d2">257365.52719152716</data>
+      <data key="d3">9857815.39950869</data>
+    </node>
+    <node id="12168049896">
+      <data key="d2">257372.64207283282</data>
+      <data key="d3">9857801.192042723</data>
+    </node>
+    <node id="566546053">
+      <data key="d2">257220.636688352</data>
+      <data key="d3">9857746.375911282</data>
+    </node>
+    <node id="566902295">
+      <data key="d2">257270.70425837117</data>
+      <data key="d3">9857781.692662843</data>
+    </node>
+    <node id="12361445753">
+      <data key="d2">257247.6689089172</data>
+      <data key="d3">9857692.32115323</data>
+    </node>
+    <node id="566902289">
+      <data key="d2">257375.05068339422</data>
+      <data key="d3">9857796.603734193</data>
+    </node>
+    <node id="2888466058">
+      <data key="d2">257359.28260109216</data>
+      <data key="d3">9857788.250176335</data>
+    </node>
+    <node id="2888466066">
+      <data key="d2">257396.9278798783</data>
+      <data key="d3">9857756.11659492</data>
+    </node>
+    <node id="566902294">
+      <data key="d2">257358.2223911109</data>
+      <data key="d3">9857830.381092152</data>
+    </node>
+    <node id="12168072992">
+      <data key="d2">257360.55323240647</data>
+      <data key="d3">9857825.604677403</data>
+    </node>
+    <node id="9859577507">
+      <data key="d2">257346.65861734038</data>
+      <data key="d3">9857852.659381721</data>
+    </node>
+    <node id="3011892140">
+      <data key="d2">257294.04592653902</data>
+      <data key="d3">9857799.266622907</data>
+    </node>
+    <node id="12168049894">
+      <data key="d2">257266.7565252912</data>
+      <data key="d3">9857789.542691084</data>
+    </node>
+    <node id="1284303801">
+      <data key="d2">257157.91705060718</data>
+      <data key="d3">9857717.098747818</data>
+    </node>
+    <node id="1284303808">
+      <data key="d2">257166.3035725748</data>
+      <data key="d3">9857778.097031137</data>
+    </node>
+    <node id="8527067111">
+      <data key="d2">257121.0312033487</data>
+      <data key="d3">9857772.36182822</data>
+    </node>
+    <node id="8527067110">
+      <data key="d2">257161.0603772546</data>
+      <data key="d3">9857790.680121794</data>
+    </node>
+    <node id="8527067098">
+      <data key="d2">257144.6445105403</data>
+      <data key="d3">9857745.691496704</data>
+    </node>
+    <node id="2888466059">
+      <data key="d2">257352.24546713356</data>
+      <data key="d3">9857789.637865707</data>
+    </node>
+    <node id="8527010462">
+      <data key="d2">257311.80528734715</data>
+      <data key="d3">9857809.380607191</data>
+    </node>
+    <node id="8527010453">
+      <data key="d2">257284.56602054895</data>
+      <data key="d3">9857819.157493003</data>
+    </node>
+    <node id="6285681769">
+      <data key="d2">257132.49773071185</data>
+      <data key="d3">9857850.839355895</data>
+    </node>
+    <node id="8527067109">
+      <data key="d2">257138.79913060137</data>
+      <data key="d3">9857837.571375756</data>
+    </node>
+    <node id="6572436603">
+      <data key="d2">257129.73195526394</data>
+      <data key="d3">9857856.489233907</data>
+    </node>
+    <node id="9859577503">
+      <data key="d2">257341.8300723288</data>
+      <data key="d3">9857822.95613702</data>
+    </node>
+    <node id="8527010452">
+      <data key="d2">257300.90176232153</data>
+      <data key="d3">9857827.65533543</data>
+    </node>
+    <node id="8527140565">
+      <data key="d2">257251.09276956558</data>
+      <data key="d3">9857685.211774299</data>
+    </node>
+    <node id="8527067054">
+      <data key="d2">257345.2486954453</data>
+      <data key="d3">9857678.677742844</data>
+    </node>
+    <node id="8527067097">
+      <data key="d2">257132.09171289406</data>
+      <data key="d3">9857752.804132788</data>
+    </node>
+    <node id="8527067105">
+      <data key="d2">257153.61022338094</data>
+      <data key="d3">9857806.369505908</data>
+    </node>
+    <node id="8527067107">
+      <data key="d2">257146.4388919338</data>
+      <data key="d3">9857821.472889258</data>
+    </node>
+    <node id="8527067104">
+      <data key="d2">257114.0724499452</data>
+      <data key="d3">9857786.226546364</data>
+    </node>
+    <node id="8527067106">
+      <data key="d2">257104.8088869576</data>
+      <data key="d3">9857800.454312116</data>
+    </node>
+    <node id="8527067108">
+      <data key="d2">257097.3261903326</data>
+      <data key="d3">9857815.137108793</data>
+    </node>
+    <node id="8527067094">
+      <data key="d2">257174.15880548957</data>
+      <data key="d3">9857796.443112062</data>
+    </node>
+    <node id="8527140561">
+      <data key="d2">257309.10036438223</data>
+      <data key="d3">9857743.830055295</data>
+    </node>
+    <node id="8527067112">
+      <data key="d2">257246.1591394502</data>
+      <data key="d3">9857830.539761977</data>
+    </node>
+    <node id="12361445752">
+      <data key="d2">257208.53253046147</data>
+      <data key="d3">9857671.514866231</data>
+    </node>
+    <node id="30215020">
+      <data key="d2">257122.0583767552</data>
+      <data key="d3">9858081.643233506</data>
+    </node>
+    <node id="8527067115">
+      <data key="d2">257152.61806142167</data>
+      <data key="d3">9858016.430723047</data>
+    </node>
+    <node id="280120749">
+      <data key="d2">257214.1990181359</data>
+      <data key="d3">9857893.041038534</data>
+    </node>
+    <node id="4102502808">
+      <data key="d2">257211.6119767716</data>
+      <data key="d3">9857897.983155362</data>
+    </node>
+    <node id="282041291">
+      <data key="d2">257242.54679993136</data>
+      <data key="d3">9857836.741970118</data>
+    </node>
+    <node id="504962114">
+      <data key="d2">257330.61205209806</data>
+      <data key="d3">9857883.594707439</data>
+    </node>
+    <node id="504962089">
+      <data key="d2">257301.58075455102</data>
+      <data key="d3">9857945.1140314</data>
+    </node>
+    <node id="6807551639">
+      <data key="d2">257255.73318450153</data>
+      <data key="d3">9857922.001372604</data>
+    </node>
+    <node id="6372331348">
+      <data key="d2">257324.8553863269</data>
+      <data key="d3">9857897.792277927</data>
+    </node>
+    <node id="282040654">
+      <data key="d2">257267.49911393964</data>
+      <data key="d3">9858015.035522593</data>
+    </node>
+    <node id="6370390608">
+      <data key="d2">257216.99702830383</data>
+      <data key="d3">9857901.781724066</data>
+    </node>
+    <node id="7191350123">
+      <data key="d2">257189.62255568296</data>
+      <data key="d3">9857939.487872312</data>
+    </node>
+    <node id="5536006821">
+      <data key="d2">257165.06564023579</data>
+      <data key="d3">9857989.120341618</data>
+    </node>
+    <node id="8527067113">
+      <data key="d2">257158.33993781923</data>
+      <data key="d3">9858003.87015596</data>
+    </node>
+    <node id="7191350122">
+      <data key="d2">257142.75305567292</data>
+      <data key="d3">9857978.836553233</data>
+    </node>
+    <node id="6285582459">
+      <data key="d2">257093.86871096265</data>
+      <data key="d3">9857913.666801725</data>
+    </node>
+    <node id="6807551638">
+      <data key="d2">257211.44729394576</data>
+      <data key="d3">9858012.620604513</data>
+    </node>
+    <node id="7191350115">
+      <data key="d2">257160.39675444496</data>
+      <data key="d3">9857941.918483118</data>
+    </node>
+    <node id="7191350116">
+      <data key="d2">257124.80867717607</data>
+      <data key="d3">9857924.6216452</data>
+    </node>
+    <node id="7191350121">
+      <data key="d2">257166.72041240142</data>
+      <data key="d3">9857928.650520239</data>
+    </node>
+    <node id="7191350117">
+      <data key="d2">257153.89468784188</data>
+      <data key="d3">9857955.518128602</data>
+    </node>
+    <node id="7191350118">
+      <data key="d2">257118.62947781457</data>
+      <data key="d3">9857938.19944567</data>
+    </node>
+    <node id="7191350119">
+      <data key="d2">257147.82755804647</data>
+      <data key="d3">9857968.233255396</data>
+    </node>
+    <node id="7191350120">
+      <data key="d2">257112.68469209963</data>
+      <data key="d3">9857951.047411991</data>
+    </node>
+    <node id="8527067078">
+      <data key="d2">257205.98255739379</data>
+      <data key="d3">9857776.294809466</data>
+    </node>
+    <node id="8527067079">
+      <data key="d2">257191.7531014606</data>
+      <data key="d3">9857804.311559882</data>
+    </node>
+    <node id="8527067080">
+      <data key="d2">257167.06014394667</data>
+      <data key="d3">9857856.775544023</data>
+    </node>
+    <node id="8527067082">
+      <data key="d2">257207.3651098584</data>
+      <data key="d3">9857812.930467714</data>
+    </node>
+    <node id="8527067081">
+      <data key="d2">257182.6171853249</data>
+      <data key="d3">9857864.586939653</data>
+    </node>
+    <node id="8527067085">
+      <data key="d2">257222.56670648642</data>
+      <data key="d3">9857819.790302152</data>
+    </node>
+    <node id="8527067083">
+      <data key="d2">257220.5252428311</data>
+      <data key="d3">9857785.5764723</data>
+    </node>
+    <node id="8527067084">
+      <data key="d2">257237.5438508933</data>
+      <data key="d3">9857789.67257809</data>
+    </node>
+    <node id="8527067095">
+      <data key="d2">257188.42428401817</data>
+      <data key="d3">9857765.362456514</data>
+    </node>
+    <node id="8527067114">
+      <data key="d2">257097.50306793975</data>
+      <data key="d3">9857972.913380226</data>
+    </node>
+    <node id="8527088320">
+      <data key="d2">257095.76081144784</data>
+      <data key="d3">9857992.423745453</data>
+    </node>
+    <node id="282040560">
+      <data key="d2">257246.24472245487</data>
+      <data key="d3">9858056.275404947</data>
+    </node>
+    <node id="282040655">
+      <data key="d2">257295.7974102253</data>
+      <data key="d3">9858029.715663256</data>
+    </node>
+    <node id="1284303717">
+      <data key="d2">257275.2800228982</data>
+      <data key="d3">9858068.345744632</data>
+    </node>
+    <node id="1284303789">
+      <data key="d2">257292.350719965</data>
+      <data key="d3">9858076.65615107</data>
+    </node>
+    <node id="1284303765">
+      <data key="d2">257312.36750141374</data>
+      <data key="d3">9858037.583199324</data>
+    </node>
+    <node id="3590900167">
+      <data key="d2">257397.7976165181</data>
+      <data key="d3">9857923.991977867</data>
+    </node>
+    <node id="6552855233">
+      <data key="d2">257295.33304676448</data>
+      <data key="d3">9858078.151946843</data>
+    </node>
+    <node id="280122535">
+      <data key="d2">257412.39445206232</data>
+      <data key="d3">9858000.304042691</data>
+    </node>
+    <node id="504962211">
+      <data key="d2">257379.23571468546</data>
+      <data key="d3">9858071.619999865</data>
+    </node>
+    <node id="3590900166">
+      <data key="d2">257368.63807505893</data>
+      <data key="d3">9857979.2837689</data>
+    </node>
+    <node id="3590911088">
+      <data key="d2">257404.0937491817</data>
+      <data key="d3">9858047.373093268</data>
+    </node>
+    <node id="9859582218">
+      <data key="d2">257348.26268074074</data>
+      <data key="d3">9857968.935293987</data>
+    </node>
+    <node id="9859577513">
+      <data key="d2">257339.91091173494</data>
+      <data key="d3">9857984.491170311</data>
+    </node>
+    <node id="2888466056">
+      <data key="d2">257420.07295314834</data>
+      <data key="d3">9857678.033800896</data>
+    </node>
+    <node id="2888466063">
+      <data key="d2">257402.55085522673</data>
+      <data key="d3">9857715.980590422</data>
+    </node>
+    <node id="2888466061">
+      <data key="d2">257414.21424557027</data>
+      <data key="d3">9857720.437128587</data>
+    </node>
+    <node id="2888466064">
+      <data key="d2">257384.3967029053</data>
+      <data key="d3">9857750.984588118</data>
+    </node>
+    <node id="280120816">
+      <data key="d2">257352.91452527</data>
+      <data key="d3">9857645.102723371</data>
+    </node>
+    <edge source="3740165604" target="11895738195" id="0">
+      <data key="d4">['1281827287', '370307127']</data>
+      <data key="d5">footway</data>
+      <data key="d6">['unnamed_1281827287', 'unnamed_370307127']</data>
+      <data key="d7">False</data>
+      <data key="d8">['True', 'False']</data>
+      <data key="d9">38.085948962203716</data>
+      <data key="d10">LINESTRING (257116.59842604 9857670.495996563, 257115.06558094773 9857653.41628383, 257095.7903228769 9857645.446822166)</data>
+      <data key="d11">[17.148358555269613, 20.85780172716702]</data>
+    </edge>
+    <edge source="3740165604" target="260573357" id="0">
+      <data key="d4">['1302579121', '1151069803', '1120654528']</data>
+      <data key="d5">trunk</data>
+      <data key="d12">roundabout</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue Round About</data>
+      <data key="d7">True</data>
+      <data key="d14">A8</data>
+      <data key="d8">False</data>
+      <data key="d9">50.238119018336825</data>
+      <data key="d10">LINESTRING (257116.59842604 9857670.495996563, 257108.20586987093 9857668.61948029, 257100.82714741357 9857691.88580561, 257104.38682508247 9857708.204035178)</data>
+      <data key="d11">[8.59978560051087, 24.531426007001524, 16.921980129209555]</data>
+    </edge>
+    <edge source="11895738195" target="3740165604" id="0">
+      <data key="d4">['1281827287', '370307127']</data>
+      <data key="d5">footway</data>
+      <data key="d6">['unnamed_1281827287', 'unnamed_370307127']</data>
+      <data key="d7">False</data>
+      <data key="d8">['True', 'False']</data>
+      <data key="d9">38.085948962203716</data>
+      <data key="d10">LINESTRING (257095.7903228769 9857645.446822166, 257115.06558094773 9857653.41628383, 257116.59842604 9857670.495996563)</data>
+      <data key="d11">[17.148358555269613, 20.85780172716702]</data>
+    </edge>
+    <edge source="260573357" target="2473334095" id="0">
+      <data key="d4">4741916</data>
+      <data key="d5">trunk</data>
+      <data key="d13">50</data>
+      <data key="d6">Uhuru Highway</data>
+      <data key="d7">True</data>
+      <data key="d14">A8;R2</data>
+      <data key="d8">False</data>
+      <data key="d9">14.380411474460267</data>
+      <data key="d15">3</data>
+      <data key="d10">LINESTRING (257104.38682508247 9857708.204035178, 257098.84250446354 9857721.406293495)</data>
+      <data key="d11">14.319186980729391</data>
+    </edge>
+    <edge source="260573357" target="260573434" id="0">
+      <data key="d4">1120654528</data>
+      <data key="d5">trunk</data>
+      <data key="d12">roundabout</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue Round About</data>
+      <data key="d7">True</data>
+      <data key="d14">A8</data>
+      <data key="d8">False</data>
+      <data key="d9">32.52187825768152</data>
+      <data key="d10">LINESTRING (257104.38682508247 9857708.204035178, 257110.34809959834 9857715.133410433, 257118.31535738264 9857719.642111711, 257132.4976797297 9857720.71611536)</data>
+      <data key="d11">32.51820437992497</data>
+    </edge>
+    <edge source="260573434" target="12168049895" id="0">
+      <data key="d4">1314631780</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_1314631780</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">8.740903433894154</data>
+      <data key="d10">LINESTRING (257132.4976797297 9857720.71611536, 257140.36533777206 9857724.527878206)</data>
+      <data key="d11">8.742401218953257</data>
+    </edge>
+    <edge source="260573434" target="6370196748" id="0">
+      <data key="d4">1120654528</data>
+      <data key="d5">trunk</data>
+      <data key="d12">roundabout</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue Round About</data>
+      <data key="d7">True</data>
+      <data key="d14">A8</data>
+      <data key="d8">False</data>
+      <data key="d9">15.704150404584025</data>
+      <data key="d10">LINESTRING (257132.4976797297 9857720.71611536, 257140.68296210165 9857717.625999438, 257146.20846223066 9857713.405371916)</data>
+      <data key="d11">15.70219815959183</data>
+    </edge>
+    <edge source="12168049895" target="260573434" id="0">
+      <data key="d4">1314631780</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_1314631780</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">8.740903433894154</data>
+      <data key="d10">LINESTRING (257140.36533777206 9857724.527878206, 257132.4976797297 9857720.71611536)</data>
+      <data key="d11">8.742401218953257</data>
+    </edge>
+    <edge source="12168049895" target="1284303801" id="0">
+      <data key="d4">113187437</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_113187437</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">19.32295946811304</data>
+      <data key="d10">LINESTRING (257140.36533777206 9857724.527878206, 257144.03063276273 9857721.50026196, 257149.13105999268 9857719.646354217, 257157.91705060718 9857717.098747818)</data>
+      <data key="d11">19.32883507154284</data>
+    </edge>
+    <edge source="12168049895" target="12168049894" id="0">
+      <data key="d4">1314631780</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_1314631780</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">142.17564652840053</data>
+      <data key="d10">LINESTRING (257140.36533777206 9857724.527878206, 257210.41752703954 9857758.479114408, 257266.7565252912 9857789.542691084)</data>
+      <data key="d11">142.18125603033093</data>
+    </edge>
+    <edge source="6370196748" target="1284303801" id="0">
+      <data key="d4">4741910</data>
+      <data key="d5">secondary</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d14">UCB7-Nairobi</data>
+      <data key="d8">False</data>
+      <data key="d9">12.266966130950662</data>
+      <data key="d15">2</data>
+      <data key="d10">LINESTRING (257146.20846223066 9857713.405371916, 257157.91705060718 9857717.098747818)</data>
+      <data key="d11">12.27729886115904</data>
+    </edge>
+    <edge source="6370196748" target="260573445" id="0">
+      <data key="d4">1151069804</data>
+      <data key="d5">trunk</data>
+      <data key="d12">roundabout</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue Round About</data>
+      <data key="d7">True</data>
+      <data key="d14">A8</data>
+      <data key="d8">False</data>
+      <data key="d9">17.75808056895931</data>
+      <data key="d10">LINESTRING (257146.20846223066 9857713.405371916, 257151.3357353365 9857706.197896618, 257153.80335945822 9857697.705054061)</data>
+      <data key="d11">17.689215504449102</data>
+    </edge>
+    <edge source="260573445" target="3740165604" id="0">
+      <data key="d4">['1302579121', '4730089']</data>
+      <data key="d5">trunk</data>
+      <data key="d12">roundabout</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue Round About</data>
+      <data key="d7">True</data>
+      <data key="d14">A8</data>
+      <data key="d8">False</data>
+      <data key="d9">55.630122085578414</data>
+      <data key="d10">LINESTRING (257153.80335945822 9857697.705054061, 257146.9411396306 9857676.815753512, 257124.5935986503 9857668.401223123, 257116.59842604 9857670.495996563)</data>
+      <data key="d11">[24.65554972293975, 8.289679915634075, 22.60255811245202]</data>
+    </edge>
+    <edge source="280120823" target="566547958" id="0">
+      <data key="d4">330461519</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Posta Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">8.874019340143747</data>
+      <data key="d10">LINESTRING (257226.99301315573 9857733.970755411, 257231.30801992366 9857726.253774809)</data>
+      <data key="d11">8.841440664733897</data>
+    </edge>
+    <edge source="280120823" target="260573445" id="0">
+      <data key="d4">4741911</data>
+      <data key="d5">secondary</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d14">UCB7-Nairobi_R</data>
+      <data key="d8">False</data>
+      <data key="d9">81.6744526164195</data>
+      <data key="d15">2</data>
+      <data key="d10">LINESTRING (257226.99301315573 9857733.970755411, 257175.94803100504 9857709.017420873, 257153.80335945822 9857697.705054061)</data>
+      <data key="d11">81.68453844961218</data>
+    </edge>
+    <edge source="566547958" target="280120823" id="0">
+      <data key="d4">330461519</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Posta Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">8.874019340143747</data>
+      <data key="d10">LINESTRING (257231.30801992366 9857726.253774809, 257226.99301315573 9857733.970755411)</data>
+      <data key="d11">8.841440664733897</data>
+    </edge>
+    <edge source="566547958" target="12361445753" id="0">
+      <data key="d4">330461519</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Posta Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">37.82229357018078</data>
+      <data key="d10">LINESTRING (257231.30801992366 9857726.253774809, 257247.6689089172 9857692.32115323)</data>
+      <data key="d11">37.67096356511892</data>
+    </edge>
+    <edge source="504962133" target="2888466060" id="0">
+      <data key="d4">4741911</data>
+      <data key="d5">secondary</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d14">UCB7-Nairobi_R</data>
+      <data key="d8">False</data>
+      <data key="d9">32.19814002898961</data>
+      <data key="d15">2</data>
+      <data key="d10">LINESTRING (257369.58672876112 9857806.985461356, 257341.2221586291 9857791.752183514)</data>
+      <data key="d11">32.19629780888045</data>
+    </edge>
+    <edge source="504962133" target="504962123" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">True</data>
+      <data key="d9">9.379688036108076</data>
+      <data key="d10">LINESTRING (257369.58672876112 9857806.985461356, 257365.52719152716 9857815.39950869)</data>
+      <data key="d11">9.3421643690566</data>
+    </edge>
+    <edge source="504962133" target="12168049896" id="0">
+      <data key="d4">680533908</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">True</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">6.574763341900514</data>
+      <data key="d10">LINESTRING (257369.58672876112 9857806.985461356, 257372.64207283282 9857801.192042723)</data>
+      <data key="d11">6.549719600991411</data>
+    </edge>
+    <edge source="2888466060" target="280120823" id="0">
+      <data key="d4">4741911</data>
+      <data key="d5">secondary</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d14">UCB7-Nairobi_R</data>
+      <data key="d8">False</data>
+      <data key="d9">128.00161695254286</data>
+      <data key="d15">2</data>
+      <data key="d10">LINESTRING (257341.2221586291 9857791.752183514, 257226.99301315573 9857733.970755411)</data>
+      <data key="d11">128.01168348681395</data>
+    </edge>
+    <edge source="504962123" target="504962133" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">9.379688036108076</data>
+      <data key="d10">LINESTRING (257365.52719152716 9857815.39950869, 257369.58672876112 9857806.985461356)</data>
+      <data key="d11">9.3421643690566</data>
+    </edge>
+    <edge source="504962123" target="12168072992" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">True</data>
+      <data key="d9">11.398146423492598</data>
+      <data key="d10">LINESTRING (257365.52719152716 9857815.39950869, 257360.55323240647 9857825.604677403)</data>
+      <data key="d11">11.35278546404869</data>
+    </edge>
+    <edge source="12168049896" target="566902289" id="0">
+      <data key="d4">680533908</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">True</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">5.201951724968686</data>
+      <data key="d10">LINESTRING (257372.64207283282 9857801.192042723, 257375.05068339422 9857796.603734193)</data>
+      <data key="d11">5.1820825931555605</data>
+    </edge>
+    <edge source="12168049896" target="2888466059" id="0">
+      <data key="d4">1314631781</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_1314631781</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">23.446206885267113</data>
+      <data key="d10">LINESTRING (257372.64207283282 9857801.192042723, 257352.24546713356 9857789.637865707)</data>
+      <data key="d11">23.441854247665788</data>
+    </edge>
+    <edge source="566546053" target="504962123" id="0">
+      <data key="d4">[ 297314798, 4741910 ]</data>
+      <data key="d5">secondary</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d14">UCB7-Nairobi</data>
+      <data key="d8">False</data>
+      <data key="d9">160.45921829458416</data>
+      <data key="d15">2</data>
+      <data key="d10">LINESTRING (257220.636688352 9857746.375911282, 257274.3750606557 9857772.216412148, 257365.52719152716 9857815.39950869)</data>
+      <data key="d11">160.49210755390368</data>
+    </edge>
+    <edge source="566546053" target="566902295" id="0">
+      <data key="d4">44629696</data>
+      <data key="d5">unclassified</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">61.398649900611446</data>
+      <data key="d10">LINESTRING (257220.636688352 9857746.375911282, 257241.3076192855 9857762.609205537, 257249.8756794163 9857767.549795037, 257270.70425837117 9857781.692662843)</data>
+      <data key="d11">61.350051818604314</data>
+    </edge>
+    <edge source="566902295" target="3011892140" id="0">
+      <data key="d4">44629696</data>
+      <data key="d5">unclassified</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">29.246541571784896</data>
+      <data key="d10">LINESTRING (257270.70425837117 9857781.692662843, 257294.04592653902 9857799.266622907)</data>
+      <data key="d11">29.21776078326934</data>
+    </edge>
+    <edge source="566902295" target="12168049894" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">8.821302345442346</data>
+      <data key="d10">LINESTRING (257270.70425837117 9857781.692662843, 257266.7565252912 9857789.542691084)</data>
+      <data key="d11">8.786782110428415</data>
+    </edge>
+    <edge source="566902295" target="12168072992" id="0">
+      <data key="d4">1314633070</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_1314633070</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">99.99032340833858</data>
+      <data key="d10">LINESTRING (257270.70425837117 9857781.692662843, 257293.9955745224 9857793.05022574, 257360.55323240647 9857825.604677403)</data>
+      <data key="d11">100.00552945223396</data>
+    </edge>
+    <edge source="12361445753" target="566547958" id="0">
+      <data key="d4">330461519</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Posta Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">37.82229357018078</data>
+      <data key="d10">LINESTRING (257247.6689089172 9857692.32115323, 257231.30801992366 9857726.253774809)</data>
+      <data key="d11">37.67096356511892</data>
+    </edge>
+    <edge source="12361445753" target="8527140565" id="0">
+      <data key="d4">330461519</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Posta Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">7.922604721387923</data>
+      <data key="d10">LINESTRING (257247.6689089172 9857692.32115323, 257251.09276956558 9857685.211774299)</data>
+      <data key="d11">7.890886547940274</data>
+    </edge>
+    <edge source="12361445753" target="12361445752" id="0">
+      <data key="d4">1336449218</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_1336449218</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">44.32478779790347</data>
+      <data key="d10">LINESTRING (257247.6689089172 9857692.32115323, 257208.53253046147 9857671.514866231)</data>
+      <data key="d11">44.32333129715479</data>
+    </edge>
+    <edge source="566902289" target="2888466058" id="0">
+      <data key="d4">664046291</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">17.84462564715146</data>
+      <data key="d10">LINESTRING (257375.05068339422 9857796.603734193, 257359.28260109216 9857788.250176335)</data>
+      <data key="d11">17.844168469892388</data>
+    </edge>
+    <edge source="566902289" target="2888466066" id="0">
+      <data key="d4">664046290</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">True</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">46.19315958003889</data>
+      <data key="d10">LINESTRING (257375.05068339422 9857796.603734193, 257396.9278798783 9857756.11659492)</data>
+      <data key="d11">46.019780231430374</data>
+    </edge>
+    <edge source="2888466058" target="2888466059" id="0">
+      <data key="d4">285168909</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Koinange Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">7.164095779335504</data>
+      <data key="d10">LINESTRING (257359.28260109216 9857788.250176335, 257352.24546713356 9857789.637865707)</data>
+      <data key="d11">7.1726519604587535</data>
+    </edge>
+    <edge source="2888466058" target="566547958" id="0">
+      <data key="d4">664046291</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">142.18113301995146</data>
+      <data key="d10">LINESTRING (257359.28260109216 9857788.250176335, 257296.55225845065 9857758.497446045, 257231.30801992366 9857726.253774809)</data>
+      <data key="d11">142.20534683596026</data>
+    </edge>
+    <edge source="2888466066" target="2888466064" id="0">
+      <data key="d4">285168911</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">13.550308445854782</data>
+      <data key="d10">LINESTRING (257396.9278798783 9857756.11659492, 257391.04097263602 9857753.357345618, 257384.3967029053 9857750.984588118)</data>
+      <data key="d11">13.556703636122279</data>
+    </edge>
+    <edge source="2888466066" target="2888466061" id="0">
+      <data key="d4">664046290</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">True</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">39.86608874713651</data>
+      <data key="d10">LINESTRING (257396.9278798783 9857756.11659492, 257407.77742532405 9857735.861891381, 257414.21424557027 9857720.437128587)</data>
+      <data key="d11">[16.713945140403016, 22.993485968729196]</data>
+    </edge>
+    <edge source="566902294" target="12168072992" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">5.336008900379444</data>
+      <data key="d10">LINESTRING (257358.2223911109 9857830.381092152, 257360.55323240647 9857825.604677403)</data>
+      <data key="d11">5.314786824767041</data>
+    </edge>
+    <edge source="566902294" target="9859577507" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">True</data>
+      <data key="d9">25.197534690229094</data>
+      <data key="d10">LINESTRING (257358.2223911109 9857830.381092152, 257346.65861734038 9857852.659381721)</data>
+      <data key="d11">25.100658357107907</data>
+    </edge>
+    <edge source="12168072992" target="504962123" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">11.398146423492598</data>
+      <data key="d10">LINESTRING (257360.55323240647 9857825.604677403, 257365.52719152716 9857815.39950869)</data>
+      <data key="d11">11.35278546404869</data>
+    </edge>
+    <edge source="12168072992" target="566902294" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">True</data>
+      <data key="d9">5.336008900379444</data>
+      <data key="d10">LINESTRING (257360.55323240647 9857825.604677403, 257358.2223911109 9857830.381092152)</data>
+      <data key="d11">5.314786824767041</data>
+    </edge>
+    <edge source="12168072992" target="566902295" id="0">
+      <data key="d4">1314633070</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_1314633070</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">99.99032340833858</data>
+      <data key="d10">LINESTRING (257360.55323240647 9857825.604677403, 257293.9955745224 9857793.05022574, 257270.70425837117 9857781.692662843)</data>
+      <data key="d11">100.00552945223396</data>
+    </edge>
+    <edge source="9859577507" target="566902294" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">25.197534690229094</data>
+      <data key="d10">LINESTRING (257346.65861734038 9857852.659381721, 257358.2223911109 9857830.381092152)</data>
+      <data key="d11">25.100658357107907</data>
+    </edge>
+    <edge source="9859577507" target="504962114" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">True</data>
+      <data key="d9">34.9840368275656</data>
+      <data key="d10">LINESTRING (257346.65861734038 9857852.659381721, 257330.61205209806 9857883.594707439)</data>
+      <data key="d11">34.84948540978779</data>
+    </edge>
+    <edge source="3011892140" target="8527010462" id="0">
+      <data key="d4">44629696</data>
+      <data key="d5">unclassified</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">20.441464046185693</data>
+      <data key="d10">LINESTRING (257294.04592653902 9857799.266622907, 257311.80528734715 9857809.380607191)</data>
+      <data key="d11">20.437406254922227</data>
+    </edge>
+    <edge source="3011892140" target="8527010453" id="0">
+      <data key="d4">918108687</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918108687</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">22.123455465737965</data>
+      <data key="d10">LINESTRING (257294.04592653902 9857799.266622907, 257284.56602054895 9857819.157493003)</data>
+      <data key="d11">22.034412421549444</data>
+    </edge>
+    <edge source="12168049894" target="566902295" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">8.821302345442346</data>
+      <data key="d10">LINESTRING (257266.7565252912 9857789.542691084, 257270.70425837117 9857781.692662843)</data>
+      <data key="d11">8.786782110428415</data>
+    </edge>
+    <edge source="12168049894" target="8527067112" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">46.06075125979952</data>
+      <data key="d10">LINESTRING (257266.7565252912 9857789.542691084, 257246.1591394502 9857830.539761977)</data>
+      <data key="d11">45.88041112872678</data>
+    </edge>
+    <edge source="12168049894" target="12168049895" id="0">
+      <data key="d4">1314631780</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_1314631780</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">142.17564652840053</data>
+      <data key="d10">LINESTRING (257266.7565252912 9857789.542691084, 257210.41752703954 9857758.479114408, 257140.36533777206 9857724.527878206)</data>
+      <data key="d11">142.18125603033093</data>
+    </edge>
+    <edge source="1284303801" target="566546053" id="0">
+      <data key="d4">4741910</data>
+      <data key="d5">secondary</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d14">UCB7-Nairobi</data>
+      <data key="d8">False</data>
+      <data key="d9">69.23042486398296</data>
+      <data key="d15">2</data>
+      <data key="d10">LINESTRING (257157.91705060718 9857717.098747818, 257174.12084229264 9857723.671863476, 257220.636688352 9857746.375911282)</data>
+      <data key="d11">69.24721073794956</data>
+    </edge>
+    <edge source="1284303801" target="12168049895" id="0">
+      <data key="d4">113187437</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_113187437</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">19.32295946811304</data>
+      <data key="d10">LINESTRING (257157.91705060718 9857717.098747818, 257149.13105999268 9857719.646354217, 257144.03063276273 9857721.50026196, 257140.36533777206 9857724.527878206)</data>
+      <data key="d11">19.32883507154284</data>
+    </edge>
+    <edge source="1284303808" target="8527067111" id="0">
+      <data key="d4">918115584</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115584</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">45.57287492883392</data>
+      <data key="d10">LINESTRING (257166.3035725748 9857778.097031137, 257121.0312033487 9857772.36182822)</data>
+      <data key="d11">45.6341973508052</data>
+    </edge>
+    <edge source="1284303808" target="8527067110" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">13.690245421445422</data>
+      <data key="d10">LINESTRING (257166.3035725748 9857778.097031137, 257161.0603772546 9857790.680121794)</data>
+      <data key="d11">13.631774193314001</data>
+    </edge>
+    <edge source="1284303808" target="8527067098" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">46.9335446680395</data>
+      <data key="d10">LINESTRING (257166.3035725748 9857778.097031137, 257168.21563908042 9857768.331682388, 257169.04352667058 9857763.587162713, 257168.96819814725 9857760.5452857, 257166.87801611976 9857757.280462813, 257163.29553317127 9857754.600603804, 257144.6445105403 9857745.691496704)</data>
+      <data key="d11">46.829902718906126</data>
+    </edge>
+    <edge source="8527067111" target="1284303808" id="0">
+      <data key="d4">918115584</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115584</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">45.57287492883392</data>
+      <data key="d10">LINESTRING (257121.0312033487 9857772.36182822, 257166.3035725748 9857778.097031137)</data>
+      <data key="d11">45.6341973508052</data>
+    </edge>
+    <edge source="8527067111" target="8527067097" id="0">
+      <data key="d4">918115584</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115584</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">22.55076157401873</data>
+      <data key="d10">LINESTRING (257121.0312033487 9857772.36182822, 257132.09171289406 9857752.804132788)</data>
+      <data key="d11">22.468607477976274</data>
+    </edge>
+    <edge source="8527067111" target="8527067110" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">44.00896260359943</data>
+      <data key="d10">LINESTRING (257121.0312033487 9857772.36182822, 257161.0603772546 9857790.680121794)</data>
+      <data key="d11">44.0215247702055</data>
+    </edge>
+    <edge source="8527067110" target="8527067105" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">17.438708995672886</data>
+      <data key="d10">LINESTRING (257161.0603772546 9857790.680121794, 257153.61022338094 9857806.369505908)</data>
+      <data key="d11">17.368407141060164</data>
+    </edge>
+    <edge source="8527067110" target="1284303808" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">13.690245421445422</data>
+      <data key="d10">LINESTRING (257161.0603772546 9857790.680121794, 257166.3035725748 9857778.097031137)</data>
+      <data key="d11">13.631774193314001</data>
+    </edge>
+    <edge source="8527067110" target="8527067111" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">44.00896260359943</data>
+      <data key="d10">LINESTRING (257161.0603772546 9857790.680121794, 257121.0312033487 9857772.36182822)</data>
+      <data key="d11">44.0215247702055</data>
+    </edge>
+    <edge source="8527067110" target="8527067094" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">14.305028664997014</data>
+      <data key="d10">LINESTRING (257161.0603772546 9857790.680121794, 257174.15880548957 9857796.443112062)</data>
+      <data key="d11">14.310166982094406</data>
+    </edge>
+    <edge source="8527067098" target="1284303808" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">46.9335446680395</data>
+      <data key="d10">LINESTRING (257144.6445105403 9857745.691496704, 257163.29553317127 9857754.600603804, 257166.87801611976 9857757.280462813, 257168.96819814725 9857760.5452857, 257169.04352667058 9857763.587162713, 257168.21563908042 9857768.331682388, 257166.3035725748 9857778.097031137)</data>
+      <data key="d11">46.829902718906126</data>
+    </edge>
+    <edge source="2888466059" target="2888466060" id="0">
+      <data key="d4">285168909</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Koinange Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">11.21070678398714</data>
+      <data key="d10">LINESTRING (257352.24546713356 9857789.637865707, 257341.2221586291 9857791.752183514)</data>
+      <data key="d11">11.224244748361581</data>
+    </edge>
+    <edge source="2888466059" target="12168049896" id="0">
+      <data key="d4">1314631781</data>
+      <data key="d5">footway</data>
+      <data key="d6">unnamed_1314631781</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">23.446206885267113</data>
+      <data key="d10">LINESTRING (257352.24546713356 9857789.637865707, 257372.64207283282 9857801.192042723)</data>
+      <data key="d11">23.441854247665788</data>
+    </edge>
+    <edge source="8527010462" target="9859577503" id="0">
+      <data key="d4">44629696</data>
+      <data key="d5">unclassified</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">32.94109213659898</data>
+      <data key="d10">LINESTRING (257311.80528734715 9857809.380607191, 257341.8300723288 9857822.95613702)</data>
+      <data key="d11">32.9512173268826</data>
+    </edge>
+    <edge source="8527010462" target="8527010452" id="0">
+      <data key="d4">918108687</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918108687</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">21.355280461242483</data>
+      <data key="d10">LINESTRING (257311.80528734715 9857809.380607191, 257300.90176232153 9857827.65533543)</data>
+      <data key="d11">21.28033247339467</data>
+    </edge>
+    <edge source="8527010453" target="8527010452" id="0">
+      <data key="d4">918108686</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918108686</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">18.41354524144498</data>
+      <data key="d10">LINESTRING (257284.56602054895 9857819.157493003, 257300.90176232153 9857827.65533543)</data>
+      <data key="d11">18.413847647363482</data>
+    </edge>
+    <edge source="8527010453" target="8527010452" id="1">
+      <data key="d4">918108687</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918108687</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">41.80035527986448</data>
+      <data key="d10">LINESTRING (257284.56602054895 9857819.157493003, 257280.85211662148 9857826.963476915, 257280.73863361662 9857829.485317415, 257281.37107849118 9857831.97461183, 257283.27289263235 9857834.199523611, 257291.55188006966 9857838.697414795, 257292.93206723154 9857839.030427726, 257293.67812732665 9857838.843025891, 257294.46897385913 9857838.357011853, 257295.99628788998 9857835.880623894, 257300.90176232153 9857827.65533543)</data>
+      <data key="d11">41.68989531970706</data>
+    </edge>
+    <edge source="8527010453" target="3011892140" id="0">
+      <data key="d4">918108687</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918108687</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">22.123455465737965</data>
+      <data key="d10">LINESTRING (257284.56602054895 9857819.157493003, 257294.04592653902 9857799.266622907)</data>
+      <data key="d11">22.034412421549444</data>
+    </edge>
+    <edge source="6285681769" target="8527067109" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">14.74777344782833</data>
+      <data key="d10">LINESTRING (257132.49773071185 9857850.839355895, 257138.79913060137 9857837.571375756)</data>
+      <data key="d11">14.688326574363922</data>
+    </edge>
+    <edge source="6285681769" target="6572436603" id="0">
+      <data key="d4">671218223</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_671218223</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">6.3155877294668095</data>
+      <data key="d10">LINESTRING (257132.49773071185 9857850.839355895, 257129.73195526394 9857856.489233907)</data>
+      <data key="d11">6.29051948402963</data>
+    </edge>
+    <edge source="8527067109" target="6285681769" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">14.74777344782833</data>
+      <data key="d10">LINESTRING (257138.79913060137 9857837.571375756, 257132.49773071185 9857850.839355895)</data>
+      <data key="d11">14.688326574363922</data>
+    </edge>
+    <edge source="8527067109" target="8527067107" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">17.891440682918663</data>
+      <data key="d10">LINESTRING (257138.79913060137 9857837.571375756, 257146.4388919338 9857821.472889258)</data>
+      <data key="d11">17.81929349729134</data>
+    </edge>
+    <edge source="8527067109" target="8527067108" id="0">
+      <data key="d4">918115587</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115587</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">47.15532257994609</data>
+      <data key="d10">LINESTRING (257138.79913060137 9857837.571375756, 257097.3261903326 9857815.137108793)</data>
+      <data key="d11">47.15189400930917</data>
+    </edge>
+    <edge source="6572436603" target="4102502808" id="0">
+      <data key="d4">408293315</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">91.78678739527564</data>
+      <data key="d10">LINESTRING (257129.73195526394 9857856.489233907, 257211.6119767716 9857897.983155362)</data>
+      <data key="d11">91.7937004363931</data>
+    </edge>
+    <edge source="6572436603" target="6285681769" id="0">
+      <data key="d4">671218223</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_671218223</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">6.3155877294668095</data>
+      <data key="d10">LINESTRING (257129.73195526394 9857856.489233907, 257132.49773071185 9857850.839355895)</data>
+      <data key="d11">6.29051948402963</data>
+    </edge>
+    <edge source="6572436603" target="6285582459" id="0">
+      <data key="d4">['[ 671208386, 671208382 ]', '[ 671208384, 671218223 ]', '671208382']</data>
+      <data key="d5">service</data>
+      <data key="d6">['unnamed_671208382', 'unnamed_[ 671208384, 671218223 ]', 'unnamed_[ 671208386, 671208382 ]']</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">74.36969498455505</data>
+      <data key="d10">LINESTRING (257129.73195526394 9857856.489233907, 257112.13333411166 9857892.743670207, 257106.3895508705 9857904.87283293, 257093.86871096265 9857913.666801725)</data>
+      <data key="d11">[40.3001334811864, 20.385178804838294, 13.420418901955859]</data>
+      <data key="d16">parking_aisle</data>
+    </edge>
+    <edge source="9859577503" target="566902294" id="0">
+      <data key="d4">44629696</data>
+      <data key="d5">unclassified</data>
+      <data key="d13">50</data>
+      <data key="d6">Kenyatta Avenue</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">17.990035508195316</data>
+      <data key="d10">LINESTRING (257341.8300723288 9857822.95613702, 257358.2223911109 9857830.381092152)</data>
+      <data key="d11">17.995501486725853</data>
+    </edge>
+    <edge source="9859577503" target="9859577507" id="0">
+      <data key="d4">1074997666</data>
+      <data key="d5">tertiary_link</data>
+      <data key="d6">unnamed_1074997666</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">31.730497635819578</data>
+      <data key="d10">LINESTRING (257341.8300723288 9857822.95613702, 257345.2772605289 9857827.62687634, 257347.99896363128 9857834.464976212, 257348.7505351311 9857840.85894821, 257346.65861734038 9857852.659381721)</data>
+      <data key="d11">31.587331574589754</data>
+    </edge>
+    <edge source="8527010452" target="8527010453" id="0">
+      <data key="d4">918108686</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918108686</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">18.41354524144498</data>
+      <data key="d10">LINESTRING (257300.90176232153 9857827.65533543, 257284.56602054895 9857819.157493003)</data>
+      <data key="d11">18.413847647363482</data>
+    </edge>
+    <edge source="8527010452" target="8527010453" id="1">
+      <data key="d4">918108687</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918108687</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">41.80035527986448</data>
+      <data key="d10">LINESTRING (257300.90176232153 9857827.65533543, 257295.99628788998 9857835.880623894, 257294.46897385913 9857838.357011853, 257293.67812732665 9857838.843025891, 257292.93206723154 9857839.030427726, 257291.55188006966 9857838.697414795, 257283.27289263235 9857834.199523611, 257281.37107849118 9857831.97461183, 257280.73863361662 9857829.485317415, 257280.85211662148 9857826.963476915, 257284.56602054895 9857819.157493003)</data>
+      <data key="d11">41.68989531970706</data>
+    </edge>
+    <edge source="8527010452" target="8527010462" id="0">
+      <data key="d4">918108687</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918108687</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">21.355280461242483</data>
+      <data key="d10">LINESTRING (257300.90176232153 9857827.65533543, 257311.80528734715 9857809.380607191)</data>
+      <data key="d11">21.28033247339467</data>
+    </edge>
+    <edge source="8527140565" target="12361445753" id="0">
+      <data key="d4">330461519</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Posta Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">7.922604721387923</data>
+      <data key="d10">LINESTRING (257251.09276956558 9857685.211774299, 257247.6689089172 9857692.32115323)</data>
+      <data key="d11">7.890886547940274</data>
+    </edge>
+    <edge source="8527140565" target="8527140561" id="0">
+      <data key="d4">918121201</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918121201</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">102.15224321972164</data>
+      <data key="d10">LINESTRING (257251.09276956558 9857685.211774299, 257316.13685919123 9857717.145570694, 257317.94956104955 9857719.425712561, 257318.58227844498 9857721.59423433, 257318.32370823674 9857724.536273008, 257317.63104313138 9857727.37839046, 257309.10036438223 9857743.830055295)</data>
+      <data key="d11">102.04271699963778</data>
+    </edge>
+    <edge source="8527140565" target="8527067054" id="0">
+      <data key="d4">['918115577', '330461519']</data>
+      <data key="d5">['service', 'unclassified']</data>
+      <data key="d6">['Posta Street', 'unnamed_918115577']</data>
+      <data key="d7">False</data>
+      <data key="d8">['True', 'False']</data>
+      <data key="d9">125.04280303132094</data>
+      <data key="d10">LINESTRING (257251.09276956558 9857685.211774299, 257266.1145705104 9857654.96137035, 257345.2486954453 9857678.677742844)</data>
+      <data key="d11">[33.77486409588093, 91.1241427735108]</data>
+    </edge>
+    <edge source="8527067054" target="8527140565" id="0">
+      <data key="d4">['918115577', '330461519']</data>
+      <data key="d5">['service', 'unclassified']</data>
+      <data key="d6">['Posta Street', 'unnamed_918115577']</data>
+      <data key="d7">False</data>
+      <data key="d8">['True', 'False']</data>
+      <data key="d9">125.04280303132096</data>
+      <data key="d10">LINESTRING (257345.2486954453 9857678.677742844, 257266.1145705104 9857654.96137035, 257251.09276956558 9857685.211774299)</data>
+      <data key="d11">[33.77486409588093, 91.1241427735108]</data>
+    </edge>
+    <edge source="8527067097" target="8527067111" id="0">
+      <data key="d4">918115584</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115584</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">22.55076157401873</data>
+      <data key="d10">LINESTRING (257132.09171289406 9857752.804132788, 257121.0312033487 9857772.36182822)</data>
+      <data key="d11">22.468607477976274</data>
+    </edge>
+    <edge source="8527067105" target="8527067107" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">16.787132227399965</data>
+      <data key="d10">LINESTRING (257153.61022338094 9857806.369505908, 257146.4388919338 9857821.472889258)</data>
+      <data key="d11">16.719455233927587</data>
+    </edge>
+    <edge source="8527067105" target="8527067110" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">17.438708995672886</data>
+      <data key="d10">LINESTRING (257153.61022338094 9857806.369505908, 257161.0603772546 9857790.680121794)</data>
+      <data key="d11">17.368407141060164</data>
+    </edge>
+    <edge source="8527067105" target="8527067104" id="0">
+      <data key="d4">918115585</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115585</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">44.37029153873853</data>
+      <data key="d10">LINESTRING (257153.61022338094 9857806.369505908, 257114.0724499452 9857786.226546364)</data>
+      <data key="d11">44.37312641074548</data>
+    </edge>
+    <edge source="8527067107" target="8527067109" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">17.891440682918663</data>
+      <data key="d10">LINESTRING (257146.4388919338 9857821.472889258, 257138.79913060137 9857837.571375756)</data>
+      <data key="d11">17.81929349729134</data>
+    </edge>
+    <edge source="8527067107" target="8527067105" id="0">
+      <data key="d4">918115588</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115588</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">16.787132227399965</data>
+      <data key="d10">LINESTRING (257146.4388919338 9857821.472889258, 257153.61022338094 9857806.369505908)</data>
+      <data key="d11">16.719455233927587</data>
+    </edge>
+    <edge source="8527067107" target="8527067106" id="0">
+      <data key="d4">918115586</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115586</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">46.631254836463285</data>
+      <data key="d10">LINESTRING (257146.4388919338 9857821.472889258, 257104.8088869576 9857800.454312116)</data>
+      <data key="d11">46.63515733199635</data>
+    </edge>
+    <edge source="8527067104" target="8527067105" id="0">
+      <data key="d4">918115585</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115585</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">44.37029153873853</data>
+      <data key="d10">LINESTRING (257114.0724499452 9857786.226546364, 257153.61022338094 9857806.369505908)</data>
+      <data key="d11">44.37312641074548</data>
+    </edge>
+    <edge source="8527067106" target="8527067107" id="0">
+      <data key="d4">918115586</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115586</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">46.631254836463285</data>
+      <data key="d10">LINESTRING (257104.8088869576 9857800.454312116, 257146.4388919338 9857821.472889258)</data>
+      <data key="d11">46.63515733199635</data>
+    </edge>
+    <edge source="8527067108" target="8527067109" id="0">
+      <data key="d4">918115587</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115587</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">47.15532257994609</data>
+      <data key="d10">LINESTRING (257097.3261903326 9857815.137108793, 257138.79913060137 9857837.571375756)</data>
+      <data key="d11">47.15189400930917</data>
+    </edge>
+    <edge source="8527067094" target="8527067095" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">34.33883207429368</data>
+      <data key="d10">LINESTRING (257174.15880548957 9857796.443112062, 257188.42428401817 9857765.362456514)</data>
+      <data key="d11">34.19811437767014</data>
+    </edge>
+    <edge source="8527067094" target="8527067110" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">14.305028664997014</data>
+      <data key="d10">LINESTRING (257174.15880548957 9857796.443112062, 257161.0603772546 9857790.680121794)</data>
+      <data key="d11">14.310166982094406</data>
+    </edge>
+    <edge source="8527067094" target="8527067080" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">74.57609848356122</data>
+      <data key="d10">LINESTRING (257174.15880548957 9857796.443112062, 257152.0200062263 9857843.356591044, 257151.65056151652 9857845.767603297, 257151.94915326545 9857848.101758583, 257152.94974724148 9857849.695417644, 257167.06014394667 9857856.775544023)</data>
+      <data key="d11">74.33599296195575</data>
+    </edge>
+    <edge source="8527067094" target="8527067079" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">19.267335880013192</data>
+      <data key="d10">LINESTRING (257174.15880548957 9857796.443112062, 257181.15866284876 9857799.601520289, 257191.7531014606 9857804.311559882)</data>
+      <data key="d11">19.273672199053877</data>
+    </edge>
+    <edge source="8527140561" target="8527140565" id="0">
+      <data key="d4">918121201</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918121201</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">102.15224321972164</data>
+      <data key="d10">LINESTRING (257309.10036438223 9857743.830055295, 257317.63104313138 9857727.37839046, 257318.32370823674 9857724.536273008, 257318.58227844498 9857721.59423433, 257317.94956104955 9857719.425712561, 257316.13685919123 9857717.145570694, 257251.09276956558 9857685.211774299)</data>
+      <data key="d11">102.04271699963779</data>
+    </edge>
+    <edge source="8527067112" target="12168049894" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">46.06075125979952</data>
+      <data key="d10">LINESTRING (257246.1591394502 9857830.539761977, 257266.7565252912 9857789.542691084)</data>
+      <data key="d11">45.88041112872678</data>
+    </edge>
+    <edge source="8527067112" target="282041291" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">7.203211889456935</data>
+      <data key="d10">LINESTRING (257246.1591394502 9857830.539761977, 257242.54679993136 9857836.741970118)</data>
+      <data key="d11">7.17749138780687</data>
+    </edge>
+    <edge source="8527067112" target="8527067085" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">25.918327672682185</data>
+      <data key="d10">LINESTRING (257246.1591394502 9857830.539761977, 257222.56670648642 9857819.790302152)</data>
+      <data key="d11">25.925928714116818</data>
+    </edge>
+    <edge source="12361445752" target="12361445753" id="0">
+      <data key="d4">1336449218</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_1336449218</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">44.32478779790347</data>
+      <data key="d10">LINESTRING (257208.53253046147 9857671.514866231, 257247.6689089172 9857692.32115323)</data>
+      <data key="d11">44.32333129715479</data>
+    </edge>
+    <edge source="30215020" target="8527067115" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">72.31121380007724</data>
+      <data key="d10">LINESTRING (257122.0583767552 9858081.643233506, 257152.61806142167 9858016.430723047)</data>
+      <data key="d11">72.01781617972375</data>
+    </edge>
+    <edge source="8527067115" target="8527067113" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">13.859444272732503</data>
+      <data key="d10">LINESTRING (257152.61806142167 9858016.430723047, 257158.33993781923 9858003.87015596)</data>
+      <data key="d11">13.802453225601834</data>
+    </edge>
+    <edge source="8527067115" target="30215020" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">72.31121380007724</data>
+      <data key="d10">LINESTRING (257152.61806142167 9858016.430723047, 257122.0583767552 9858081.643233506)</data>
+      <data key="d11">72.01781617972375</data>
+    </edge>
+    <edge source="8527067115" target="8527088320" id="0">
+      <data key="d4">918115591</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115591</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">61.82960249487979</data>
+      <data key="d10">LINESTRING (257152.61806142167 9858016.430723047, 257136.55925963 9858009.514862489, 257134.2665735528 9858008.716502968, 257132.28514435224 9858008.460404977, 257130.53754265877 9858008.160262061, 257095.76081144784 9857992.423745453)</data>
+      <data key="d11">61.85493973696473</data>
+    </edge>
+    <edge source="280120749" target="4102502808" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">5.599706949756418</data>
+      <data key="d10">LINESTRING (257214.1990181359 9857893.041038534, 257211.6119767716 9857897.983155362)</data>
+      <data key="d11">5.578288426439492</data>
+    </edge>
+    <edge source="280120749" target="6285681769" id="0">
+      <data key="d4">408293316</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">91.95392294699545</data>
+      <data key="d10">LINESTRING (257214.1990181359 9857893.041038534, 257132.49773071185 9857850.839355895)</data>
+      <data key="d11">91.95695941176456</data>
+    </edge>
+    <edge source="280120749" target="282041291" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">63.29690555368389</data>
+      <data key="d10">LINESTRING (257214.1990181359 9857893.041038534, 257217.2666423337 9857885.909227964, 257220.96889486836 9857878.711592983, 257229.75602600598 9857861.79556686, 257242.54679993136 9857836.741970118)</data>
+      <data key="d11">63.049526592090835</data>
+    </edge>
+    <edge source="4102502808" target="280120749" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">5.599706949756418</data>
+      <data key="d10">LINESTRING (257211.6119767716 9857897.983155362, 257214.1990181359 9857893.041038534)</data>
+      <data key="d11">5.578288426439492</data>
+    </edge>
+    <edge source="4102502808" target="6370390608" id="0">
+      <data key="d4">408293315</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">6.595164508481154</data>
+      <data key="d10">LINESTRING (257211.6119767716 9857897.983155362, 257216.99702830383 9857901.781724066)</data>
+      <data key="d11">6.589985143995547</data>
+    </edge>
+    <edge source="4102502808" target="7191350123" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">47.14900471448026</data>
+      <data key="d10">LINESTRING (257211.6119767716 9857897.983155362, 257198.73277450036 9857922.295588423, 257189.62255568296 9857939.487872312)</data>
+      <data key="d11">46.969949730508716</data>
+    </edge>
+    <edge source="282041291" target="8527067112" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">7.203211889456935</data>
+      <data key="d10">LINESTRING (257242.54679993136 9857836.741970118, 257246.1591394502 9857830.539761977)</data>
+      <data key="d11">7.17749138780687</data>
+    </edge>
+    <edge source="282041291" target="280120749" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">63.2969055536839</data>
+      <data key="d10">LINESTRING (257242.54679993136 9857836.741970118, 257229.75602600598 9857861.79556686, 257220.96889486836 9857878.711592983, 257217.2666423337 9857885.909227964, 257214.1990181359 9857893.041038534)</data>
+      <data key="d11">63.04952659209084</data>
+    </edge>
+    <edge source="282041291" target="504962114" id="0">
+      <data key="d4">680556389</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Banda Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">99.75656154319569</data>
+      <data key="d10">LINESTRING (257242.54679993136 9857836.741970118, 257290.4185566079 9857862.157100262, 257330.61205209806 9857883.594707439)</data>
+      <data key="d11">99.75307868288397</data>
+    </edge>
+    <edge source="504962114" target="9859577507" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">34.9840368275656</data>
+      <data key="d10">LINESTRING (257330.61205209806 9857883.594707439, 257346.65861734038 9857852.659381721)</data>
+      <data key="d11">34.84948540978779</data>
+    </edge>
+    <edge source="504962114" target="6372331348" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">True</data>
+      <data key="d9">15.38667629698585</data>
+      <data key="d10">LINESTRING (257330.61205209806 9857883.594707439, 257324.8553863269 9857897.792277927)</data>
+      <data key="d11">15.32025484639479</data>
+    </edge>
+    <edge source="504962089" target="6807551639" id="0">
+      <data key="d4">408293314</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">51.33946698869676</data>
+      <data key="d10">LINESTRING (257301.58075455102 9857945.1140314, 257255.73318450153 9857922.001372604)</data>
+      <data key="d11">51.34388645302952</data>
+    </edge>
+    <edge source="504962089" target="6372331348" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">52.9454200615135</data>
+      <data key="d10">LINESTRING (257301.58075455102 9857945.1140314, 257324.8553863269 9857897.792277927)</data>
+      <data key="d11">52.735726373613495</data>
+    </edge>
+    <edge source="504962089" target="282040654" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">True</data>
+      <data key="d9">78.09618143917585</data>
+      <data key="d10">LINESTRING (257301.58075455102 9857945.1140314, 257267.49911393964 9858015.035522593)</data>
+      <data key="d11">77.7854302383627</data>
+    </edge>
+    <edge source="6807551639" target="6370390608" id="0">
+      <data key="d4">408293314</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">43.69541810653395</data>
+      <data key="d10">LINESTRING (257255.73318450153 9857922.001372604, 257216.99702830383 9857901.781724066)</data>
+      <data key="d11">43.6958119729949</data>
+    </edge>
+    <edge source="6807551639" target="504962089" id="0">
+      <data key="d4">408293314</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">51.33946698869676</data>
+      <data key="d10">LINESTRING (257255.73318450153 9857922.001372604, 257301.58075455102 9857945.1140314)</data>
+      <data key="d11">51.34388645302952</data>
+    </edge>
+    <edge source="6807551639" target="6807551638" id="0">
+      <data key="d4">726091596</data>
+      <data key="d5">residential</data>
+      <data key="d6">unnamed_726091596</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">101.26407407864171</data>
+      <data key="d10">LINESTRING (257255.73318450153 9857922.001372604, 257211.44729394576 9858012.620604513)</data>
+      <data key="d11">100.861713718276</data>
+    </edge>
+    <edge source="6372331348" target="504962114" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">15.38667629698585</data>
+      <data key="d10">LINESTRING (257324.8553863269 9857897.792277927, 257330.61205209806 9857883.594707439)</data>
+      <data key="d11">15.32025484639479</data>
+    </edge>
+    <edge source="6372331348" target="504962089" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">True</data>
+      <data key="d9">52.9454200615135</data>
+      <data key="d10">LINESTRING (257324.8553863269 9857897.792277927, 257301.58075455102 9857945.1140314)</data>
+      <data key="d11">52.735726373613495</data>
+    </edge>
+    <edge source="6372331348" target="3590900167" id="0">
+      <data key="d4">25858228</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Banda Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">79.5173650605837</data>
+      <data key="d10">LINESTRING (257324.8553863269 9857897.792277927, 257333.04958187844 9857897.290462395, 257336.89068113253 9857896.97296924, 257341.744905301 9857896.61209652, 257345.17343815655 9857897.057468666, 257348.0115439838 9857897.955842791, 257397.7976165181 9857923.991977867)</data>
+      <data key="d11">79.54863626898351</data>
+    </edge>
+    <edge source="282040654" target="504962089" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">78.09618143917585</data>
+      <data key="d10">LINESTRING (257267.49911393964 9858015.035522593, 257301.58075455102 9857945.1140314)</data>
+      <data key="d11">77.7854302383627</data>
+    </edge>
+    <edge source="282040654" target="282040560" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">True</data>
+      <data key="d9">46.574566752453016</data>
+      <data key="d10">LINESTRING (257267.49911393964 9858015.035522593, 257246.24472245487 9858056.275404947)</data>
+      <data key="d11">46.394795547934464</data>
+    </edge>
+    <edge source="282040654" target="282040655" id="0">
+      <data key="d4">114394269</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Tubman Road</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">31.878738389190637</data>
+      <data key="d10">LINESTRING (257267.49911393964 9858015.035522593, 257295.7974102253 9858029.715663256)</data>
+      <data key="d11">31.87946208068694</data>
+    </edge>
+    <edge source="6370390608" target="6807551639" id="0">
+      <data key="d4">408293314</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">43.69541810653395</data>
+      <data key="d10">LINESTRING (257216.99702830383 9857901.781724066, 257255.73318450153 9857922.001372604)</data>
+      <data key="d11">43.6958119729949</data>
+    </edge>
+    <edge source="6370390608" target="280120749" id="0">
+      <data key="d4">408293316</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">9.220292573792582</data>
+      <data key="d10">LINESTRING (257216.99702830383 9857901.781724066, 257214.1990181359 9857893.041038534)</data>
+      <data key="d11">9.177605595516743</data>
+    </edge>
+    <edge source="7191350123" target="5536006821" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">55.59475069377723</data>
+      <data key="d10">LINESTRING (257189.62255568296 9857939.487872312, 257165.06564023579 9857989.120341618)</data>
+      <data key="d11">55.375302307686965</data>
+    </edge>
+    <edge source="7191350123" target="7191350121" id="0">
+      <data key="d4">770390401</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390401</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">25.331304348433793</data>
+      <data key="d10">LINESTRING (257189.62255568296 9857939.487872312, 257166.72041240142 9857928.650520239)</data>
+      <data key="d11">25.33685787224271</data>
+    </edge>
+    <edge source="7191350123" target="4102502808" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">47.14900471448026</data>
+      <data key="d10">LINESTRING (257189.62255568296 9857939.487872312, 257198.73277450036 9857922.295588423, 257211.6119767716 9857897.983155362)</data>
+      <data key="d11">46.969949730508716</data>
+    </edge>
+    <edge source="5536006821" target="7191350123" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">55.59475069377723</data>
+      <data key="d10">LINESTRING (257165.06564023579 9857989.120341618, 257189.62255568296 9857939.487872312)</data>
+      <data key="d11">55.375302307686965</data>
+    </edge>
+    <edge source="5536006821" target="8527067113" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">16.277769562727794</data>
+      <data key="d10">LINESTRING (257165.06564023579 9857989.120341618, 257158.33993781923 9858003.87015596)</data>
+      <data key="d11">16.210863522355844</data>
+    </edge>
+    <edge source="5536006821" target="7191350122" id="0">
+      <data key="d4">770390402</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390402</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">24.561759906675334</data>
+      <data key="d10">LINESTRING (257165.06564023579 9857989.120341618, 257142.75305567292 9857978.836553233)</data>
+      <data key="d11">24.568429608338626</data>
+    </edge>
+    <edge source="8527067113" target="5536006821" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">16.277769562727794</data>
+      <data key="d10">LINESTRING (257158.33993781923 9858003.87015596, 257165.06564023579 9857989.120341618)</data>
+      <data key="d11">16.210863522355844</data>
+    </edge>
+    <edge source="8527067113" target="8527067115" id="0">
+      <data key="d4">25692690</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Loita Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">13.859444272732503</data>
+      <data key="d10">LINESTRING (257158.33993781923 9858003.87015596, 257152.61806142167 9858016.430723047)</data>
+      <data key="d11">13.802453225601834</data>
+    </edge>
+    <edge source="8527067113" target="8527067114" id="0">
+      <data key="d4">918115590</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115590</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">68.25559674448897</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257158.33993781923 9858003.87015596, 257097.50306793975 9857972.913380226)</data>
+      <data key="d11">68.26013991042231</data>
+    </edge>
+    <edge source="7191350122" target="7191350119" id="0">
+      <data key="d4">770390406</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390406</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">11.80241424930154</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257142.75305567292 9857978.836553233, 257147.82755804647 9857968.233255396)</data>
+      <data key="d11">11.755020176969824</data>
+    </edge>
+    <edge source="7191350122" target="5536006821" id="0">
+      <data key="d4">770390402</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390402</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">24.561759906675334</data>
+      <data key="d10">LINESTRING (257142.75305567292 9857978.836553233, 257165.06564023579 9857989.120341618)</data>
+      <data key="d11">24.568429608338626</data>
+    </edge>
+    <edge source="7191350122" target="7191350120" id="0">
+      <data key="d4">770390407</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390407</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">50.37888858305385</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257142.75305567292 9857978.836553233, 257109.2237120937 9857962.514858158, 257108.10022069918 9857961.429906705, 257108.0902311173 9857960.091500161, 257112.68469209963 9857951.047411991)</data>
+      <data key="d11">50.3354225170182</data>
+    </edge>
+    <edge source="6285582459" target="6572436603" id="0">
+      <data key="d4">['[ 671208386, 671208382 ]', '[ 671208384, 671218223 ]', '671208382']</data>
+      <data key="d5">service</data>
+      <data key="d6">['unnamed_671208382', 'unnamed_[ 671208384, 671218223 ]', 'unnamed_[ 671208386, 671208382 ]']</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">74.36969498455505</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257093.86871096265 9857913.666801725, 257106.3895508705 9857904.87283293, 257112.13333411166 9857892.743670207, 257129.73195526394 9857856.489233907)</data>
+      <data key="d11">[40.3001334811864, 20.38517880483829, 13.420418901955859]</data>
+    </edge>
+    <edge source="6807551638" target="6807551639" id="0">
+      <data key="d4">726091596</data>
+      <data key="d5">residential</data>
+      <data key="d6">unnamed_726091596</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">101.26407407864171</data>
+      <data key="d10">LINESTRING (257211.44729394576 9858012.620604513, 257255.73318450153 9857922.001372604)</data>
+      <data key="d11">100.861713718276</data>
+    </edge>
+    <edge source="7191350115" target="7191350116" id="0">
+      <data key="d4">770390403</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390403</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">39.56230854396903</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257160.39675444496 9857941.918483118, 257124.80867717607 9857924.6216452)</data>
+      <data key="d11">39.56882416339283</data>
+    </edge>
+    <edge source="7191350115" target="7191350121" id="0">
+      <data key="d4">770390406</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390406</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">14.757257037595815</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257160.39675444496 9857941.918483118, 257166.72041240142 9857928.650520239)</data>
+      <data key="d11">14.697873618232178</data>
+    </edge>
+    <edge source="7191350115" target="7191350117" id="0">
+      <data key="d4">770390406</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390406</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">15.134865204155888</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257160.39675444496 9857941.918483118, 257153.89468784188 9857955.518128602)</data>
+      <data key="d11">15.074058093553111</data>
+    </edge>
+    <edge source="7191350116" target="7191350115" id="0">
+      <data key="d4">770390403</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390403</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">39.56230854396903</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257124.80867717607 9857924.6216452, 257160.39675444496 9857941.918483118)</data>
+      <data key="d11">39.56882416339283</data>
+    </edge>
+    <edge source="7191350116" target="7191350118" id="0">
+      <data key="d4">770390407</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390407</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">14.97936783361607</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257124.80867717607 9857924.6216452, 257118.62947781457 9857938.19944567)</data>
+      <data key="d11">14.917746826803892</data>
+    </edge>
+    <edge source="7191350116" target="7191350121" id="0">
+      <data key="d4">770390407</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390407</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">53.14172261020829</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257124.80867717607 9857924.6216452, 257130.85287455958 9857912.691839967, 257131.85524612048 9857912.206006287, 257132.95729345566 9857912.328620415, 257166.72041240142 9857928.650520239)</data>
+      <data key="d11">53.097697505677914</data>
+    </edge>
+    <edge source="7191350121" target="7191350123" id="0">
+      <data key="d4">770390401</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390401</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">25.331304348433793</data>
+      <data key="d10">LINESTRING (257166.72041240142 9857928.650520239, 257189.62255568296 9857939.487872312)</data>
+      <data key="d11">25.33685787224271</data>
+    </edge>
+    <edge source="7191350121" target="7191350115" id="0">
+      <data key="d4">770390406</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390406</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">14.757257037595815</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257166.72041240142 9857928.650520239, 257160.39675444496 9857941.918483118)</data>
+      <data key="d11">14.697873618232178</data>
+    </edge>
+    <edge source="7191350121" target="7191350116" id="0">
+      <data key="d4">770390407</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390407</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">53.14172261020829</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257166.72041240142 9857928.650520239, 257132.95729345566 9857912.328620415, 257131.85524612048 9857912.206006287, 257130.85287455958 9857912.691839967, 257124.80867717607 9857924.6216452)</data>
+      <data key="d11">53.097697505677914</data>
+    </edge>
+    <edge source="7191350117" target="7191350118" id="0">
+      <data key="d4">770390404</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390404</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">39.282699382466966</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257153.89468784188 9857955.518128602, 257118.62947781457 9857938.19944567)</data>
+      <data key="d11">39.28831654254875</data>
+    </edge>
+    <edge source="7191350117" target="7191350115" id="0">
+      <data key="d4">770390406</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390406</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">15.134865204155888</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257153.89468784188 9857955.518128602, 257160.39675444496 9857941.918483118)</data>
+      <data key="d11">15.074058093553111</data>
+    </edge>
+    <edge source="7191350117" target="7191350119" id="0">
+      <data key="d4">770390406</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390406</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">14.145340599827</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257153.89468784188 9857955.518128602, 257147.82755804647 9857968.233255396)</data>
+      <data key="d11">14.088453191801115</data>
+    </edge>
+    <edge source="7191350118" target="7191350117" id="0">
+      <data key="d4">770390404</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390404</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">39.282699382466966</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257118.62947781457 9857938.19944567, 257153.89468784188 9857955.518128602)</data>
+      <data key="d11">39.28831654254875</data>
+    </edge>
+    <edge source="7191350118" target="7191350116" id="0">
+      <data key="d4">770390407</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390407</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">14.97936783361607</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257118.62947781457 9857938.19944567, 257124.80867717607 9857924.6216452)</data>
+      <data key="d11">14.917746826803892</data>
+    </edge>
+    <edge source="7191350118" target="7191350120" id="0">
+      <data key="d4">770390407</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390407</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">14.214673835439788</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257118.62947781457 9857938.19944567, 257112.68469209963 9857951.047411991)</data>
+      <data key="d11">14.15664917193458</data>
+    </edge>
+    <edge source="7191350119" target="7191350120" id="0">
+      <data key="d4">770390405</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390405</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">39.11405606039438</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257147.82755804647 9857968.233255396, 257112.68469209963 9857951.047411991)</data>
+      <data key="d11">39.11999796111037</data>
+    </edge>
+    <edge source="7191350119" target="7191350117" id="0">
+      <data key="d4">770390406</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390406</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">14.145340599827</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257147.82755804647 9857968.233255396, 257153.89468784188 9857955.518128602)</data>
+      <data key="d11">14.088453191801115</data>
+    </edge>
+    <edge source="7191350119" target="7191350122" id="0">
+      <data key="d4">770390406</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390406</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">11.80241424930154</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257147.82755804647 9857968.233255396, 257142.75305567292 9857978.836553233)</data>
+      <data key="d11">11.755020176969824</data>
+    </edge>
+    <edge source="7191350120" target="7191350119" id="0">
+      <data key="d4">770390405</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390405</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">39.11405606039438</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257112.68469209963 9857951.047411991, 257147.82755804647 9857968.233255396)</data>
+      <data key="d11">39.11999796111037</data>
+    </edge>
+    <edge source="7191350120" target="7191350118" id="0">
+      <data key="d4">770390407</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390407</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">14.214673835439788</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257112.68469209963 9857951.047411991, 257118.62947781457 9857938.19944567)</data>
+      <data key="d11">14.15664917193458</data>
+    </edge>
+    <edge source="7191350120" target="7191350122" id="0">
+      <data key="d4">770390407</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_770390407</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">50.37888858305385</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257112.68469209963 9857951.047411991, 257108.0902311173 9857960.091500161, 257108.10022069918 9857961.429906705, 257109.2237120937 9857962.514858158, 257142.75305567292 9857978.836553233)</data>
+      <data key="d11">50.33542251701821</data>
+    </edge>
+    <edge source="8527067078" target="8527067079" id="0">
+      <data key="d4">918115581</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115581</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">31.545934170953036</data>
+      <data key="d10">LINESTRING (257205.98255739379 9857776.294809466, 257191.7531014606 9857804.311559882)</data>
+      <data key="d11">31.42317170520469</data>
+    </edge>
+    <edge source="8527067079" target="8527067078" id="0">
+      <data key="d4">918115581</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115581</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">31.545934170953036</data>
+      <data key="d10">LINESTRING (257191.7531014606 9857804.311559882, 257205.98255739379 9857776.294809466)</data>
+      <data key="d11">31.42317170520469</data>
+    </edge>
+    <edge source="8527067079" target="8527067080" id="0">
+      <data key="d4">918115581</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115581</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">58.220321539630405</data>
+      <data key="d10">LINESTRING (257191.7531014606 9857804.311559882, 257167.06014394667 9857856.775544023)</data>
+      <data key="d11">57.98458228482314</data>
+    </edge>
+    <edge source="8527067079" target="8527067082" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">17.83529727793519</data>
+      <data key="d10">LINESTRING (257191.7531014606 9857804.311559882, 257207.3651098584 9857812.930467714)</data>
+      <data key="d11">17.833125873563645</data>
+    </edge>
+    <edge source="8527067079" target="8527067094" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">19.267335880013192</data>
+      <data key="d10">LINESTRING (257191.7531014606 9857804.311559882, 257181.15866284876 9857799.601520289, 257174.15880548957 9857796.443112062)</data>
+      <data key="d11">19.273672199053877</data>
+    </edge>
+    <edge source="8527067080" target="8527067079" id="0">
+      <data key="d4">918115581</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115581</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">58.220321539630405</data>
+      <data key="d10">LINESTRING (257167.06014394667 9857856.775544023, 257191.7531014606 9857804.311559882)</data>
+      <data key="d11">57.98458228482314</data>
+    </edge>
+    <edge source="8527067080" target="8527067081" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">17.406367938389238</data>
+      <data key="d10">LINESTRING (257167.06014394667 9857856.775544023, 257182.6171853249 9857864.586939653)</data>
+      <data key="d11">17.40802797952656</data>
+    </edge>
+    <edge source="8527067080" target="8527067094" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">74.57609848356122</data>
+      <data key="d10">LINESTRING (257167.06014394667 9857856.775544023, 257152.94974724148 9857849.695417644, 257151.94915326545 9857848.101758583, 257151.65056151652 9857845.767603297, 257152.0200062263 9857843.356591044, 257174.15880548957 9857796.443112062)</data>
+      <data key="d11">74.33599296195575</data>
+    </edge>
+    <edge source="8527067082" target="8527067081" id="0">
+      <data key="d4">918115582</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115582</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">57.50954238933428</data>
+      <data key="d10">LINESTRING (257207.3651098584 9857812.930467714, 257182.6171853249 9857864.586939653)</data>
+      <data key="d11">57.2787121187153</data>
+    </edge>
+    <edge source="8527067082" target="8527067083" id="0">
+      <data key="d4">918115582</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115582</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">30.477140599410415</data>
+      <data key="d10">LINESTRING (257207.3651098584 9857812.930467714, 257220.5252428311 9857785.5764723)</data>
+      <data key="d11">30.355068192855235</data>
+    </edge>
+    <edge source="8527067082" target="8527067079" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">17.83529727793519</data>
+      <data key="d10">LINESTRING (257207.3651098584 9857812.930467714, 257191.7531014606 9857804.311559882)</data>
+      <data key="d11">17.833125873563645</data>
+    </edge>
+    <edge source="8527067082" target="8527067085" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">16.67250777584802</data>
+      <data key="d10">LINESTRING (257207.3651098584 9857812.930467714, 257222.56670648642 9857819.790302152)</data>
+      <data key="d11">16.677705734324636</data>
+    </edge>
+    <edge source="8527067081" target="8527067082" id="0">
+      <data key="d4">918115582</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115582</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">57.50954238933428</data>
+      <data key="d10">LINESTRING (257182.6171853249 9857864.586939653, 257207.3651098584 9857812.930467714)</data>
+      <data key="d11">57.2787121187153</data>
+    </edge>
+    <edge source="8527067081" target="8527067080" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">17.406367938389238</data>
+      <data key="d10">LINESTRING (257182.6171853249 9857864.586939653, 257167.06014394667 9857856.775544023)</data>
+      <data key="d11">17.40802797952656</data>
+    </edge>
+    <edge source="8527067081" target="8527067085" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">73.48993909637994</data>
+      <data key="d10">LINESTRING (257182.6171853249 9857864.586939653, 257193.05531477486 9857869.827775907, 257196.52822074186 9857870.461227998, 257198.6216379813 9857869.943143351, 257200.90536244115 9857868.197435377, 257222.56670648642 9857819.790302152)</data>
+      <data key="d11">73.27391058282872</data>
+    </edge>
+    <edge source="8527067085" target="8527067084" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">33.76911975026113</data>
+      <data key="d10">LINESTRING (257222.56670648642 9857819.790302152, 257237.5438508933 9857789.67257809)</data>
+      <data key="d11">33.636173343584765</data>
+    </edge>
+    <edge source="8527067085" target="8527067082" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">16.67250777584802</data>
+      <data key="d10">LINESTRING (257222.56670648642 9857819.790302152, 257207.3651098584 9857812.930467714)</data>
+      <data key="d11">16.677705734324636</data>
+    </edge>
+    <edge source="8527067085" target="8527067112" id="0">
+      <data key="d4">918115589</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115589</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">25.918327672682185</data>
+      <data key="d10">LINESTRING (257222.56670648642 9857819.790302152, 257246.1591394502 9857830.539761977)</data>
+      <data key="d11">25.925928714116818</data>
+    </edge>
+    <edge source="8527067085" target="8527067081" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">73.48993909637994</data>
+      <data key="d10">LINESTRING (257222.56670648642 9857819.790302152, 257200.90536244115 9857868.197435377, 257198.6216379813 9857869.943143351, 257196.52822074186 9857870.461227998, 257193.05531477486 9857869.827775907, 257182.6171853249 9857864.586939653)</data>
+      <data key="d11">73.27391058282872</data>
+    </edge>
+    <edge source="8527067083" target="8527067082" id="0">
+      <data key="d4">918115582</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115582</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">30.477140599410415</data>
+      <data key="d10">LINESTRING (257220.5252428311 9857785.5764723, 257207.3651098584 9857812.930467714)</data>
+      <data key="d11">30.355068192855235</data>
+    </edge>
+    <edge source="8527067084" target="8527067085" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">33.76911975026113</data>
+      <data key="d10">LINESTRING (257237.5438508933 9857789.67257809, 257222.56670648642 9857819.790302152)</data>
+      <data key="d11">33.636173343584765</data>
+    </edge>
+    <edge source="8527067095" target="8527067094" id="0">
+      <data key="d4">918115583</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115583</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">34.33883207429368</data>
+      <data key="d10">LINESTRING (257188.42428401817 9857765.362456514, 257174.15880548957 9857796.443112062)</data>
+      <data key="d11">34.19811437767014</data>
+    </edge>
+    <edge source="8527067114" target="8527067113" id="0">
+      <data key="d4">918115590</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115590</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">68.25559674448897</data>
+      <data key="d16">parking_aisle</data>
+      <data key="d10">LINESTRING (257097.50306793975 9857972.913380226, 257158.33993781923 9858003.87015596)</data>
+      <data key="d11">68.26013991042231</data>
+    </edge>
+    <edge source="8527088320" target="8527067115" id="0">
+      <data key="d4">918115591</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_918115591</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">61.82960249487979</data>
+      <data key="d10">LINESTRING (257095.76081144784 9857992.423745453, 257130.53754265877 9858008.160262061, 257132.28514435224 9858008.460404977, 257134.2665735528 9858008.716502968, 257136.55925963 9858009.514862489, 257152.61806142167 9858016.430723047)</data>
+      <data key="d11">61.85493973696473</data>
+    </edge>
+    <edge source="282040560" target="282040654" id="0">
+      <data key="d4">297314919</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d14">55</data>
+      <data key="d8">False</data>
+      <data key="d9">46.574566752453016</data>
+      <data key="d10">LINESTRING (257246.24472245487 9858056.275404947, 257267.49911393964 9858015.035522593)</data>
+      <data key="d11">46.394795547934464</data>
+    </edge>
+    <edge source="282040655" target="1284303765" id="0">
+      <data key="d4">114394269</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Tubman Road</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">18.33912923020198</data>
+      <data key="d10">LINESTRING (257295.7974102253 9858029.715663256, 257312.36750141374 9858037.583199324)</data>
+      <data key="d11">18.343010815408654</data>
+    </edge>
+    <edge source="282040655" target="1284303717" id="0">
+      <data key="d4">113187449</data>
+      <data key="d5">pedestrian</data>
+      <data key="d6">Titar Lane</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">44.31285732820646</data>
+      <data key="d10">LINESTRING (257295.7974102253 9858029.715663256, 257294.57250583466 9858030.057513224, 257275.2800228982 9858068.345744632)</data>
+      <data key="d11">44.1458135964522</data>
+    </edge>
+    <edge source="1284303717" target="282040560" id="0">
+      <data key="d4">113187436</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Biashara Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">31.429853002464537</data>
+      <data key="d10">LINESTRING (257275.2800228982 9858068.345744632, 257246.24472245487 9858056.275404947)</data>
+      <data key="d11">31.444264531913504</data>
+    </edge>
+    <edge source="1284303717" target="282040655" id="0">
+      <data key="d4">113187449</data>
+      <data key="d5">pedestrian</data>
+      <data key="d6">Titar Lane</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">44.31285732820646</data>
+      <data key="d10">LINESTRING (257275.2800228982 9858068.345744632, 257294.57250583466 9858030.057513224, 257295.7974102253 9858029.715663256)</data>
+      <data key="d11">44.1458135964522</data>
+    </edge>
+    <edge source="1284303789" target="1284303717" id="0">
+      <data key="d4">113187436</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Biashara Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">18.983042946313095</data>
+      <data key="d10">LINESTRING (257292.350719965 9858076.65615107, 257275.2800228982 9858068.345744632)</data>
+      <data key="d11">18.986088420139044</data>
+    </edge>
+    <edge source="1284303789" target="1284303765" id="0">
+      <data key="d4">113187434</data>
+      <data key="d5">pedestrian</data>
+      <data key="d6">Jaman Lane</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">44.07249791377339</data>
+      <data key="d10">LINESTRING (257292.350719965 9858076.65615107, 257312.36750141374 9858037.583199324)</data>
+      <data key="d11">43.90178923065046</data>
+    </edge>
+    <edge source="1284303765" target="1284303789" id="0">
+      <data key="d4">113187434</data>
+      <data key="d5">pedestrian</data>
+      <data key="d6">Jaman Lane</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">44.07249791377339</data>
+      <data key="d10">LINESTRING (257312.36750141374 9858037.583199324, 257292.350719965 9858076.65615107)</data>
+      <data key="d11">43.90178923065046</data>
+    </edge>
+    <edge source="1284303765" target="504962211" id="0">
+      <data key="d4">114394269</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Tubman Road</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">75.02756282176807</data>
+      <data key="d10">LINESTRING (257312.36750141374 9858037.583199324, 257379.23571468546 9858071.619999865)</data>
+      <data key="d11">75.03240458108237</data>
+    </edge>
+    <edge source="3590900167" target="3590900166" id="0">
+      <data key="d4">353311523</data>
+      <data key="d5">residential</data>
+      <data key="d6">unnamed_353311523</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">62.748708122687326</data>
+      <data key="d10">LINESTRING (257397.7976165181 9857923.991977867, 257368.63807505893 9857979.2837689)</data>
+      <data key="d11">62.509687359209245</data>
+    </edge>
+    <edge source="6552855233" target="1284303789" id="0">
+      <data key="d4">113187436</data>
+      <data key="d5">living_street</data>
+      <data key="d13">50</data>
+      <data key="d6">Biashara Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">3.3360931847849864</data>
+      <data key="d10">LINESTRING (257295.33304676448 9858078.151946843, 257292.350719965 9858076.65615107)</data>
+      <data key="d11">3.33641696051975</data>
+    </edge>
+    <edge source="280122535" target="504962211" id="0">
+      <data key="d4">580233744</data>
+      <data key="d5">tertiary</data>
+      <data key="d13">50</data>
+      <data key="d6">Muindi Mbingu Street</data>
+      <data key="d7">True</data>
+      <data key="d14">22</data>
+      <data key="d8">False</data>
+      <data key="d9">78.9694885540784</data>
+      <data key="d10">LINESTRING (257412.39445206232 9858000.304042691, 257379.23571468546 9858071.619999865)</data>
+      <data key="d11">78.64774384576494</data>
+    </edge>
+    <edge source="280122535" target="3590900166" id="0">
+      <data key="d4">408293313</data>
+      <data key="d5">unclassified</data>
+      <data key="d13">50</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">48.53442037395337</data>
+      <data key="d10">LINESTRING (257412.39445206232 9858000.304042691, 257368.63807505893 9857979.2837689)</data>
+      <data key="d11">48.54351077886299</data>
+    </edge>
+    <edge source="504962211" target="3590911088" id="0">
+      <data key="d4">['114394269', '388178010']</data>
+      <data key="d5">['living_street', 'tertiary']</data>
+      <data key="d13">50</data>
+      <data key="d6">['Tubman Road', 'Muindi Mbingu Street']</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">43.673417826695044</data>
+      <data key="d10">LINESTRING (257379.23571468546 9858071.619999865, 257384.3216077955 9858073.74807142, 257389.87491943018 9858076.064580306, 257404.0937491817 9858047.373093268)</data>
+      <data key="d11">[32.02150133868315, 5.513165811540959, 6.017099262694165]</data>
+      <data key="d14">22</data>
+      <data key="d15">1</data>
+    </edge>
+    <edge source="3590900166" target="3590900167" id="0">
+      <data key="d4">353311523</data>
+      <data key="d5">residential</data>
+      <data key="d6">unnamed_353311523</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">62.748708122687326</data>
+      <data key="d10">LINESTRING (257368.63807505893 9857979.2837689, 257397.7976165181 9857923.991977867)</data>
+      <data key="d11">62.509687359209245</data>
+    </edge>
+    <edge source="3590900166" target="9859582218" id="0">
+      <data key="d4">408293313</data>
+      <data key="d5">unclassified</data>
+      <data key="d13">50</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">22.851153944512305</data>
+      <data key="d10">LINESTRING (257368.63807505893 9857979.2837689, 257348.26268074074 9857968.935293987)</data>
+      <data key="d11">22.85273783670917</data>
+    </edge>
+    <edge source="9859582218" target="504962089" id="0">
+      <data key="d4">408293313</data>
+      <data key="d5">unclassified</data>
+      <data key="d13">50</data>
+      <data key="d6">Market Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">52.40543756099626</data>
+      <data key="d10">LINESTRING (257348.26268074074 9857968.935293987, 257301.58075455102 9857945.1140314)</data>
+      <data key="d11">52.40853731993013</data>
+    </edge>
+    <edge source="9859582218" target="9859577513" id="0">
+      <data key="d4">1074997668</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_1074997668</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">17.72286500716236</data>
+      <data key="d10">LINESTRING (257348.26268074074 9857968.935293987, 257339.91091173494 9857984.491170311)</data>
+      <data key="d11">17.656084892530544</data>
+    </edge>
+    <edge source="9859577513" target="9859582218" id="0">
+      <data key="d4">1074997668</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_1074997668</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">17.72286500716236</data>
+      <data key="d10">LINESTRING (257339.91091173494 9857984.491170311, 257348.26268074074 9857968.935293987)</data>
+      <data key="d11">17.656084892530544</data>
+    </edge>
+    <edge source="9859577513" target="9859577513" id="0">
+      <data key="d4">[ 1074997667, 1074997668 ]</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_[ 1074997667, 1074997668 ]</data>
+      <data key="d7">False</data>
+      <data key="d8">[ false, true ]</data>
+      <data key="d9">71.36438041384763</data>
+      <data key="d10">LINESTRING (257339.91091173494 9857984.491170311, 257321.2380162045 9857975.106463071, 257318.18762043648 9857975.103859944, 257315.71508408163 9857976.329534994, 257312.67043122186 9857982.642840229, 257312.47955901126 9857984.534130061, 257314.0577783155 9857987.632592339, 257328.37998500222 9857994.381039051, 257333.3014419897 9857993.511409208, 257336.44313700765 9857990.892603017, 257339.91091173494 9857984.491170311)</data>
+      <data key="d11">71.29645265718526</data>
+    </edge>
+    <edge source="9859577513" target="9859577513" id="1">
+      <data key="d4">[ 1074997667, 1074997668 ]</data>
+      <data key="d5">service</data>
+      <data key="d6">unnamed_[ 1074997667, 1074997668 ]</data>
+      <data key="d7">False</data>
+      <data key="d8">[ false, true ]</data>
+      <data key="d9">71.36438041384761</data>
+      <data key="d10">LINESTRING (257339.91091173494 9857984.491170311, 257336.44313700765 9857990.892603017, 257333.3014419897 9857993.511409208, 257328.37998500222 9857994.381039051, 257314.0577783155 9857987.632592339, 257312.47955901126 9857984.534130061, 257312.67043122186 9857982.642840229, 257315.71508408163 9857976.329534994, 257318.18762043648 9857975.103859944, 257321.2380162045 9857975.106463071, 257339.91091173494 9857984.491170311)</data>
+      <data key="d11">71.29645265718524</data>
+    </edge>
+    <edge source="2888466056" target="2888466063" id="0">
+      <data key="d4">285168909</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Koinange Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">41.96847884834331</data>
+      <data key="d10">LINESTRING (257420.07295314834 9857678.033800896, 257402.55085522673 9857715.980590422)</data>
+      <data key="d11">41.79692274394421</data>
+    </edge>
+    <edge source="2888466056" target="280120816" id="0">
+      <data key="d4">580233736</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Cardinal Otunga Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">74.78740034075167</data>
+      <data key="d10">LINESTRING (257420.07295314834 9857678.033800896, 257381.88120265954 9857659.208304469, 257360.81558938065 9857648.89238499, 257352.91452527 9857645.102723371)</data>
+      <data key="d11">[8.762896168464323, 42.579444819636, 23.45587895432894]</data>
+    </edge>
+    <edge source="2888466063" target="2888466064" id="0">
+      <data key="d4">285168909</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Koinange Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">39.58389788420017</data>
+      <data key="d10">LINESTRING (257402.55085522673 9857715.980590422, 257388.4669016752 9857743.123608217, 257384.3967029053 9857750.984588118)</data>
+      <data key="d11">39.431628261433595</data>
+    </edge>
+    <edge source="2888466063" target="2888466061" id="0">
+      <data key="d4">285168910</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">12.479749812620323</data>
+      <data key="d10">LINESTRING (257402.55085522673 9857715.980590422, 257407.88181952838 9857717.920842573, 257414.21424557027 9857720.437128587)</data>
+      <data key="d11">12.487125885012624</data>
+    </edge>
+    <edge source="2888466061" target="2888466063" id="0">
+      <data key="d4">285168910</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">12.479749812620323</data>
+      <data key="d10">LINESTRING (257414.21424557027 9857720.437128587, 257407.88181952838 9857717.920842573, 257402.55085522673 9857715.980590422)</data>
+      <data key="d11">12.487125885012624</data>
+    </edge>
+    <edge source="2888466064" target="2888466058" id="0">
+      <data key="d4">285168909</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Koinange Street</data>
+      <data key="d7">True</data>
+      <data key="d8">False</data>
+      <data key="d9">45.69131602830235</data>
+      <data key="d10">LINESTRING (257384.3967029053 9857750.984588118, 257375.85377560125 9857768.752512699, 257369.59968254648 9857778.790669037, 257365.2764625827 9857783.100813558, 257359.28260109216 9857788.250176335)</data>
+      <data key="d11">45.5487644859414</data>
+    </edge>
+    <edge source="2888466064" target="2888466066" id="0">
+      <data key="d4">285168911</data>
+      <data key="d5">living_street</data>
+      <data key="d6">Koinage Street</data>
+      <data key="d7">False</data>
+      <data key="d8">False</data>
+      <data key="d9">13.550308445854782</data>
+      <data key="d10">LINESTRING (257384.3967029053 9857750.984588118, 257391.04097263602 9857753.357345618, 257396.9278798783 9857756.11659492)</data>
+      <data key="d11">13.556703636122279</data>
+    </edge>
+    <edge source="280120816" target="2888466056" id="0">
+      <data key="d4">580233736</data>
+      <data key="d5">unclassified</data>
+      <data key="d6">Cardinal Otunga Street</data>
+      <data key="d7">False</data>
+      <data key="d8">True</data>
+      <data key="d9">74.78740034075167</data>
+      <data key="d10">LINESTRING (257352.91452527 9857645.102723371, 257360.81558938065 9857648.89238499, 257381.88120265954 9857659.208304469, 257420.07295314834 9857678.033800896)</data>
+      <data key="d11">[8.762896168464323, 42.579444819636, 23.45587895432894]</data>
+    </edge>
+    <data key="d0">EPSG:32737</data>
+    <data key="d1">True</data>
+  </graph>
+</graphml>

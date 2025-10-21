@@ -1,0 +1,34 @@
+{
+  "bounds": [
+    257024.35880730546,
+    9857598.638626937,
+    257486.7266486904,
+    9858116.289497813
+  ],
+  "crs": "EPSG:32737",
+  "width": 100,
+  "height": 100,
+  "cell_size_m": 4.623678413849557,
+  "buildings_count": 143,
+  "road_segments_drive": 81,
+  "road_segments_all": 243,
+  "obstacle_cells": 2434,
+  "coverage_percent": 24.34,
+  "note": "Buildings and roads from OSM - Nairobi CBD (drive + all variants)",
+  "grid_size": [
+    100,
+    100
+  ],
+  "row_origin": "top",
+  "affine_transform": [
+    4.623678413849557,
+    0.0,
+    257024.35880730546,
+    0.0,
+    -5.176508708763867,
+    9858116.289497813,
+    0.0,
+    0.0,
+    1.0
+  ]
+}
