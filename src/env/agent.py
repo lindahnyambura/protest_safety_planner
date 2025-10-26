@@ -526,6 +526,13 @@ class Agent:
         
         return harm_occurred
 
+from .mixins.graph_movement_mixin import GraphMovementMixin
+
+class GraphAgent(Agent, GraphMovementMixin):
+    """Agent subclass using graph-constrained movement."""
+    def decide_action(self, env):
+        return self.graph_decide_action(env)
+
 
 class PoliceAgent(Agent):
     """

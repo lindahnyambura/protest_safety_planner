@@ -16,8 +16,11 @@ from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 import yaml
 from pathlib import Path
+from affine import Affine
+import pandas as pd
 
-from .agent import Agent, PoliceAgent, AgentState
+from .agent import Agent, PoliceAgent, AgentState, GraphAgent
+from .mixins.graph_movement_mixin import GraphMovementMixin
 from .hazards import HazardField
 from .hazard_manager import HazardManager
 
@@ -95,11 +98,16 @@ class ProtestEnv(gym.Env):
         self.obstacle_mask = None
         self.hazard_field = None
 
-        # OSM data (if loaded)
+        # OSM and Graph-related state (if OSM loaded)
         self.osm_metadata = None
         self.buildings_gdf = None
-        self.streets_graph = None
-        
+        self.osm_graph = None
+        self.affine = None
+        self.cell_to_node = None
+        self.node_to_xy = {}  # node_id -> (x, y) for visualization
+        self.node_occupancy = {}  # node_id -> agent count
+        self.osm_bounds = None  # optional: for visualization extents
+
         # Agent management
         self.agents: List[Agent] = []
         self.protesters: List[Agent] = []
@@ -234,7 +242,10 @@ class ProtestEnv(gym.Env):
                     print(f"  Exit {g}: {count} agents")
     
         # 2. Execute movement with conflict resolution
-        self._execute_movement(actions)
+        if any(hasattr(a, "current_node") for a in self.agents):
+            self._execute_graph_movement(actions)
+        else:
+            self._execute_movement(actions)
     
         # 3. Update hazard field (diffusion, decay, sources)
         # Update all hazards (gas diffusion + instant hazard bookkeeping)
@@ -310,9 +321,14 @@ class ProtestEnv(gym.Env):
 
                 if result and result.get('is_real_osm'):
                     mask = result['obstacle_mask']
+                    meta = result.get('metadata', {})
+                    self.osm_metadata = meta
+                    self.buildings_gdf = result.get('buildings_gdf')
+                    self.osm_graph = result.get('graph')
+                    self.affine = result.get('affine') or Affine(*meta.get("affine_transform", (1, 0, 0, 0, -1, 0)))
 
-                    # Flip vertically if raster origin mismatch (rasterio uses bottom-left)
-                    if self.grid_metadata.origin == 'top_left':
+                    # Flip vertically if raster origin mismatch
+                    if meta.get("row_origin", "top") == "top":
                         mask = np.flipud(mask)
 
                     # Optional: warn if obstacle coverage too high
@@ -321,9 +337,19 @@ class ProtestEnv(gym.Env):
                         print(f"[WARN] High obstacle coverage ({coverage:.1f}%) – agent spawning may fail.")
 
                     print(f" Using REAL Nairobi CBD map ({coverage:.1f}% coverage).")
-                    self.osm_metadata = result.get('metadata', {})
-                    self.buildings_gdf = result.get('buildings_gdf')
-                    self.streets_graph = result.get('streets_graph')
+         
+                    # Load cell→node mapping
+                    cell_to_node_path = self.osm_metadata.get("cell_to_node_path", "data/cell_to_node.npy")
+                    if Path(cell_to_node_path).exists():
+                        self.cell_to_node = np.load(cell_to_node_path, allow_pickle=True)
+                        print(f"[INFO] Loaded cell→node lookup ({self.cell_to_node.shape}).")
+                    else:
+                        print("[WARN] Missing cell→node lookup; graph movement disabled.")
+
+                    # Build node→xy for visualization
+                    if self.osm_graph:
+                        self.node_to_xy = {nid: (d["x"], d["y"]) for nid, d in self.osm_graph.nodes(data=True)}
+                    
                     return mask
 
             except Exception as e:
@@ -396,21 +422,68 @@ class ProtestEnv(gym.Env):
         # Create protesters with assigned profiles
         base_speed = protester_cfg.get('speed_m_s', 1.2)
 
-        # Homogeneous protesters (all identical parameters)
+        # Check if graph movement is enabled
+        use_graph = self.osm_graph is not None and self.cell_to_node is not None
+
+        if use_graph:
+            from .agent import GraphAgent
+        else:
+            from .agent import Agent
+        
         for i, (pos, profile) in enumerate(zip(positions, agent_profiles)):
-            agent = Agent(
-                agent_id=i,
-                agent_type='protester',
-                pos=pos,
-                goal=self._assign_goal(pos, protester_cfg.get('goals', {})),
-                speed=base_speed,  # Will be modified by profile
-                risk_tolerance=0.3,  # Will be modified by profile
-                rng=self.rng,
-                profile_name=profile
-            )
+            # Clamp positions to grid
+            x, y = map(int, np.clip(pos, [0, 0], [self.width - 1, self.height - 1]))
+            goal_pos = self._assign_goal((x, y), protester_cfg.get('goals', {}))
+
+            if use_graph:
+                # Map to graph nodes
+                node_id = self.cell_to_node[y, x]
+                if node_id in (-1, None, "None", "nan") or pd.isna(node_id):
+                    node_id = min(
+                        self.osm_graph.nodes,
+                        key=lambda n: (
+                            (self.osm_graph.nodes[n]["x"] - x) ** 2 +
+                            (self.osm_graph.nodes[n]["y"] - y) ** 2
+                        )
+                    )
+
+                goal_node = self.cell_to_node[goal_pos[1], goal_pos[0]]
+                if goal_node in (-1, None, "None", "nan") or pd.isna(goal_node):
+                    goal_node = min(
+                        self.osm_graph.nodes,
+                        key=lambda n: (
+                            (self.osm_graph.nodes[n]["x"] - goal_pos[0]) ** 2 +
+                            (self.osm_graph.nodes[n]["y"] - goal_pos[1]) ** 2
+                        )
+                    )
+
+                agent = GraphAgent(
+                    agent_id=i,
+                    agent_type='protester',
+                    pos=(x, y),
+                    goal=goal_pos,
+                    speed=base_speed,
+                    risk_tolerance=0.3,
+                    rng=self.rng,
+                    profile_name=profile
+                )
+                agent.current_node = node_id
+                agent.goal_node = goal_node
+            
+            else:
+                agent = Agent(
+                    agent_id=i,
+                    agent_type='protester',
+                    pos=(x, y),
+                    goal=goal_pos,
+                    speed=base_speed,
+                    risk_tolerance=0.3,
+                    rng=self.rng,
+                    profile_name=profile
+                )
             self.agents.append(agent)
             self.protesters.append(agent)
-        
+
         # Spawn police
         police_cfg = self.config['agents']['police']
         n_police = police_cfg['count']
@@ -425,10 +498,11 @@ class ProtestEnv(gym.Env):
                 spawn_params=police_spawn_cfg
             )
         
-        for i, pos in enumerate(police_positions):
+        for j, pos in enumerate(police_positions):
+            x, y = map(int, np.clip(pos, [0, 0], [self.width - 1, self.height - 1]))
             agent = PoliceAgent(
                 agent_id=len(self.agents),
-                pos=tuple(pos),
+                pos=(x, y),
                 speed=police_cfg['speed_m_s'],
                 deploy_prob=police_cfg.get('deploy_prob', 0.01),
                 deploy_cooldown_max=police_cfg.get('deploy_cooldown', 50),
@@ -566,120 +640,197 @@ class ProtestEnv(gym.Env):
         return tuple(exit_points[0])  # Default
     
 
-    def _execute_movement(self, actions: Dict[int, int]):
-        """
-        Execute agent movement with conflict resolution, priority queuing,
-        and occupancy control.
+    # def _execute_movement(self, actions: Dict[int, int]):
+    #     """
+    #     Execute agent movement with conflict resolution, priority queuing,
+    #     and occupancy control.
 
-        Args:
-            actions: Dict mapping agent_id -> action (0-8)
-        """
-        # 8-neighbor offsets: 0=STAY, 1=N, 2=S, 3=E, 4=W, 5=NE, 6=NW, 7=SE, 8=SW
-        MOVE_OFFSETS = [
-            (0, 0),    # 0: STAY
-            (0, -1),   # 1: NORTH
-            (0, 1),    # 2: SOUTH
-            (1, 0),    # 3: EAST
-            (-1, 0),   # 4: WEST
-            (1, -1),   # 5: NORTHEAST
-            (-1, -1),  # 6: NORTHWEST
-            (1, 1),    # 7: SOUTHEAST
-            (-1, 1)    # 8: SOUTHWEST
-        ]
+    #     Args:
+    #         actions: Dict mapping agent_id -> action (0-8)
+    #     """
+    #     # 8-neighbor offsets: 0=STAY, 1=N, 2=S, 3=E, 4=W, 5=NE, 6=NW, 7=SE, 8=SW
+    #     MOVE_OFFSETS = [
+    #         (0, 0),    # 0: STAY
+    #         (0, -1),   # 1: NORTH
+    #         (0, 1),    # 2: SOUTH
+    #         (1, 0),    # 3: EAST
+    #         (-1, 0),   # 4: WEST
+    #         (1, -1),   # 5: NORTHEAST
+    #         (-1, -1),  # 6: NORTHWEST
+    #         (1, 1),    # 7: SOUTHEAST
+    #         (-1, 1)    # 8: SOUTHWEST
+    #     ]
 
-        move_requests = {}  # target_cell -> list of (agent, original_pos)
-        PRIORITY = {'police': 0, 'medic': 1, 'protester': 2, 'bystander': 3}
+    #     move_requests = {}  # target_cell -> list of (agent, original_pos)
+    #     PRIORITY = {'police': 0, 'medic': 1, 'protester': 2, 'bystander': 3}
 
-        # === Step 1: Collect movement requests ===
+    #     # === Step 1: Collect movement requests ===
+    #     for agent in self.agents:
+    #         # Skip waiting agents (they're delayed from previous congestion)
+    #         if getattr(agent, "state", None) == AgentState.WAITING:
+    #             # Optionally decay waiting timer if congestion clears
+    #             agent.wait_timer = max(0, getattr(agent, "wait_timer", 0) - 1)
+    #             # If timer is now 0, resume normal movement next step
+    #             if agent.wait_timer == 0:
+    #                 agent.state = AgentState.MOVING
+    #             continue
+
+    #         agent.move_accum += agent.speed
+
+    #         if agent.move_accum >= 1.0 and agent.state == AgentState.MOVING:
+    #             action = actions.get(agent.id, 0)
+    #             dx, dy = MOVE_OFFSETS[action]
+    #             target_x = agent.pos[0] + dx
+    #             target_y = agent.pos[1] + dy
+
+    #             # Validate bounds and obstacle mask
+    #             if (0 <= target_x < self.width and
+    #                 0 <= target_y < self.height and
+    #                 not self.obstacle_mask[target_y, target_x]):
+
+    #                 target_cell = (target_x, target_y)
+    #                 move_requests.setdefault(target_cell, []).append((agent, agent.pos))
+
+    #             agent.move_accum -= 1.0  # consume fractional accumulator
+
+    #     # === Step 2: Resolve conflicts (per target cell) ===
+    #     for target_cell, requests in move_requests.items():
+    #         if len(requests) <= self.n_cell_max:
+    #             # All can move freely
+    #             for agent, _ in requests:
+    #                 agent.pos = target_cell
+    #         else:
+    #             # Over-capacity: enforce priority queuing
+    #             sorted_requests = sorted(
+    #                 requests,
+    #                 key=lambda r: (
+    #                     PRIORITY.get(r[0].agent_type, 99),
+    #                     -getattr(r[0], "wait_timer", 0),  # agents waiting longer get precedence
+    #                     self.rng.random()
+    #                 )
+    #             )
+
+    #             winners = sorted_requests[:self.n_cell_max]
+    #             losers = sorted_requests[self.n_cell_max:]
+
+    #             for agent, _ in winners:
+    #                 agent.pos = target_cell
+    #                 agent.state = AgentState.MOVING
+    #                 agent.wait_timer = 0  # reset waiting time if they moved
+
+    #             for agent, original_pos in losers:
+    #                 agent.pos = original_pos
+    #                 agent.state = AgentState.WAITING
+    #                 agent.wait_timer = getattr(agent, "wait_timer", 0) + 1  # increment waiting time
+
+    #     # === Step 3: Update occupancy ===
+    #     self._update_occupancy_grid_simple()
+
+    #     # === Step 4: Post-movement congestion diagnostics (non-relocating) ===
+    #     overcrowded_cells = np.argwhere(self.occupancy_count > self.n_cell_max)
+    #     for (y, x) in overcrowded_cells:
+    #         agents_here = [a for a in self.agents if a.pos == (x, y)]
+    #         if len(agents_here) > self.n_cell_max:
+    #             # No teleportation — just mark excess as waiting
+    #             sorted_agents = sorted(
+    #                 agents_here,
+    #                 key=lambda a: (
+    #                     PRIORITY.get(a.agent_type, 99),
+    #                     -getattr(a, "wait_timer", 0),
+    #                     self.rng.random()
+    #                 )
+    #             )
+    #             survivors = sorted_agents[:self.n_cell_max]
+    #             displaced = sorted_agents[self.n_cell_max:]
+
+    #             for a in survivors:
+    #                 a.state = AgentState.MOVING
+    #                 a.wait_timer = 0
+    #             for a in displaced:
+    #                 a.state = AgentState.WAITING
+    #                 a.wait_timer = getattr(a, "wait_timer", 0) + 1
+
+    #             print(f"[WARN] Cell ({x},{y}) overcrowded; {len(displaced)} agents waiting instead of relocating.")
+
+    #     # === Step 5: Final occupancy update ===
+    #     self._update_occupancy_grid_simple()
+
+    def _execute_graph_movement(self, actions: Dict[int, Any]):
+        """Execute agent movement on the OSM graph with occupancy control."""
+        if self.osm_graph is None:
+            print("[WARN] Graph movement called without graph.")
+            return
+
+        move_requests = {}
+        PRIORITY = {'police': 0, 'medic': 1, 'protester': 2}
+
+        # Step 1: Gather requests
         for agent in self.agents:
-            # Skip waiting agents (they're delayed from previous congestion)
-            if getattr(agent, "state", None) == AgentState.WAITING:
-                # Optionally decay waiting timer if congestion clears
-                agent.wait_timer = max(0, getattr(agent, "wait_timer", 0) - 1)
-                # If timer is now 0, resume normal movement next step
-                if agent.wait_timer == 0:
-                    agent.state = AgentState.MOVING
+            if not hasattr(agent, "current_node"):
+                continue  # skip grid agents
+
+            next_node = actions.get(agent.id, agent.current_node)
+            
+            # Normalize node IDs to string for consistent comparison
+            if isinstance(next_node, (bytes, np.generic)):
+                next_node = next_node.item() if hasattr(next_node, "item") else next_node
+            next_node = str(next_node)
+            agent.current_node = str(agent.current_node)
+
+            # Skip if invalid or same node
+            if next_node == agent.current_node:
                 continue
+            if next_node not in self.osm_graph:
+                continue  # invalid
 
-            agent.move_accum += agent.speed
+            move_requests.setdefault(next_node, []).append(agent)
 
-            if agent.move_accum >= 1.0 and agent.state == AgentState.MOVING:
-                action = actions.get(agent.id, 0)
-                dx, dy = MOVE_OFFSETS[action]
-                target_x = agent.pos[0] + dx
-                target_y = agent.pos[1] + dy
-
-                # Validate bounds and obstacle mask
-                if (0 <= target_x < self.width and
-                    0 <= target_y < self.height and
-                    not self.obstacle_mask[target_y, target_x]):
-
-                    target_cell = (target_x, target_y)
-                    move_requests.setdefault(target_cell, []).append((agent, agent.pos))
-
-                agent.move_accum -= 1.0  # consume fractional accumulator
-
-        # === Step 2: Resolve conflicts (per target cell) ===
-        for target_cell, requests in move_requests.items():
-            if len(requests) <= self.n_cell_max:
-                # All can move freely
-                for agent, _ in requests:
-                    agent.pos = target_cell
+        # Step 2: Resolve congestion
+        for node_id, agents_here in move_requests.items():
+            if len(agents_here) <= self.n_cell_max:
+                for a in agents_here:
+                    a.current_node = node_id
+                    try:
+                        a.pos = self._node_to_cell(node_id)
+                    except Exception:
+                        print(f"[WARN] Failed to map node {node_id} to cell for agent {a.id}")
             else:
                 # Over-capacity: enforce priority queuing
-                sorted_requests = sorted(
-                    requests,
-                    key=lambda r: (
-                        PRIORITY.get(r[0].agent_type, 99),
-                        -getattr(r[0], "wait_timer", 0),  # agents waiting longer get precedence
-                        self.rng.random()
-                    )
-                )
-
-                winners = sorted_requests[:self.n_cell_max]
-                losers = sorted_requests[self.n_cell_max:]
-
-                for agent, _ in winners:
-                    agent.pos = target_cell
-                    agent.state = AgentState.MOVING
-                    agent.wait_timer = 0  # reset waiting time if they moved
-
-                for agent, original_pos in losers:
-                    agent.pos = original_pos
-                    agent.state = AgentState.WAITING
-                    agent.wait_timer = getattr(agent, "wait_timer", 0) + 1  # increment waiting time
-
-        # === Step 3: Update occupancy ===
-        self._update_occupancy_grid_simple()
-
-        # === Step 4: Post-movement congestion diagnostics (non-relocating) ===
-        overcrowded_cells = np.argwhere(self.occupancy_count > self.n_cell_max)
-        for (y, x) in overcrowded_cells:
-            agents_here = [a for a in self.agents if a.pos == (x, y)]
-            if len(agents_here) > self.n_cell_max:
-                # No teleportation — just mark excess as waiting
                 sorted_agents = sorted(
                     agents_here,
-                    key=lambda a: (
-                        PRIORITY.get(a.agent_type, 99),
-                        -getattr(a, "wait_timer", 0),
-                        self.rng.random()
-                    )
+                    key=lambda a: (PRIORITY.get(a.agent_type, 99), self.rng.random())
                 )
-                survivors = sorted_agents[:self.n_cell_max]
-                displaced = sorted_agents[self.n_cell_max:]
-
-                for a in survivors:
-                    a.state = AgentState.MOVING
-                    a.wait_timer = 0
-                for a in displaced:
+                # Allow top N_CELL_MAX to move
+                for a in sorted_agents[:self.n_cell_max]:
+                    a.current_node = node_id
+                    try:
+                        a.pos = self._node_to_cell(node_id)
+                    except Exception:
+                        print(f"[WARN] Failed to map node {node_id} to cell for agent {a.id}")
+                # Others wait
+                for a in sorted_agents[self.n_cell_max:]:
                     a.state = AgentState.WAITING
-                    a.wait_timer = getattr(a, "wait_timer", 0) + 1
+                
+                # info log
+                print(f"[INFO] {len(sorted_agents) - self.n_cell_max} agents waiting at node {node_id}")
 
-                print(f"[WARN] Cell ({x},{y}) overcrowded; {len(displaced)} agents waiting instead of relocating.")
+        # Final occupancy update
+        self._update_node_occupancy()
 
-        # === Step 5: Final occupancy update ===
-        self._update_occupancy_grid_simple()
+    def _node_to_cell(self, node_id: str) -> Tuple[int, int]:
+        """Convert node coordinates to grid cell indices for raster overlays."""
+        if self.affine is None:
+            return (0, 0)
+        x, y = self.node_to_xy[node_id]
+        col, row = ~self.affine * (x, y)
+        return int(col), int(row)
+
+    def _update_node_occupancy(self):
+        self.node_occupancy.clear()
+        for a in self.agents:
+            if hasattr(a, "current_node"):
+                n = a.current_node
+                self.node_occupancy[n] = self.node_occupancy.get(n, 0) + 1
 
 
     def _update_occupancy_grid_simple(self):
