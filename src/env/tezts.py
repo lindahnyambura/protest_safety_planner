@@ -1,9 +1,9 @@
-from real_nairobi_loader import RealNairobiLoader
+from nairobi_loader import NairobiLoader
 import numpy as np
 import json
 
 # 1. Initialize loader
-loader = RealNairobiLoader(grid_size=100)
+loader = NairobiLoader(grid_size=100)
 
 # 2. Run the full pipeline (build graph + precompute lookup)
 result = loader.load_all(build_graph=True)

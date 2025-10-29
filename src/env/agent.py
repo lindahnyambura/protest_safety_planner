@@ -54,6 +54,15 @@ class Agent:
             'w_hazard_multiplier': 0.5 ,    # Less concerned about hazards
             'lookahead_multiplier': 0.5,  # Less concerned about future hazards
             'profile_multiplier': 0.5
+        },
+        'vulnerable': {
+            'speed_multiplier': 0.58,      # 0.7 m/s
+            'risk_tolerance': 0.05,
+            'w_hazard_multiplier': 2.0,    # Highly sensitive
+            'lookahead_multiplier': 2.0,
+            'profile_multiplier': 2.0,
+            'panic_threshold': 0.2,
+            'clustering_affinity': 0.9
         }
     }
     
@@ -91,7 +100,7 @@ class Agent:
             speed: Base cells per step (will be modified by profile)
             risk_tolerance: Base risk tolerance (will be modified by profile)
             rng: Random number generator
-            profile_name: Agent profile ('cautious', 'average', 'bold')
+            profile_name: Agent profile ('cautious', 'average', 'bold, 'vulnerable')
         """
         # Apply profile modifications
         profile = self.AGENT_PROFILES.get(profile_name, self.AGENT_PROFILES['average'])
@@ -109,6 +118,9 @@ class Agent:
         # Use profile risk tolerance
         self.risk_tolerance: np.float32 = np.float32(profile['risk_tolerance'])
         
+        # Panic threshold
+        self.panic_threshold: float = 0.5  # default baseline; can be tuned per agent type
+
         # Apply profile multiplier
         self.profile_multiplier: float = profile.get('profile_multiplier', 1.0)
         
@@ -145,7 +157,270 @@ class Agent:
 
         # Wait timer
         self.wait_timer: int = wait_timer
+
+        # Behavioral and cognitive dynamics
+        self.behavioral_state: str = 'CALM'   # CALM, ALERT, PANIC, FLEEING
+        self.time_in_safe_zone: int = 0       # Steps spent in safe area
+        self.T_MIN_SAFE: int = 300            # 5 minutes (steps) before exit-seeking
+
+        # Dynamic multi-objective weights (will evolve via state transitions)
+        self.goal_weights: Dict[str, float] = {
+            'flee': 0.10,
+            'safety': 0.40,
+            'disperse': 0.30,
+            'exit': 0.20
+        }
+
+    def update_behavioral_state(self, env):
+        """
+        Update behavioral state based on hazard exposure.
         
+        State transitions:
+        CALM → ALERT (hazard detected nearby)
+        ALERT → PANIC (high concentration at position)
+        PANIC → FLEEING (sustained exposure)
+        FLEEING → CALM (reached safe zone)
+        """
+        x, y = self.pos
+        local_hazard = env.hazard_field.concentration[y, x]
+        
+        # Check nearby hazard (3x3 neighborhood)
+        nearby_hazard = 0.0
+        for dx in range(-1, 2):
+            for dy in range(-1, 2):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < env.width and 0 <= ny < env.height:
+                    nearby_hazard = max(nearby_hazard, env.hazard_field.concentration[ny, nx])
+        
+        # State transitions
+        if self.behavioral_state == 'CALM':
+            if nearby_hazard > self.panic_threshold * 0.5:
+                self.behavioral_state = 'ALERT'
+                self._update_goal_weights('ALERT')
+        
+        elif self.behavioral_state == 'ALERT':
+            if local_hazard > self.panic_threshold:
+                self.behavioral_state = 'PANIC'
+                self._update_goal_weights('PANIC')
+            elif nearby_hazard < self.panic_threshold * 0.3:
+                self.behavioral_state = 'CALM'
+                self._update_goal_weights('CALM')
+        
+        elif self.behavioral_state == 'PANIC':
+            if local_hazard > self.panic_threshold * 1.5:
+                self.behavioral_state = 'FLEEING'
+                self._update_goal_weights('FLEEING')
+            elif local_hazard < self.panic_threshold * 0.5:
+                self.behavioral_state = 'ALERT'
+                self._update_goal_weights('ALERT')
+        
+        elif self.behavioral_state == 'FLEEING':
+            if local_hazard < self.panic_threshold * 0.2 and nearby_hazard < self.panic_threshold * 0.3:
+                self.behavioral_state = 'CALM'
+                self._update_goal_weights('CALM')
+                self.time_in_safe_zone += 1
+            else:
+                self.time_in_safe_zone = 0
+
+        # Log state changes
+        if hasattr(self, '_prev_behavioral_state'):
+            if self._prev_behavioral_state != self.behavioral_state:
+                if hasattr(env, '_log_event'):
+                    current_node = getattr(self, 'current_node', None)
+                    env._log_event('agent_state_change',
+                                agent_id=self.id,
+                                old_state=self._prev_behavioral_state,
+                                new_state=self.behavioral_state,
+                                current_node_id=current_node,
+                                grid_pos=self.pos)
+    
+        self._prev_behavioral_state = self.behavioral_state
+    def _update_goal_weights(self, state: str):
+        """Update goal weights based on behavioral state."""
+        if state == 'CALM':
+            self.goal_weights = {
+                'flee': 0.05,
+                'safety': 0.35,
+                'disperse': 0.35,
+                'exit': 0.25 if self.time_in_safe_zone > self.T_MIN_SAFE else 0.05
+            }
+        elif state == 'ALERT':
+            self.goal_weights = {
+                'flee': 0.4,
+                'safety': 0.4,
+                'disperse': 0.15,
+                'exit': 0.05
+            }
+        elif state == 'PANIC':
+            self.goal_weights = {
+                'flee': 0.7,
+                'safety': 0.2,
+                'disperse': 0.05,
+                'exit': 0.05
+            }
+        elif state == 'FLEEING':
+            self.goal_weights = {
+                'flee': 0.85,
+                'safety': 0.10,
+                'disperse': 0.00,
+                'exit': 0.05
+            }
+
+    def _select_dynamic_goal(self, env):
+        """
+        Select goal based on weighted behavioral objectives.
+
+        Objectives:
+        1. Flee: Move away from nearest hazard source
+        2. Safety: Move toward low-risk zones
+        3. Disperse: Avoid crowded areas
+        4. Exit: Move toward nearest exit (only after T_MIN_SAFE in safe zone)
+        """
+        x, y = self.pos
+
+        # Exit activation logic
+        should_exit = self._should_prioritize_exit(env)
+        if should_exit:
+            # Override weights to prioritize exit
+            self.goal_weights["exit"] = 0.7
+            self.goal_weights["flee"] = 0.1
+            self.goal_weights["safety"] = 0.15
+            self.goal_weights["disperse"] = 0.05
+
+        # Objective 1: Flee vector (away from hazards)
+        flee_vector = np.zeros(2, dtype=float)
+        if hasattr(env, "hazard_field") and hasattr(env.hazard_field, "concentration"):
+            for dx in range(-5, 6):
+                for dy in range(-5, 6):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < env.width and 0 <= ny < env.height:
+                        hazard = env.hazard_field.concentration[ny, nx]
+                        if hazard > self.panic_threshold * 0.3:
+                            # Repulsion inversely proportional to distance
+                            dist = max(np.hypot(dx, dy), 1e-3)
+                            flee_vector[0] -= dx / dist * hazard
+                            flee_vector[1] -= dy / dist * hazard
+
+        # Objective 2: Safety vector (toward low-risk areas)
+        safety_vector = self._find_safest_direction(env)
+
+        # Objective 3: Dispersion vector (away from crowds)
+        disperse_vector = np.zeros(2, dtype=float)
+        for agent in env.agents:
+            if agent.id != self.id and agent.state == AgentState.MOVING:
+                dx = self.pos[0] - agent.pos[0]
+                dy = self.pos[1] - agent.pos[1]
+                dist = max(np.hypot(dx, dy), 1e-3)
+                if dist < 5:  # Only consider nearby agents
+                    disperse_vector[0] += dx / (dist ** 2)
+                    disperse_vector[1] += dy / (dist ** 2)
+
+        # Objective 4: Exit vector (toward nearest exit)
+        exit_vector = np.zeros(2, dtype=float)
+        if hasattr(env, "exit_nodes") and self.time_in_safe_zone > self.T_MIN_SAFE:
+            exits = env.exit_nodes.get("primary", []) + env.exit_nodes.get("secondary", [])
+            if exits:
+                nearest_exit = min(
+                    exits, key=lambda e: np.hypot(e["grid_pos"][0] - x, e["grid_pos"][1] - y)
+                )
+                exit_vector[0] = nearest_exit["grid_pos"][0] - x
+                exit_vector[1] = nearest_exit["grid_pos"][1] - y
+
+        # Combine weighted vectors safely
+        combined = (
+            self.goal_weights.get("flee", 0.0) * flee_vector
+            + self.goal_weights.get("safety", 0.0) * safety_vector
+            + self.goal_weights.get("disperse", 0.0) * disperse_vector
+            + self.goal_weights.get("exit", 0.0) * exit_vector
+        )
+
+        # Normalize and set goal
+        magnitude = np.linalg.norm(combined)
+        if magnitude > 1e-3:
+            direction = combined / magnitude
+            goal_x = int(np.clip(x + direction[0] * 20, 0, env.width - 1))
+            goal_y = int(np.clip(y + direction[1] * 20, 0, env.height - 1))
+            self.goal = (goal_x, goal_y)
+
+    def _should_prioritize_exit(self, env) -> bool:
+        """
+        Determine if agent should prioritize exiting based on:
+        1. Time spent in safe zone (T_MIN_SAFE threshold)
+        2. Cumulative harm budget exceeded
+        3. Mass exodus observed (social influence)
+        """
+        # Sufficient time spent in a safe zone
+        if getattr(self, "time_in_safe_zone", 0.0) > getattr(self, "T_MIN_SAFE", 30.0):
+            return True
+
+        # Personal harm budget exceeded
+        # H_crit = (
+        #     self.config.get("hazards", {})
+        #     .get("gas", {})
+        #     .get("H_crit", 5.0)
+        # )
+        H_crit = getattr(self, "H_crit", 5.0)
+        H_BUDGET = 0.5 * H_crit
+        if getattr(self, "cumulative_harm", 0.0) > H_BUDGET:
+            return True
+
+        # Social influence: mass exodus around agent
+        if not hasattr(env, "exit_nodes"):
+            return False
+
+        exits = env.exit_nodes.get("primary", []) + env.exit_nodes.get("secondary", [])
+        if not exits:
+            return False
+
+        exit_positions = [e["grid_pos"] for e in exits]
+        nearby_agents = 0
+        exiting_agents = 0
+
+        for agent in env.agents:
+            # Skip self or inactive agents
+            if agent.id == self.id or agent.state != AgentState.MOVING:
+                continue
+
+            dist = np.hypot(agent.pos[0] - self.pos[0], agent.pos[1] - self.pos[1])
+            if dist < 10:  # Within 10-cell neighborhood
+                nearby_agents += 1
+
+                # Check if this agent’s goal is near an exit
+                if hasattr(agent, "goal"):
+                    for exit_pos in exit_positions:
+                        if np.hypot(agent.goal[0] - exit_pos[0], agent.goal[1] - exit_pos[1]) < 5:
+                            exiting_agents += 1
+                            break
+
+        # Require at least 5 neighbors to trigger social behavior
+        if nearby_agents >= 5 and (exiting_agents / nearby_agents) > 0.3:
+            return True
+
+        return False
+
+    def _find_safest_direction(self, env) -> np.ndarray:
+        """
+        Find direction toward safer areas using local hazard gradient descent.
+        """
+        x, y = self.pos
+        gradient = np.zeros(2, dtype=float)
+
+        if not hasattr(env, "hazard_field") or not hasattr(env.hazard_field, "concentration"):
+            return gradient
+
+        current_hazard = env.hazard_field.concentration[y, x]
+
+        # Sample 8 neighboring directions
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < env.width and 0 <= ny < env.height:
+                neighbor_hazard = env.hazard_field.concentration[ny, nx]
+                hazard_diff = current_hazard - neighbor_hazard
+                gradient[0] += dx * hazard_diff
+                gradient[1] += dy * hazard_diff
+
+        return gradient
+ 
     def decide_action(self, env) -> int:
         """
         Decide next action based on scoring function.
@@ -159,14 +434,16 @@ class Agent:
         if self.state != AgentState.MOVING:
             return 0  # STAY if not moving
         
+        # Update behavioral state
+        self.update_behavioral_state(env)
+
         # Check if reached goal
         if self._at_goal():
             self.state = AgentState.SAFE
             return 0
         
-        # Update goal dynamically
-        exits = env.config['agents']['protesters']['goals']['exit_points']
-        self.update_goal(env, exits)
+        # Dynamic goal selection
+        self._select_dynamic_goal(env)
 
         # Score all possible moves
         scores = self._score_neighbors(env)
@@ -593,7 +870,7 @@ class PoliceAgent(Agent):
         4. Deploy gas/water/shooting via env.hazards with cooldowns & probs
         """
         # Ensure we have x,y defined early (fixes NameError)
-        x, y = self.pos
+        pos_x, pos_y = self.pos 
 
         # 1. Get moving protesters positions
         protester_positions = [a.pos for a in env.protesters if a.state == AgentState.MOVING]
@@ -605,13 +882,21 @@ class PoliceAgent(Agent):
 
         # 3. Find nearest exit from config
         exits = env.config['agents']['protesters'].get('goals', {}).get('exit_points', [])
-        if not exits:
-            # fallback to center if no exits configured
+        # sanitize exit coordinates
+        clean_exits = []
+        for ex in exits:
+            if isinstance(ex, (list, tuple)) and len(ex) >= 2:
+                try:
+                    clean_exits.append((float(ex[0]), float(ex[1])))
+                except (ValueError, TypeError):
+                    continue
+            
+        if not clean_exits:
             nearest_exit = np.array([env.width // 2, env.height // 2], dtype=float)
         else:
-            dists = [np.hypot(centroid[0] - ex[0], centroid[1] - ex[1]) for ex in exits]
-            nearest_exit = np.array(exits[int(np.argmin(dists))], dtype=float)
-
+            dists = [np.hypot(centroid[0] - ex[0], centroid[1] - ex[1]) for ex in clean_exits]
+            nearest_exit = np.array(clean_exits[int(np.argmin(dists))], dtype=float)
+        
         # 4. Intercept point: halfway between centroid and chosen exit
         intercept = ((centroid + nearest_exit) / 2.0).astype(int)
 
@@ -654,14 +939,15 @@ class PoliceAgent(Agent):
                 nearby_density = 0
                 for dx in range(-3, 4):
                     for dy in range(-3, 4):
-                        nx, ny = x + dx, y + dy
+                        nx, ny = pos_x + dx, pos_y + dy 
                         if 0 <= nx < env.width and 0 <= ny < env.height:
                             nearby_density += env.occupancy_count[ny, nx]
+                
                 wc_prob = wc_cfg.get('prob', 0.01)
                 if nearby_density >= 15 and self.rng.random() < wc_prob:
                     env.hazards.deploy_water_cannon(
                         env=env,
-                        x=x, y=y,
+                        x=pos_x, y=pos_y,
                         direction=(0, 1),
                         strength=wc_cfg.get('strength_m', 5.0),
                         radius=wc_cfg.get('radius', 6),
@@ -680,10 +966,8 @@ class PoliceAgent(Agent):
             p_shoot = shoot_cfg.get('prob_per_step', 0.005)
             if self.shoot_cooldown <= 0 and self.rng.random() < p_shoot:
                 candidates = [p for p in env.protesters if p.state == AgentState.MOVING]
-                if not candidates:
-                    candidates = env.protesters
                 if candidates:
-                    target = min(candidates, key=lambda a: (a.pos[0] - x)**2 + (a.pos[1] - y)**2)
+                    target = min(candidates, key=lambda a: (a.pos[0] - pos_x)**2 + (a.pos[1] - pos_y)**2)
                     env.hazards.shooting_event(env=env, shooter_agent=self, targets=[target])
                     self.shoot_cooldown = shoot_cfg.get('cooldown', 100)
             else:
@@ -693,8 +977,8 @@ class PoliceAgent(Agent):
     
     def _attempt_gas_deployment(self, env):
         """Deploy gas AHEAD toward crowd, not at police position."""
-        x, y = self.pos
-    
+        pos_x, pos_y = self.pos
+
         # Get crowd centroid
         protester_positions = [a.pos for a in env.protesters if a.state == AgentState.MOVING]
         if not protester_positions:
@@ -703,8 +987,8 @@ class PoliceAgent(Agent):
         centroid = np.mean(protester_positions, axis=0)
     
         # Deploy at point between police and crowd (not on obstacle)
-        deploy_x = int((x + centroid[0]) / 2)
-        deploy_y = int((y + centroid[1]) / 2)
+        deploy_x = int((pos_x + centroid[0]) / 2)
+        deploy_y = int((pos_y + centroid[1]) / 2)
     
         # Ensure deployment location is valid
         if env.obstacle_mask[deploy_y, deploy_x]:
@@ -717,9 +1001,27 @@ class PoliceAgent(Agent):
                         deploy_x, deploy_y = test_x, test_y
                         break
                         
-        print(f"Police at {(x,y)}, deploying at {(deploy_x, deploy_y)}, obstacle={env.obstacle_mask[deploy_y, deploy_x]}")
         # Deploy gas
         inj_intensity = self.config['hazards']['gas'].get('inj_intensity', 12.0)
         env.hazards.deploy_gas(env=env, x=deploy_x, y=deploy_y, 
                             intensity=inj_intensity, agent_id=self.id)
         self.deploy_cooldown = self.deploy_cooldown_max
+
+        print(f"[HAZARD] Step {env.step_count}: Police {self.id} deployed tear gas at ({deploy_x}, {deploy_y}), intensity={inj_intensity:.1f}")
+        
+        # NEW: Log with street name
+        if hasattr(env, "_log_event"):
+            deploy_node = None
+            if hasattr(env, "cell_to_node"):
+                try:
+                    deploy_node = env.cell_to_node[deploy_y, deploy_x]
+                except Exception:
+                    pass  # fail-safe if grid-node mapping incomplete
+            env._log_event(
+                "hazard_deployed",
+                agent_id=self.id,
+                node_id=deploy_node,
+                grid_pos=(deploy_x, deploy_y),
+                hazard_type="tear_gas",
+                intensity=inj_intensity,
+            )

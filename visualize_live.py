@@ -22,7 +22,7 @@ import networkx as nx
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-from src.env import ProtestEnv, load_config
+from src.env.protest_env import ProtestEnv, load_config
 from src.env.agent import AgentState
 
 

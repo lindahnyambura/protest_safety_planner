@@ -30,27 +30,39 @@ class GraphMovementMixin:
 
     def graph_decide_action(self, env):
         """
-        Decide which graph node to move toward next.
+        Graph-based movement with behavioral state awareness.
 
-        Balances multiple factors:
-        - Distance (shorter edges preferred)
-        - Goal proximity (heuristic utility)
-        - Hazard avoidance (based on env.hazard_field)
-        - Congestion avoidance (based on env.node_occupancy)
+        Agents now make routing decisions that depend on their
+        current behavioral state (CALM, ALERT, PANIC, FLEEING).
 
-        Returns:
-            next_node_id (str or int): Chosen neighbor node to move to,
-                                       or current node if staying put.
+        Behaviors:
+        - CALM / ALERT: normal goal-directed navigation
+        - PANIC: hypersensitive to hazard proximity (triples hazard penalty)
+        - FLEEING: overrides normal routing, moves away from hazard zones
         """
+    
         G = getattr(env, "osm_graph", None)
         if G is None or self.current_node not in G:
             return self.current_node
 
-        # If agent is already close to its goal, do not move
+        # Update behavioral state before routing
+        if hasattr(self, "update_behavioral_state"):
+            self.update_behavioral_state(env)
+
+        # State-dependent logic
+        if hasattr(self, "behavioral_state"):
+            if self.behavioral_state == "FLEEING":
+                # Override goal entirely: flee hazard hotspots
+                return self._flee_on_graph(env, G)
+            elif self.behavioral_state == "PANIC":
+                # Increase hazard penalty temporarily
+                self._temp_hazard_multiplier = 3.0
+
+        # Standard goal-directed movement
         if self._at_goal_node(G):
             return self.current_node
 
-        # Evaluate all neighbors
+        # Evaluate all neighboring nodes
         neighbor_scores = {}
         breakdowns = {}
         for nbr in G.neighbors(self.current_node):
@@ -61,28 +73,109 @@ class GraphMovementMixin:
         if not neighbor_scores:
             return self.current_node
 
-        # Choose best neighbor by score
+        # Select best neighbor based on combined score
         best_node = max(neighbor_scores, key=neighbor_scores.get)
 
-        # Optional debug diagnostics
+        # Reset temporary hazard multiplier (used in PANIC mode)
+        if hasattr(self, "_temp_hazard_multiplier"):
+            delattr(self, "_temp_hazard_multiplier")
+
+        # Optional: Debug visualization or logs
         if getattr(self, "debug_routing", False):
             self._print_diagnostic(env, G, neighbor_scores, breakdowns, best_node)
+
+        return best_node
+    
+    def _flee_on_graph(self, env, G):
+        """
+        Flee behavior: move away from hazard sources on graph.
+
+        Strategy:
+        1. Identify nearest hazard hotspot (above panic threshold)
+        2. Choose neighbor node that maximizes distance *from* the hotspot
+        3. Skip neighbors with significant hazard exposure
+        4. Fallback to normal routing if no viable escape path
+        """
+        if self.current_node not in G:
+            return self.current_node
+
+        node_data = G.nodes[self.current_node]
+        cx, cy = node_data.get("x", 0), node_data.get("y", 0)
+
+        panic_threshold = getattr(self, "panic_threshold", 0.5)
+
+        # Step 1: Identify hazard hotspots
+        hotspots = []
+        for node_id, ndata in G.nodes(data=True):
+            try:
+                cell = env._node_to_cell(str(node_id))
+                hazard = env.hazard_field.concentration[cell[1], cell[0]]
+                if hazard > panic_threshold:
+                    hotspots.append((node_id, ndata.get("x", 0), ndata.get("y", 0), hazard))
+            except Exception:
+                continue
+
+        if not hotspots:
+            # No visible hazard → maintain current position
+            return self.current_node
+
+        # Step 2: Find nearest hotspot
+        nearest_hotspot = min(hotspots, key=lambda h: (h[1] - cx) ** 2 + (h[2] - cy) ** 2)
+        hx, hy = nearest_hotspot[1], nearest_hotspot[2]
+
+        # Step 3: Evaluate neighbor escape options
+        best_node = self.current_node
+        max_distance = 0.0
+
+        for nbr in G.neighbors(self.current_node):
+            nbr_data = G.nodes[nbr]
+            nx, ny = nbr_data.get("x", 0), nbr_data.get("y", 0)
+
+            # Distance from hazard hotspot
+            dist_from_hotspot = np.hypot(nx - hx, ny - hy)
+
+            # Skip if the neighbor is itself hazardous
+            try:
+                nbr_cell = env._node_to_cell(str(nbr))
+                nbr_hazard = env.hazard_field.concentration[nbr_cell[1], nbr_cell[0]]
+                if nbr_hazard > panic_threshold * 0.5:
+                    continue
+            except Exception:
+                pass
+
+            if dist_from_hotspot > max_distance:
+                max_distance = dist_from_hotspot
+                best_node = nbr
+
+        # Fallback if no safe move found
+        if best_node == self.current_node and hasattr(self, "_compute_neighbor_score"):
+            # Try normal scoring if fleeing fails
+            try:
+                neighbor_scores = {
+                    nbr: self._compute_neighbor_score(env, G, nbr)[0]
+                    for nbr in G.neighbors(self.current_node)
+                }
+                if neighbor_scores:
+                    best_node = max(neighbor_scores, key=neighbor_scores.get)
+            except Exception:
+                pass
 
         return best_node
 
     def _compute_neighbor_score(self, env, G, nbr):
         """
-        Compute a desirability score for a neighbor node.
+        Compute desirability of moving to a neighbor node with
+        behavioral state awareness.
 
-        Combines several components:
-        - Distance cost (shorter edges are better)
-        - Goal utility (closeness to goal)
-        - Hazard penalty (discourages moving into dangerous zones)
-        - Congestion penalty (discourages crowded nodes)
+        Components:
+            - Distance cost (shorter is better)
+            - Goal utility (proximity to goal)
+            - Hazard penalty (scaled by behavioral state + tolerance)
+            - Congestion penalty (crowd avoidance)
+            - Dispersion bonus (group cohesion or independence)
 
         Returns:
-            tuple:
-                (total_score: float, components: dict[str, float])
+            (total_score: float, components: dict[str, float])
         """
         components = {}
 
@@ -97,34 +190,66 @@ class GraphMovementMixin:
             dist = 1.0
         components["distance"] = dist
 
-        # Goal-directed utility
+        # Goal utility
         goal_utility = self._goal_heuristic(G, nbr)
         components["goal_utility"] = goal_utility
 
-        # Hazard penalty (optional)
+        # Hazard penalty (state-aware)
         hazard_penalty = 0.0
         if hasattr(env, "hazard_field") and env.hazard_field is not None:
-            cell = env._node_to_cell(nbr)
-            if 0 <= cell[1] < env.height and 0 <= cell[0] < env.width:
-                hazard_penalty = env.hazard_field.concentration[cell[1], cell[0]] * 5.0
+            try:
+                cell = env._node_to_cell(nbr)
+                if 0 <= cell[1] < env.height and 0 <= cell[0] < env.width:
+                    concentration = env.hazard_field.concentration[cell[1], cell[0]]
+
+                    # Base hazard weighting
+                    base_multiplier = 5.0
+
+                    # Modify by behavioral state
+                    state = getattr(self, "behavioral_state", "CALM")
+                    if state == "PANIC":
+                        base_multiplier = 15.0
+                    elif state == "FLEEING":
+                        base_multiplier = 30.0
+                    elif state == "ALERT":
+                        base_multiplier = 10.0
+
+                    # Apply temporary panic scaling
+                    if hasattr(self, "_temp_hazard_multiplier"):
+                        base_multiplier *= getattr(self, "_temp_hazard_multiplier")
+
+                    hazard_penalty = concentration * base_multiplier
+            except Exception:
+                pass
         components["hazard_penalty"] = hazard_penalty
 
-        # Congestion penalty based on occupancy
+        # Congestion penalty
         occ_penalty = 0.0
-        if nbr in env.node_occupancy:
+        if nbr in getattr(env, "node_occupancy", {}):
             occ = env.node_occupancy[nbr]
-            if occ >= env.n_cell_max:
-                occ_penalty = 10.0
+            nmax = getattr(env, "n_cell_max", 10)
+            if occ >= nmax:
+                occ_penalty = 20.0  # hard block
             else:
-                occ_penalty = (occ / env.n_cell_max) * 5.0
+                occ_penalty = (occ / nmax) * 5.0
         components["occ_penalty"] = occ_penalty
 
-        # Combine all components into a total score
+        # Dispersion bonus
+        dispersion_bonus = 0.0
+        if hasattr(self, "clustering_affinity"):
+            affinity = getattr(self, "clustering_affinity", 0.5)
+            # Agents with low affinity prefer open, less crowded paths
+            if occ_penalty > 0:
+                dispersion_bonus = -(1.0 - affinity) * occ_penalty * 0.5
+        components["dispersion_bonus"] = dispersion_bonus
+
+        # Combine components into final score
         total_score = (
             goal_utility
             - dist
-            - hazard_penalty * (1.0 - self.risk_tolerance)
+            - hazard_penalty * (1.0 - getattr(self, "risk_tolerance", 0.5))
             - occ_penalty
+            + dispersion_bonus
         )
 
         components["total_score"] = total_score

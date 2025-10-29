@@ -1,0 +1,1644 @@
+C:\Users\user\.conda\envs\protest_safety\Lib\site-packages\pyogrio\raw.py:198: RuntimeWarning: Several features with id = 100846572 have been found. Altering it to be unique. This warning will not be emitted anymore for this layer
+  return ogr_read(
+[INFO] Metadata updated: data\real_nairobi_cbd_metadata.json
+[INFO] Building canonical OSM graph...
+[INFO] Sanitizing edge attributes...
+[DEBUG] edges_gdf.index.names: ['u', 'v', 'key']
+[DEBUG] edges_gdf index sample: MultiIndex([( '260573453',  '260573454', 0),
+            ( '260573454', '3740165604', 0),
+            ('3740165604', '7401594973', 0)],
+           names=['u', 'v', 'key'])
+[INFO] Canonical graph saved: data\nairobi_walk.graphml
+[INFO] Graph has 103 nodes and 224 edges.
+[ERROR] Failed to load real Nairobi map: 'charmap' codec can't encode character '\u2192' in position 25: character maps to <undefined>
+ Generating synthetic obstacles...
+   Generated 1215 obstacle cells (12.2%) [synthetic]
+[INFO] Synthetic spawn mask generated: 8785 valid cells
+[WARN] No OSM data; using grid-edge fallback exits
+
+[DEBUG] reset() completed exit_points setup:
+  self.exit_points type: <class 'list'>
+  self.exit_points length: 4
+  First 3 exit points: [(0, 50), (99, 50), (50, 0)]
+    [0]: (0, 50) (type: <class 'tuple'>)
+    [1]: (99, 50) (type: <class 'tuple'>)
+    [2]: (50, 0) (type: <class 'tuple'>)
+
+[INFO] Auto-generating cluster centers
+[INFO] Generated 3 spawn centers: [(7, 64), (98, 8), (72, 78)]
+
+[DEBUG] Step 0: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 1: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 2: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 3: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 4: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 5: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 6: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 7: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 8: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 9: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 10: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 11: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 12: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 13: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 14: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 15: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 16: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 17: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 18: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 19: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[Agent 0] exit_scores=[-37.105  -9.862  -7.824  -6.201] probs=[0.001 0.218 0.328 0.453] chosen=(50, 99)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 20: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 21: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 22: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 23: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 24: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 25: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 26: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 27: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 28: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 29: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 30: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 31: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 32: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 33: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 34: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 35: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 36: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 37: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 38: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 39: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[Agent 0] exit_scores=[-37.105  -9.862  -7.824  -6.564] probs=[0.001 0.225 0.338 0.435] chosen=(50, 99)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 40: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 41: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 42: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 43: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 44: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 45: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 46: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 47: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 48: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 49: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 50: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[Diagnostics] Step 50 Goal Distribution:
+  Exit (50, 99): 1 agents
+  Exit (0, 50): 99 agents
+
+[DEBUG] Step 51: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 52: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 53: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 54: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 55: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 56: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 57: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 58: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 59: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[Agent 0] exit_scores=[-37.105  -9.862  -7.824  -6.564] probs=[0.001 0.225 0.338 0.435] chosen=(50, 99)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 60: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 61: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 62: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 63: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 64: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 65: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 66: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 67: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 68: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 69: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 70: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 71: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 72: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 73: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 74: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 75: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 76: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 77: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 78: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 79: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[Agent 0] exit_scores=[-37.105  -9.862  -7.824  -6.564] probs=[0.001 0.225 0.338 0.435] chosen=(99, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 80: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 81: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 82: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 83: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 84: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 85: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 86: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 87: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 88: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 89: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 90: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 91: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 92: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 93: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 94: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 95: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 96: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 97: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 98: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[DEBUG] Breaking after first agent to avoid spam
+
+
+[DEBUG] Step 99: Checking exit_points
+  hasattr(self, 'exit_points'): True
+  type(self.exit_points): <class 'list'>
+  len(self.exit_points): 4
+  First exit point: (0, 50) (type: <class 'tuple'>)
+[DEBUG] Processing agent 0 (type: protester)
+  [DEBUG] Exit point 0: (0, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 1: (99, 50) (type: <class 'tuple'>)
+  [DEBUG] Exit point 2: (50, 0) (type: <class 'tuple'>)
+  [DEBUG] Exit point 3: (50, 99) (type: <class 'tuple'>)
+  [DEBUG] Sanitized to 4 exit points
+  [DEBUG] Calling agent.update_goal with 4 exits
+  [DEBUG] First safe exit: (0, 50)
+[Agent 0] exit_scores=[-37.105  -9.862  -7.824  -6.564] probs=[0.001 0.225 0.338 0.435] chosen=(50, 99)
+[DEBUG] Breaking after first agent to avoid spam
+
+Traceback (most recent call last):
+  File "C:\Users\user\protest_safety_planner\tests\test_phase1_phase2.py", line 214, in <module>
+    test_panic_state_transitions()
+  File "C:\Users\user\protest_safety_planner\tests\test_phase1_phase2.py", line 145, in test_panic_state_transitions
+    assert transitions_observed > 0, "No behavioral state transitions observed"
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: No behavioral state transitions observed

@@ -1,4 +1,4 @@
-# default_scenario.yaml - PRODUCTION CONFIG (OSM DISABLED)
+# default_scenario.yaml - PRODUCTION CONFIGURATION
 # Stable, tested configuration for FR1 & FR2 validation
 
 # Grid configuration
@@ -13,7 +13,6 @@ grid:
 time:
   delta_t: 1.0
   max_steps: 2000
-  video_frame_dt: 0.033
 
 # Agent configuration
 agents:
@@ -22,35 +21,40 @@ agents:
     
     spawn:
       type: "clusters"
-      centers:
-        - [20, 20]
-        - [30, 70]
-        - [70, 30]
+      centers: "auto"   # Auto-generate from road intersections
       radius: 8
     
     # Heterogeneous agent types (3 profiles)
     types:
       cautious:
-        ratio: 0.3              # 30% cautious
+        ratio: 0.25             # 30% cautious
         speed_m_s: 1.0          # Slower
         risk_tolerance: 0.1     # Very risk-averse
+        panic_threshold: 0.3
+        clustering_affinity: 0.8
       average:
         ratio: 0.5              # 50% average
         speed_m_s: 1.2          # Normal speed
-        risk_tolerance: 0.3     # Moderate risk
+        risk_tolerance: 0.35     # Moderate risk
+        panic_threshold: 0.5
+        clustering_affinity: 0.5
       bold:
-        ratio: 0.2              # 20% bold
-        speed_m_s: 1.4          # Faster
-        risk_tolerance: 0.6     # Risk-taking
+        ratio: 0.15              # 15% bold
+        speed_m_s: 1.5          # Faster
+        risk_tolerance: 0.65     # Risk-taking
+        panic_threshold: 0.7
+        clustering_affinity: 0.2
+      vulnerable:
+        ratio: 0.1               # 10% vulnerable
+        speed_m_s: 0.7           # Slower
+        risk_tolerance: 0.05      # Risk-averse
+        panic_threshold: 0.2
+        clustering_affinity: 0.9
     
     goals:
-      strategy: "nearest_exit"
-      exit_points:
-        - [5, 5]    # Bottom-left
-        - [95, 5]  # Bottom-right
-        - [5, 95]  # Top-left
-        - [95, 95]  # Top-right
-        # - [50, 50]  # Center (will observe the risk of having a center exit)
+      strategy: "dynamic_wighted"
+      T_MIN_SAFE: 300  # 5 minutes in safe zone before exit-seeking
+      #exit_nodes: "auto"  # Populated by env.reset()
   
   police:
     count: 10
@@ -68,10 +72,10 @@ agents:
         - [75, 50]
         - [40, 40]
     speed_m_s: 1.5
-    deploy_prob: 0.05    # INCREASED from 0.01 (5% vs 1%)
-    deploy_cooldown: 50
+    deploy_prob: 0.25    # INCREASED from 0.01 (5% vs 1%)
+    deploy_cooldown: 30
 
-# Hazards (FIXED FOR REALISM)
+# Hazards configuration
 hazards:
   gas:
     # Physical diffusion (m^2/s)
@@ -94,12 +98,10 @@ hazards:
   water_cannon:
     enabled: true
     prob: 0.02
-    strength_m: 5.0             # Push distance in meters
-    radius: 6               # radius in cells (square radius used)
-    stun_prob: 0.15         # 15% chance of stun / injury  
-    cooldown: 30            # police cooldown steps for water cannon
-    # internal mapping:
-    # strength_cells = int(strength_m / cell_size_m)
+    strength_m: 5.0
+    radius: 6
+    stun_prob: 0.15
+    cooldown: 30
 
   shooting:
     enabled: true
