@@ -52,7 +52,7 @@ agents:
         clustering_affinity: 0.9
     
     goals:
-      strategy: "dynamic_wighted"
+      strategy: "dynamic_weighted"
       T_MIN_SAFE: 300  # 5 minutes in safe zone before exit-seeking
       #exit_nodes: "auto"  # Populated by env.reset()
   
@@ -61,15 +61,15 @@ agents:
     spawn:
       type: "fixed"
       positions:
-        - [50, 55]
+        - [50, 53]
         - [25, 35]
-        - [75, 75]
+        - [75, 74]
         - [75, 25]
         - [25, 40]
-        - [50, 25]
-        - [50, 75]
+        - [49, 25]
+        - [49, 74]
         - [25, 50]
-        - [75, 50]
+        - [70, 48]
         - [40, 40]
     speed_m_s: 1.5
     deploy_prob: 0.25    # INCREASED from 0.01 (5% vs 1%)

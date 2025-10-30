@@ -469,6 +469,46 @@ def suggest_spawn_centers(osm_graph: nx.Graph,
     print(f"[INFO] Suggested {len(selected)} spawn centers at: {selected}")
     return [(int(x), int(y)) for x, y in selected]
 
+def assign_node_capacities(graph, default_cap=6):
+    """
+    Assign realistic capacity to each node based on connected road types.
+    
+    Rationale:
+    - Intersections on major roads (trunk/primary) = high capacity (20-30 people)
+    - Secondary roads = medium (10-15)
+    - Footpaths/alleys = low (5-8)
+    
+    Args:
+        graph: NetworkX graph with OSM data
+        default_cap: Fallback capacity for unclassified nodes
+    
+    Returns:
+        graph: Modified graph with 'capacity' attribute on each node
+    """
+    for node in graph.nodes():
+        # Get all edges connected to this node
+        edges = graph.edges(node, data=True)
+        road_types = [e[2].get('highway', 'unclassified') for e in edges]
+        
+        # Determine capacity from most significant road type
+        if any(rt in ['trunk', 'primary', 'motorway'] for rt in road_types):
+            capacity = 25  # Major intersection (e.g., Moi Ave/Haile Selassie)
+        elif any(rt in ['secondary', 'tertiary'] for rt in road_types):
+            capacity = 12  # Medium street
+        elif any(rt in ['residential', 'service'] for rt in road_types):
+            capacity = 8   # Small road
+        else:
+            capacity = default_cap  # Footpath/alley/unclassified
+        
+        graph.nodes[node]['capacity'] = capacity
+    
+    print(f"[INFO] Assigned capacities: "
+          f"{sum(1 for n in graph.nodes if graph.nodes[n]['capacity'] == 25)} major, "
+          f"{sum(1 for n in graph.nodes if graph.nodes[n]['capacity'] == 12)} medium, "
+          f"{sum(1 for n in graph.nodes if graph.nodes[n]['capacity'] <= 8)} minor nodes")
+    
+    return graph
+
 def identify_exit_nodes(osm_graph: nx.Graph,
                         metadata: Dict,
                         affine: Affine,

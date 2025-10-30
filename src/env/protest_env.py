@@ -1,12 +1,6 @@
 """
 protest_env.py - Core ProtestEnv Gymnasium environment
 
-Implementation: Stylized digital twin for protest scenarios.
-Grid-based ABM with:
-- Discrete 2D grid (100x100 default)
-- Heterogeneous agents (protesters, police)
-- Hazard fields (gas diffusion, water cannon, shooting, )
-- Deterministic seeding for Monte Carlo
 """
 
 import numpy as np
@@ -19,6 +13,7 @@ from pathlib import Path
 from affine import Affine
 import pandas as pd
 import json
+import networkx as nx
 
 from .agent import Agent, PoliceAgent, AgentState, GraphAgent
 from .mixins.graph_movement_mixin import GraphMovementMixin
@@ -150,173 +145,91 @@ class ProtestEnv(gym.Env):
     def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[Dict, Dict]:
         """
         Reset environment to initial state.
-        
+    
         Args:
             seed: RNG seed for deterministic rollouts
             options: Additional reset options
-            
+        
         Returns:
             observation: Initial observation dict
             info: Additional information
         """
-        # Set seed for deterministic behavior
+        from src.utils.logging_config import logger
+    
+        # Set seed
         if seed is None:
             seed = self.base_seed
         self.rng = np.random.default_rng(seed)
-        
-        # Reset step counter
+    
+        # Reset counters
         self.step_count = 0
         self.events_log = []
-        
-        # Initialize grid arrays (locked data types)
+    
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[RESET] Initializing environment (seed={seed})")
+        logger.info(f"{'='*60}")
+    
+        # Initialize grids
         self.occupancy_count = np.zeros((self.height, self.width), dtype=np.uint8)
         self.obstacle_mask = self._load_or_generate_obstacles()
+    
+        # Load OSM graph
+        if self.osm_graph is not None:
+            from .real_nairobi_loader import assign_node_capacities
+            self.osm_graph = assign_node_capacities(self.osm_graph)
+            logger.info(f"[INFO] OSM graph: {len(self.osm_graph.nodes)} nodes, {len(self.osm_graph.edges)} edges")
         
-        # Initialize hazard manager (gas + instant hazards)
-        hazard_cfg = self.config.get('hazards', {})
-        # Pass top-level hazards config and delta_t for gas init
-        hm_cfg = hazard_cfg.copy()
-        hm_cfg['delta_t'] = self.delta_t
+            # Validate graph connectivity
+            self.validate_and_repair_graph()
+    
+        # Initialize hazard manager
         self.hazards = HazardManager(
             height=self.height, 
             width=self.width, 
             config=self.config, 
             rng=self.rng,
             cell_size_m=self.cell_size,
-            obstacle_mask=self.obstacle_mask)
-        
-        # Backward compatibility: existing code expects self.hazard_field
+            obstacle_mask=self.obstacle_mask
+        )
         self.hazard_field = self.hazards.gas
 
-        # NEW: Identify exit nodes (FIXED)
-        if self.osm_graph is not None and self.osm_metadata is not None:
-            try:
-                from .real_nairobi_loader import identify_exit_nodes
-            
-                # CRITICAL FIX: Ensure metadata has correct structure
-                if isinstance(self.osm_metadata, dict) and "bounds" in self.osm_metadata:
-                    self.exit_nodes = identify_exit_nodes(
-                        self.osm_graph,
-                        self.osm_metadata,  # Now guaranteed to have "bounds"
-                        self.affine,
-                        (self.width, self.height)
-                    )
-                
-                    # Update config for agent access
-                    if "agents" in self.config and "protesters" in self.config["agents"]:
-                        goals_cfg = self.config["agents"]["protesters"].setdefault("goals", {})
-                        goals_cfg["exit_nodes"] = self.exit_nodes
-                    
-                        # CRITICAL: If exit_points is "auto", populate it with real coordinates
-                        if goals_cfg.get("exit_points") == "auto":
-                            primary = self.exit_nodes.get('primary', [])
-                            secondary = self.exit_nodes.get('secondary', [])
-                            all_exits = primary + secondary
-                        
-                            if all_exits:
-                                # Extract ONLY grid_pos as simple tuples
-                                exit_points_list = []
-                                for e in all_exits:
-                                    gp = e['grid_pos']
-                                    exit_points_list.append((int(gp[0]), int(gp[1])))
-
-                                goals_cfg["exit_points"] = exit_points_list
-                                # CRITICAL: Also set self.exit_points
-                                self.exit_points = exit_points_list
-                                print(f"[INFO] Populated {len(exit_points_list)} exit points from graph")
-                                
-                            else:
-                                print("[WARN] No exit nodes found; using grid edges")
-                                self.exit_points = [(5, self.height//2), 
-                                                   (self.width-5, self.height//2)]
-                                goals_cfg["exit_points"] = self.exit_points
-
-                else:
-                    print("[WARN] Metadata missing 'bounds'; cannot identify exit nodes")
-                    self.exit_nodes = {'primary': [], 'secondary': []}
-                    self.exit_points = [(5, self.height//2), (self.width-5, self.height//2)]
-
-                
-            except Exception as e:
-                print(f"[WARN] Failed to identify exit nodes: {e}")
-                import traceback
-                traceback.print_exc()
-                self.exit_nodes = {'primary': [], 'secondary': []}
-                self.exit_points = [(5, self.height//2), (self.width-5, self.height//2)]
-        else:
-            # Synthetic obstacles - use grid edges
-            print("[WARN] No OSM data; using grid-edge fallback exits")
-            mid_y = self.height // 2
-            mid_x = self.width // 2
-            self.exit_nodes = {
-                'primary': [
-                    {'grid_pos': (0, mid_y)},
-                    {'grid_pos': (self.width - 1, mid_y)}
-                ],
-                'secondary': [
-                    {'grid_pos': (mid_x, 0)},
-                    {'grid_pos': (mid_x, self.height - 1)}
-                ]
-            }
-            # Also set self.exit_points as simple tuples
-            self.exit_points = [
-                (0, mid_y),
-                (self.width - 1, mid_y),
-                (mid_x, 0),
-                (mid_x, self.height - 1)
-            ]
-
-
-            # Propagate to agent goals config
-            if "agents" in self.config and "protesters" in self.config["agents"]:
-                goals_cfg = self.config["agents"]["protesters"].setdefault("goals", {})
-                goals_cfg["exit_points"] = self.exit_points
-                
-                # sanitize all exit points (floats only)
-                if isinstance(goals_cfg.get("exit_points"), list):
-                    clean_exit_points = []
-                    for ex in goals_cfg["exit_points"]:
-                        if isinstance(ex, (list, tuple)):
-                            try:
-                               clean_exit_points.append((float(ex[0]), float(ex[1])))
-                            except Exception:
-                                continue
-                        elif isinstance(ex, dict) and "grid_pos" in ex:
-                            gx, gy = ex["grid_pos"]
-                            clean_exit_points.append((float(gx), float(gy)))
-                    goals_cfg["exit_points"] = clean_exit_points
-
-                # safety net: ensure non-empty
-                if not goals_cfg.get("exit_points"):
-                    print("[WARN] No exit points set; injecting defaults")
-                    goals_cfg["exit_points"] = [
-                        (0.0, float(mid_y)),
-                        (float(self.width - 1), float(mid_y)),
-                        (float(mid_x), 0.0),
-                        (float(mid_x), float(self.height - 1))
-                    ]
-        
-        # After setting self.exit_points, add:
-        print(f"\n[DEBUG] reset() completed exit_points setup:")
-        print(f"  self.exit_points type: {type(self.exit_points)}")
-        print(f"  self.exit_points length: {len(self.exit_points) if hasattr(self.exit_points, '__len__') else 'N/A'}")
-        if isinstance(self.exit_points, (list, tuple)) and len(self.exit_points) > 0:
-            print(f"  First 3 exit points: {self.exit_points[:3]}")
-            for idx, ep in enumerate(self.exit_points[:3]):
-                print(f"    [{idx}]: {ep} (type: {type(ep)})")
-        print()
-
-
+        # Identify exit nodes
+        self._setup_exit_points()
+    
         # Spawn agents
         self._spawn_agents()
-
-        # DEBUG 00: AGENT SPAWN ON OBSTACLE CELL
+    
+        # Validate spawns
         self.check_spawned_on_obstacle()
-        
-        # Update occupancy grid
         self._update_occupancy_grid_simple()
+    
+        # Initialize node occupancy (graph mode)
+        if self.osm_graph is not None:
+            self.node_occupancy = {}
+            for agent in self.agents:
+                if hasattr(agent, 'current_node'):
+                    node_id = str(agent.current_node)
+                    self.node_occupancy[node_id] = self.node_occupancy.get(node_id, 0) + 1
         
-        # Return observation and info
+            occupied_nodes = sum(1 for occ in self.node_occupancy.values() if occ > 0)
+            max_occ = max(self.node_occupancy.values()) if self.node_occupancy else 0
+        
+            logger.info(f"[INFO] Initial occupancy: {occupied_nodes} nodes, max {max_occ} agents/node")
+        
+            # Warn about overcrowding
+            overcrowded = [(nid, occ) for nid, occ in self.node_occupancy.items() 
+                            if occ > self.osm_graph.nodes[nid].get('capacity', 6)]
+        
+            if overcrowded:
+                logger.minimal(f"[WARN] {len(overcrowded)} nodes overcrowded at spawn")
+                for nid, occ in overcrowded[:3]:
+                    cap = self.osm_graph.nodes[nid].get('capacity', 6)
+                    street = self.street_names.get(nid, nid) if hasattr(self, 'street_names') else nid
+                    logger.debug(f"  {street}: {occ}/{cap}")
+    
+        logger.info(f"[RESET] Complete: {len(self.agents)} agents spawned\n")
+    
+        # Return observation
         obs = self._get_observation()
         info = {
             'step': self.step_count,
@@ -324,15 +237,86 @@ class ProtestEnv(gym.Env):
             'n_agents': len(self.agents),
             'grid_metadata': self.grid_metadata.to_dict()
         }
-        
-        return obs, info
     
+        return obs, info
+
+    def _setup_exit_points(self):
+        """Setup exit points for protesters (extracted for clarity)."""
+        from src.utils.logging_config import logger
+    
+        if self.osm_graph is not None and self.osm_metadata is not None:
+            try:
+                from .real_nairobi_loader import identify_exit_nodes
+            
+                if isinstance(self.osm_metadata, dict) and "bounds" in self.osm_metadata:
+                    self.exit_nodes = identify_exit_nodes(
+                        self.osm_graph,
+                        self.osm_metadata,
+                        self.affine,
+                        (self.width, self.height)
+                    )
+                
+                    # Update config
+                    if "agents" in self.config and "protesters" in self.config["agents"]:
+                        goals_cfg = self.config["agents"]["protesters"].setdefault("goals", {})
+                        goals_cfg["exit_nodes"] = self.exit_nodes
+                    
+                        if goals_cfg.get("exit_points") == "auto":
+                            primary = self.exit_nodes.get('primary', [])
+                            secondary = self.exit_nodes.get('secondary', [])
+                            all_exits = primary + secondary
+                        
+                            if all_exits:
+                                exit_points_list = [
+                                    (int(e['grid_pos'][0]), int(e['grid_pos'][1]))
+                                    for e in all_exits
+                                ]
+                                goals_cfg["exit_points"] = exit_points_list
+                                self.exit_points = exit_points_list
+                                logger.info(f"[INFO] Identified {len(exit_points_list)} exit points")
+                            else:
+                                logger.minimal("[WARN] No exit nodes found; using grid edges")
+                                self.exit_points = [(5, self.height//2), (self.width-5, self.height//2)]
+                                goals_cfg["exit_points"] = self.exit_points
+                else:
+                    logger.minimal("[WARN] Metadata missing 'bounds'")
+                    self.exit_nodes = {'primary': [], 'secondary': []}
+                    self.exit_points = [(5, self.height//2), (self.width-5, self.height//2)]
+                
+            except Exception as e:
+                logger.minimal(f"[WARN] Failed to identify exit nodes: {e}")
+                self.exit_nodes = {'primary': [], 'secondary': []}
+                self.exit_points = [(5, self.height//2), (self.width-5, self.height//2)]
+        else:
+            # Synthetic mode
+            logger.debug("[INFO] Using synthetic exit points")
+            mid_y, mid_x = self.height // 2, self.width // 2
+            self.exit_points = [(5, mid_y), (self.width-1, mid_y), (mid_x, 5), (mid_x, self.height-1)]
+        
+            # Update config
+            if "agents" in self.config and "protesters" in self.config["agents"]:
+                goals_cfg = self.config["agents"]["protesters"].setdefault("goals", {})
+                goals_cfg["exit_points"] = self.exit_points
+
     def check_spawned_on_obstacle(self):
-        """Check if any agents spawned on obstacle cells."""
+        """Validate agent spawn locations (silent unless errors found)."""
+        from src.utils.logging_config import logger
+    
+        errors = []
         for agent in self.agents:
+            if hasattr(agent, 'current_node'):
+                continue  # Graph agents validated separately
+        
             x, y = agent.pos
-            if self.obstacle_mask[y, x]:
-                print(f"[DEBUG] Agent {agent.id} spawned on obstacle at {agent.pos} ({agent.agent_type})")
+            if not (0 <= x < self.width and 0 <= y < self.height):
+                errors.append(f"Agent {agent.id} out of bounds: {agent.pos}")
+            elif self.obstacle_mask[y, x]:
+                errors.append(f"Agent {agent.id} on obstacle: {agent.pos}")
+    
+        if errors:
+            logger.minimal(f"[WARN] {len(errors)} spawn validation errors:")
+            for err in errors[:3]:  # Show first 3
+                logger.debug(f"  {err}")
     
     def step(self, actions: Optional[Dict[int, int]] = None) -> Tuple[Dict, float, bool, bool, Dict]:
         """
@@ -349,104 +333,65 @@ class ProtestEnv(gym.Env):
             truncated: Time limit reached
             info: Additional information including harm indicators
         """
+        # Import logger (add at top of file: from src.utils.logging_config import logger)
+        from src.utils.logging_config import logger
+        logger.set_step(self.step_count)
+        
         # 1. Compute agent actions (internal policy if not provided)
         if actions is None:
             actions = {}
             
-            # DEBUG: Check exit_points state
-            print(f"\n[DEBUG] Step {self.step_count}: Checking exit_points")
-            print(f"  hasattr(self, 'exit_points'): {hasattr(self, 'exit_points')}")
-            if hasattr(self, 'exit_points'):
-                print(f"  type(self.exit_points): {type(self.exit_points)}")
-                print(f"  len(self.exit_points): {len(self.exit_points) if isinstance(self.exit_points, (list, tuple)) else 'N/A'}")
-                if isinstance(self.exit_points, (list, tuple)) and len(self.exit_points) > 0:
-                    print(f"  First exit point: {self.exit_points[0]} (type: {type(self.exit_points[0])})")
+            # Sanitize exit points once (not per agent)
+            if hasattr(self, 'exit_points') and isinstance(self.exit_points, (list, tuple)):
+                safe_exit_points = []
+                for ep in self.exit_points:
+                    if isinstance(ep, (list, tuple)) and len(ep) >= 2:
+                        safe_exit_points.append((int(ep[0]), int(ep[1])))
+                    elif isinstance(ep, dict) and 'grid_pos' in ep:
+                        gp = ep['grid_pos']
+                        safe_exit_points.append((int(gp[0]), int(gp[1])))
 
+                if not safe_exit_points:
+                    logger.minimal("[WARN] No valid exit points; using fallback")
+                    safe_exit_points = [(5, 5), (self.width-5, 5), 
+                                        (5, self.height-5), (self.width-5, self.height-5)]
+            else:
+                safe_exit_points = [(5, 5), (self.width-5, 5), 
+                                    (5, self.height-5), (self.width-5, self.height-5)]
+            
+            # Compute actions for all agents
             for agent in self.agents:
-                # only process protesters with update_goal
-                if hasattr(agent, 'update_goal'):  # Protesters have this, police don't
-                    print(f"[DEBUG] Processing agent {agent.id} (type: {agent.agent_type})")
-                    
-                    # FIX: Only call _get_safe_exit_points if exit_points is broken
-                    # Convert exit_points to simple list of tuples
-                    if hasattr(self, 'exit_points') and isinstance(self.exit_points, (list, tuple)):
-                        # Ensure all exit points are (x, y) tuples
-                        safe_exit_points = []
-                        for idx, ep in enumerate(self.exit_points):
-                            print(f"  [DEBUG] Exit point {idx}: {ep} (type: {type(ep)})")
-                            if isinstance(ep, (list, tuple)) and len(ep) >= 2:
-                                safe_exit_points.append((int(ep[0]), int(ep[1])))
-                            elif isinstance(ep, dict) and 'grid_pos' in ep:
-                                gp = ep['grid_pos']
-                                safe_exit_points.append((int(gp[0]), int(gp[1])))
-
-                        print(f"  [DEBUG] Sanitized to {len(safe_exit_points)} exit points")
-
-                        if not safe_exit_points:
-                            print(f"  [WARN] Sanitization produced empty list - using fallback")
-                            # Fallback if sanitization failed
-                            safe_exit_points = [(5, 5), (self.width-5, 5), 
-                                                (5, self.height-5), (self.width-5, self.height-5)]
-                    else:
-                        print(f"  [WARN] exit_points not valid - using fallback")
-                        # No exit_points configured - use grid edges
-                        safe_exit_points = [(5, 5), (self.width-5, 5), 
-                                            (5, self.height-5), (self.width-5, self.height-5)]
-
-                    print(f"  [DEBUG] Calling agent.update_goal with {len(safe_exit_points)} exits")
-                    print(f"  [DEBUG] First safe exit: {safe_exit_points[0]}")
-
+                if hasattr(agent, 'update_goal'):
                     try:
-                        # Now call update_goal with the correct signature
                         agent.update_goal(self, safe_exit_points)
                     except Exception as e:
-                        print(f"  [ERROR] agent.update_goal failed: {e}")
-                        import traceback
-                        traceback.print_exc()
+                        logger.minimal(f"[ERROR] agent.update_goal failed for agent {agent.id}: {e}")
                         raise
                 
                 actions[agent.id] = agent.decide_action(self)
 
-                # Only print for first agent to avoid spam
-                if agent.id == 0:
-                    print(f"[DEBUG] Breaking after first agent to avoid spam\n")
-                    break  # Remove this break after debugging
-
-            # --- Goal distribution diagnostics (added block) ---
-            if self.step_count in {50, 100, 200}:
-                goal_counts = {}
-                for a in self.protesters:
-                    g = tuple(a.goal)
-                    goal_counts[g] = goal_counts.get(g, 0) + 1
-                print(f"\n[Diagnostics] Step {self.step_count} Goal Distribution:")
-                for g, count in goal_counts.items():
-                    print(f"  Exit {g}: {count} agents")
-    
-        # 2. Execute movement with conflict resolution
+        # 2. Execute movement
         if any(hasattr(a, "current_node") for a in self.agents):
             self._execute_graph_movement(actions)
         else:
             self._execute_movement(actions)
-    
-        # 3. Update hazard field (diffusion, decay, sources)
-        # Update all hazards (gas diffusion + instant hazard bookkeeping)
+
+        # 3. Update hazards
         self.hazards.update(self.delta_t)
-        # keep the old alias
         self.hazard_field = self.hazards.gas
-    
-        # 3.5. NEW: Check stun recovery
+
+        # 4. Check stun recovery
         if hasattr(self.hazards, 'check_stun_recovery'):
             recovered = self.hazards.check_stun_recovery(self)
             if recovered:
-                print(f"[INFO] {len(recovered)} agents recovered from stun")
+                logger.verbose(f"[INFO] {len(recovered)} agents recovered from stun")
 
-        # 3.7. NEW FIX: Despawn protesters reaching exit points
+        # 5. Despawn protesters reaching exits
         exited = []
-        for agent in list(self.protesters):  # Copy since we might modify list
+        for agent in list(self.protesters):
             if agent.state == AgentState.MOVING and agent.pos in [tuple(ep) for ep in self.exit_points]:
                 agent.state = AgentState.SAFE
                 exited.append(agent)
-                # Remove from active grid
                 self.agents.remove(agent)
                 self.protesters.remove(agent)
                 self.events_log.append({
@@ -457,34 +402,97 @@ class ProtestEnv(gym.Env):
                 })
 
         if exited:
-            print(f"[INFO] {len(exited)} protesters exited the grid at this step.")
-
-        # Recompute occupancy after despawning
+            logger.info(f"[INFO] {len(exited)} protesters exited")
+        
+        # Recompute occupancy
         self._update_occupancy_grid_simple()
 
-        # 4. Update agent exposures and harm
+        # 6. Update agent harm
         harm_grid = self._update_agent_harm()
-    
-        # 5. Check termination conditions
+
+        # 7. Check termination
         terminated, termination_reason = self._check_termination()
         truncated = self.step_count >= self.max_steps
-    
-        # 6. Increment step counter
+
+        # 8. Increment step counter
         self.step_count += 1
-    
-        # 7. Construct observation and info
+
+        # 9. Construct observation and info
         obs = self._get_observation()
-        reward = 0.0  # Not used for Monte Carlo evaluation
-    
+        reward = 0.0
+
         info = {
             'step': self.step_count,
-            'harm_grid': harm_grid,  # Binary indicators for I_i
+            'harm_grid': harm_grid,
             'exposure_grid': self._compute_exposure_grid(),
-            'events': self.events_log[-10:],  # Last 10 events
+            'events': self.events_log[-10:],
             'termination_reason': termination_reason if terminated else None,
             'agent_states': self._get_agent_states_summary()
         }
-    
+
+        # Congestion metrics
+        congestion_events = [
+            e for e in self.events_log
+            if e.get('event_type') == 'node_congestion'
+        ]
+        info['congestion_events'] = len(congestion_events)
+        info['avg_queue_length'] = float(np.mean([
+            e.get('queued', 0) for e in congestion_events
+        ])) if congestion_events else 0.0
+
+        # ========== CONSOLIDATED PERIODIC LOGGING ==========
+        if self.step_count % 20 == 0:
+            moving = sum(1 for a in self.protesters if a.state == AgentState.MOVING)
+            waiting = sum(1 for a in self.protesters if a.state == AgentState.WAITING)
+            safe = sum(1 for a in self.protesters if a.state == AgentState.SAFE)
+            incapacitated = sum(1 for a in self.protesters if a.state == AgentState.INCAPACITATED)
+        
+            logger.info(f"\n[Step {self.step_count}] Agent States:")
+            logger.info(f"  Moving: {moving}, Waiting: {waiting}, Safe: {safe}, Incap: {incapacitated}")
+        
+            if getattr(self, "osm_graph", None):
+                unique_nodes = len({
+                    getattr(a, 'current_node', None)
+                    for a in self.agents
+                    if getattr(a, 'current_node', None) is not None
+                })
+                logger.info(f"  Occupied nodes: {unique_nodes}/{len(self.osm_graph.nodes)}")
+            
+            peak_hazard = float(np.max(getattr(self.hazard_field, "concentration", [0])))
+            logger.info(f"  Peak hazard: {peak_hazard:.2f}")
+        
+            if hasattr(self, "police_agents") and self.police_agents:
+                deployments = len([e for e in self.events_log 
+                                if e.get('event_type') in ['gas_deployment', 'water_cannon']])
+                logger.info(f"  Hazard deployments: {deployments}")
+            
+        # Verbose diagnostics (every 20 steps)
+        if self.step_count % 20 == 0:
+            logger.verbose(f"\n{'='*60}")
+            logger.verbose(f"[DIAGNOSTIC] Step {self.step_count}")
+        
+            # Action distribution
+            action_counts = {}
+            for action in actions.values():
+                action_counts[action] = action_counts.get(action, 0) + 1
+        
+            logger.verbose("\nAction Distribution:")
+            for action, count in sorted(action_counts.items())[:5]:
+                logger.verbose(f"  Action {action}: {count} agents")
+        
+            # Node occupancy (top 3)
+            if hasattr(self, 'node_occupancy'):
+                occupied = [(nid, occ) for nid, occ in self.node_occupancy.items() if occ > 0]
+                occupied.sort(key=lambda x: x[1], reverse=True)
+            
+                logger.verbose("\nTop Occupied Nodes:")
+                for nid, occ in occupied[:3]:
+                    cap = self.osm_graph.nodes[nid].get('capacity', 6)
+                    street = self.street_names.get(str(nid), nid) if hasattr(self, 'street_names') else nid
+                    logger.verbose(f"  {street}: {occ}/{cap}")
+        
+            logger.verbose(f"{'='*60}\n")
+        
         return obs, reward, terminated, truncated, info
     
 
@@ -521,7 +529,7 @@ class ProtestEnv(gym.Env):
 
                     print(f" Using REAL Nairobi CBD map ({coverage:.1f}% coverage).")
 
-                    # Load cell→node mapping
+                    # Load cell-to-node mapping
                     cell_to_node_path = self.osm_metadata.get("cell_to_node_path", "data/cell_to_node.npy")
                     if Path(cell_to_node_path).exists():
                         self.cell_to_node = np.load(cell_to_node_path, allow_pickle=True)
@@ -530,10 +538,14 @@ class ProtestEnv(gym.Env):
                         print("[WARN] Missing cell→node lookup; graph movement disabled.")
                         self.cell_to_node = None
 
-                    # Build node→xy for visualization
+                    # Build node_to_xy for visualization
                     if self.osm_graph:
-                        self.node_to_xy = {nid: (d["x"], d["y"]) for nid, d in self.osm_graph.nodes(data=True)}
-
+                        self.node_to_xy = {
+                            str(nid): (d["x"], d["y"]) 
+                            for nid, d in self.osm_graph.nodes(data=True)
+                        }
+                        print(f"[DEBUG] node_to_xy populated with {len(self.node_to_xy)} entries")
+                        
                         # NEW: Generate and save spawn mask
                         self.spawn_mask = generate_spawn_mask(mask, self.osm_graph, self.cell_to_node)
                         np.save("data/spawn_mask_100x100.npy", self.spawn_mask)
@@ -566,7 +578,7 @@ class ProtestEnv(gym.Env):
                 self.osm_graph = None
                 self.spawn_mask = None
 
-        # --- Fallback: Synthetic obstacles ---
+        # Fallback: Synthetic obstacles
         print(" Generating synthetic obstacles...")
         mask = np.zeros((self.height, self.width), dtype=bool)
 
@@ -663,40 +675,74 @@ class ProtestEnv(gym.Env):
                         )
                     )
 
-                # Ensure goal_pos is valid
-                # Defensive fallback if invalid goal returned
-                valid_goal = (
-                    isinstance(goal_pos, (tuple, list))
-                    and len(goal_pos) == 2
-                    and all(isinstance(v, (int, float, np.integer, np.floating)) for v in goal_pos)
-                )
+                # NEW: Validate node has neighbors (not isolated)
+                neighbors = list(self.osm_graph.neighbors(node_id))
+                if len(neighbors) == 0:
+                    print(f"[ERROR] Agent {i} mapped to isolated node {node_id}; relocating...")
+        
+                    # Find nearest node WITH neighbors
+                    valid_nodes = [
+                        n for n in self.osm_graph.nodes
+                        if len(list(self.osm_graph.neighbors(n))) > 0
+                    ]
 
-                if not valid_goal:
-                    print(f"[WARN] Invalid goal for agent {i}: {goal_pos}. Assigning random exit.")
-                    if hasattr(self, "exit_points") and len(self.exit_points) > 0:
-                        # Use deterministic RNG for reproducibility
-                        idx = int(self.rng.integers(0, len(self.exit_points)))
-                        goal_pos = tuple(self.exit_points[idx])
+                    if valid_nodes:
+                        node_id = min(
+                            valid_nodes,
+                            key=lambda n: (
+                                (self.osm_graph.nodes[n]["x"] - x) ** 2 +
+                                (self.osm_graph.nodes[n]["y"] - y) ** 2
+                            )
+                        )
+                        print(f"  Relocated to node {node_id} with {len(list(self.osm_graph.neighbors(node_id)))} neighbors")
                     else:
-                        valid_cells = np.argwhere(getattr(self, "spawn_mask", np.ones((self.height, self.width), dtype=bool)))
-                        if len(valid_cells) > 0:
-                            yx = valid_cells[self.rng.integers(0, len(valid_cells))]
-                            goal_pos = (int(yx[1]), int(yx[0]))
+                        print("[FATAL] No valid nodes with neighbors found in graph!")
+                        raise RuntimeError("OSM graph has no connected nodes")
+
+                
+                # Check capacity before spawning
+                node_occ = self.node_occupancy.get(str(node_id), 0)  # Ensure string key
+                node_cap = self.osm_graph.nodes[node_id].get("capacity", 6)
+
+                if node_occ >= node_cap:
+                    print(f"[WARN] Spawn node {node_id} at capacity ({node_occ}/{node_cap}), relocating agent {i}")
+
+                    # Find nearest node with available capacity
+                    available_nodes = [
+                        n for n in self.osm_graph.nodes
+                        if self.node_occupancy.get(str(n), 0) < self.osm_graph.nodes[n].get("capacity", 6)
+                    ]
+
+                    if available_nodes:
+                        node_id = min(
+                            available_nodes,
+                            key=lambda n: (
+                                (self.osm_graph.nodes[n]["x"] - x) ** 2 + 
+                                (self.osm_graph.nodes[n]["y"] - y) ** 2
+                            )
+                        )
+                        # Convert node coordinates to grid cell indices
+                        node_data = self.osm_graph.nodes[node_id]
+                        node_x_utm = node_data["x"]  # UTM coordinate
+                        node_y_utm = node_data["y"]  # UTM coordinate
+        
+                        # Transform UTM to grid cell using affine transform
+                        if self.affine is not None:
+                            col, row = ~self.affine * (node_x_utm, node_y_utm)
+                            x = int(np.clip(col, 0, self.width - 1))
+                            y = int(np.clip(row, 0, self.height - 1))
                         else:
-                            goal_pos = (x, y)
+                            # Fallback: use node_to_cell helper
+                            x, y = self._node_to_cell(str(node_id))
+        
+                        print(f"         Relocated to node {node_id} at grid cell ({x}, {y})")
+                    else:
+                        print("[ERROR] No nodes with available capacity; spawning anyway (may cause overflow)")
 
+                # Map goal to node
                 gx, gy = map(int, np.clip(goal_pos, [0, 0], [self.width - 1, self.height - 1]))
-
-                # Now map to nearest graph nodes
-                goal_node = None
-                if hasattr(self, "cell_to_node") and self.cell_to_node is not None:
-                    try:
-                        goal_node = self.cell_to_node[gy, gx]
-                    except Exception:
-                        print(f"[WARN] Goal ({gx},{gy}) out of range; fallback to nearest node.")
-                        goal_node = -1
-
-                if goal_node in (-1, None, "None", "nan") or (isinstance(goal_node, float) and np.isnan(goal_node)):
+                goal_node = self.cell_to_node[gy, gx]
+                if goal_node in (-1, None, "None", "nan") or pd.isna(goal_node):
                     goal_node = min(
                         self.osm_graph.nodes,
                         key=lambda n: (
@@ -705,6 +751,7 @@ class ProtestEnv(gym.Env):
                         )
                     )
 
+                # Create graph protester
                 agent = GraphAgent(
                     agent_id=i,
                     agent_type='protester',
@@ -715,10 +762,14 @@ class ProtestEnv(gym.Env):
                     rng=self.rng,
                     profile_name=profile
                 )
-                agent.current_node = node_id
-                agent.goal_node = goal_node
+                agent.current_node = str(node_id)
+                agent.goal_node = str(goal_node)
             
+                # Increment occupancy after spawning
+                self.node_occupancy[str(node_id)] = self.node_occupancy.get(str(node_id), 0) + 1
+
             else:
+                # Grid-based agent (synthetic mode)
                 agent = Agent(
                     agent_id=i,
                     agent_type='protester',
@@ -774,8 +825,10 @@ class ProtestEnv(gym.Env):
                             valid_cells = np.argwhere(self.spawn_mask)
                             idx = self.rng.integers(0, len(valid_cells))
                             ny, nx = valid_cells[idx]
+        
+                            # These are ALREADY grid cell indices - no conversion needed
                             police_positions.append((int(nx), int(ny)))
-                            print(f"         Relocated to random valid cell {(nx, ny)}")
+                            print(f"         Relocated to grid cell ({nx}, {ny})")
 
         else:
             police_positions = self._generate_spawn_positions(
@@ -908,7 +961,7 @@ class ProtestEnv(gym.Env):
         """
         positions = []
 
-        # --- Normalize spawn_params and handle "auto" centers ---
+        # Normalize spawn_params and handle "auto" centers
         centers_param = spawn_params.get('centers', None)
         radius = spawn_params.get('radius', 8)
 
@@ -1111,7 +1164,7 @@ class ProtestEnv(gym.Env):
         move_requests = {}  # target_cell -> list of (agent, original_pos)
         PRIORITY = {'police': 0, 'medic': 1, 'protester': 2, 'bystander': 3}
 
-        # === Step 1: Collect movement requests ===
+        # Step 1: Collect movement requests
         for agent in self.agents:
             # Skip waiting agents (they're delayed from previous congestion)
             if getattr(agent, "state", None) == AgentState.WAITING:
@@ -1140,7 +1193,7 @@ class ProtestEnv(gym.Env):
 
                 agent.move_accum -= 1.0  # consume fractional accumulator
 
-        # === Step 2: Resolve conflicts (per target cell) ===
+        # Step 2: Resolve conflicts (per target cell)
         for target_cell, requests in move_requests.items():
             if len(requests) <= self.n_cell_max:
                 # All can move freely
@@ -1170,10 +1223,10 @@ class ProtestEnv(gym.Env):
                     agent.state = AgentState.WAITING
                     agent.wait_timer = getattr(agent, "wait_timer", 0) + 1  # increment waiting time
 
-        # === Step 3: Update occupancy ===
+        # Step 3: Update occupancy
         self._update_occupancy_grid_simple()
 
-        # === Step 4: Post-movement congestion diagnostics (non-relocating) ===
+        # Step 4: Post-movement congestion diagnostics (non-relocating)
         overcrowded_cells = np.argwhere(self.occupancy_count > self.n_cell_max)
         for (y, x) in overcrowded_cells:
             agents_here = [a for a in self.agents if a.pos == (x, y)]
@@ -1199,80 +1252,181 @@ class ProtestEnv(gym.Env):
 
                 print(f"[WARN] Cell ({x},{y}) overcrowded; {len(displaced)} agents waiting instead of relocating.")
 
-        # === Step 5: Final occupancy update ===
+        # Step 5: Final occupancy update
         self._update_occupancy_grid_simple()
-
-    def _execute_graph_movement(self, actions: Dict[int, Any]):
-        """Execute agent movement on the OSM graph with occupancy control."""
+    
+    
+    def validate_and_repair_graph(self):
+        """Validate OSM graph connectivity and repair common issues."""
+        from src.utils.logging_config import logger
+    
         if self.osm_graph is None:
-            print("[WARN] Graph movement called without graph.")
+            return
+    
+        logger.verbose("\n[GRAPH VALIDATION] Analyzing connectivity...")
+    
+        # Remove isolated nodes
+        isolated_nodes = [
+            node for node in self.osm_graph.nodes()
+            if len(list(self.osm_graph.neighbors(node))) == 0
+        ]
+    
+        if isolated_nodes:
+            logger.minimal(f"[WARN] Removing {len(isolated_nodes)} isolated nodes")
+            self.osm_graph.remove_nodes_from(isolated_nodes)
+    
+        # Check connectivity
+        if self.osm_graph.is_directed():
+            components = list(nx.weakly_connected_components(self.osm_graph))
+        else:
+            components = list(nx.connected_components(self.osm_graph))
+    
+        if len(components) > 1:
+            largest = max(components, key=len)
+            logger.minimal(f"[WARN] Keeping largest component ({len(largest)}/{len(self.osm_graph.nodes)} nodes)")
+            nodes_to_remove = set(self.osm_graph.nodes()) - largest
+            self.osm_graph.remove_nodes_from(nodes_to_remove)
+    
+        # Convert to undirected
+        if self.osm_graph.is_directed():
+            logger.verbose("[INFO] Converting to undirected graph")
+            self.osm_graph = self.osm_graph.to_undirected()
+    
+        # Rebuild mappings
+        self.node_to_xy = {
+            str(nid): (d["x"], d["y"]) 
+            for nid, d in self.osm_graph.nodes(data=True)
+        }
+    
+        # Statistics
+        neighbor_counts = [len(list(self.osm_graph.neighbors(n))) for n in self.osm_graph.nodes()]
+        min_neighbors = min(neighbor_counts) if neighbor_counts else 0
+        avg_neighbors = sum(neighbor_counts) / len(neighbor_counts) if neighbor_counts else 0
+    
+        logger.verbose(f"[GRAPH] {len(self.osm_graph.nodes)} nodes, {len(self.osm_graph.edges)} edges")
+        logger.verbose(f"[GRAPH] Neighbors: min={min_neighbors}, avg={avg_neighbors:.1f}")
+    
+        if min_neighbors == 0:
+            logger.minimal("[ERROR] Graph still has isolated nodes!")
+    
+    
+    def _execute_graph_movement(self, actions: Dict[int, Any]):
+        """Execute graph movement (cleaned logging)."""
+        from src.utils.logging_config import logger
+    
+        if self.osm_graph is None:
             return
 
-        move_requests = {}
-        PRIORITY = {'police': 0, 'medic': 1, 'protester': 2}
-
-        # Step 1: Gather requests
+        # Build neighbor lists
+        agent_neighbors = {}
         for agent in self.agents:
             if not hasattr(agent, "current_node"):
-                continue  # skip grid agents
-
-            next_node = actions.get(agent.id, agent.current_node)
-            
-            # Normalize node IDs to string for consistent comparison
-            if isinstance(next_node, (bytes, np.generic)):
-                next_node = next_node.item() if hasattr(next_node, "item") else next_node
-            next_node = str(next_node)
-            agent.current_node = str(agent.current_node)
-
-            # Skip if invalid or same node
-            if next_node == agent.current_node:
                 continue
-            if next_node not in self.osm_graph:
-                continue  # invalid
+            agent.current_node = str(agent.current_node)
+            if agent.current_node in self.osm_graph:
+                agent_neighbors[agent.id] = list(self.osm_graph.neighbors(agent.current_node))
 
-            move_requests.setdefault(next_node, []).append(agent)
+        # Decode actions to target nodes
+        move_requests = {}
+        vacancies = {}
+    
+        for agent in self.agents:
+            if not hasattr(agent, "current_node"):
+                continue
+        
+            current_node = str(agent.current_node)
+            action = actions.get(agent.id, 0)
+        
+            if action == 0 or action is None:
+                continue
+        
+            neighbors = agent_neighbors.get(agent.id, [])
+            if not neighbors:
+                continue
+        
+            neighbor_idx = int(action) - 1
+            if 0 <= neighbor_idx < len(neighbors):
+                target_node = str(neighbors[neighbor_idx])
+            
+                if self.osm_graph.has_edge(current_node, target_node):
+                    move_requests.setdefault(target_node, []).append(agent)
+                    vacancies[current_node] = vacancies.get(current_node, 0) + 1
 
-        # Step 2: Resolve congestion
-        for node_id, agents_here in move_requests.items():
-            if len(agents_here) <= self.n_cell_max:
-                for a in agents_here:
-                    a.current_node = node_id
-                    try:
-                        a.pos = self._node_to_cell(node_id)
-                    except Exception:
-                        print(f"[WARN] Failed to map node {node_id} to cell for agent {a.id}")
-            else:
-                # Over-capacity: enforce priority queuing
-                sorted_agents = sorted(
-                    agents_here,
-                    key=lambda a: (PRIORITY.get(a.agent_type, 99), self.rng.random())
-                )
-                # Allow top N_CELL_MAX to move
-                for a in sorted_agents[:self.n_cell_max]:
-                    a.current_node = node_id
-                    try:
-                        a.pos = self._node_to_cell(node_id)
-                    except Exception:
-                        print(f"[WARN] Failed to map node {node_id} to cell for agent {a.id}")
-                # Others wait
-                for a in sorted_agents[self.n_cell_max:]:
-                    a.state = AgentState.WAITING
-                
-                # info log; Use street name lookup
-                street_name = self.street_names.get(str(node_id), f"node {node_id}") if hasattr(self, 'street_names') else f"node {node_id}"
-                print(f"[INFO] {len(sorted_agents) - self.n_cell_max} agents waiting at {street_name} (node {node_id})")
+        # Resolve conflicts
+        PRIORITY = {'police': 0, 'medic': 1, 'protester': 2}
+        congestion_count = 0
+    
+        for target_node, agents_here in move_requests.items():
+            node_capacity = self.osm_graph.nodes[target_node].get('capacity', 6)
+            current_occupancy = self.node_occupancy.get(target_node, 0)
+            departures = vacancies.get(target_node, 0)
+            available_slots = max(0, node_capacity - (current_occupancy - departures))
+        
+            sorted_agents = sorted(
+                agents_here,
+                key=lambda a: (PRIORITY.get(a.agent_type, 99), self.rng.random())
+            )
+        
+            # Move agents
+            for agent in sorted_agents[:available_slots]:
+                old_node = agent.current_node
+                agent.current_node = target_node
+                agent.pos = self._node_to_cell(target_node)
+                agent.state = AgentState.MOVING
+            
+                self.node_occupancy[old_node] = max(0, self.node_occupancy.get(old_node, 0) - 1)
+                self.node_occupancy[target_node] = self.node_occupancy.get(target_node, 0) + 1
+        
+            # Queue remaining
+            queued = len(sorted_agents) - available_slots
+            if queued > 0:
+                congestion_count += 1
+                for agent in sorted_agents[available_slots:]:
+                    agent.state = AgentState.WAITING
+                    agent.wait_timer = getattr(agent, 'wait_timer', 0) + 1
+            
+                # Log only if significant congestion
+                if hasattr(self, 'street_names') and queued >= 3:
+                    street_name = self.street_names.get(target_node, f"node {target_node}")
+                    logger.verbose(f"[CONGESTION] {queued} agents queued at {street_name}")
+            
+                self.events_log.append({
+                    'timestep': self.step_count,
+                    'event_type': 'node_congestion',
+                    'node_id': target_node,
+                    'street_name': self.street_names.get(target_node, target_node) if hasattr(self, 'street_names') else target_node,
+                    'capacity': node_capacity,
+                    'queued': queued
+                })
+    
+        # Summary logging
+        if congestion_count > 0:
+            logger.verbose(f"[INFO] {congestion_count} congestion events this step")
 
-    # Final occupancy update
-        # Final occupancy update
-        self._update_node_occupancy()
 
     def _node_to_cell(self, node_id: str) -> Tuple[int, int]:
         """Convert node coordinates to grid cell indices for raster overlays."""
         if self.affine is None:
+            print(f"[WARN] No affine transform available for node {node_id}")
             return (0, 0)
-        x, y = self.node_to_xy[node_id]
-        col, row = ~self.affine * (x, y)
-        return int(col), int(row)
+    
+        # Ensure node_id is string
+        node_id = str(node_id)
+    
+        if node_id not in self.node_to_xy:
+            print(f"[WARN] Node {node_id} not in node_to_xy mapping")
+            return (0, 0)
+    
+        x_utm, y_utm = self.node_to_xy[node_id]
+    
+        # Transform UTM to grid cell (col, row)
+        col, row = ~self.affine * (x_utm, y_utm)
+    
+        # Clamp to grid bounds
+        x = int(np.clip(col, 0, self.width - 1))
+        y = int(np.clip(row, 0, self.height - 1))
+    
+        return (x, y)
 
     def _update_node_occupancy(self):
         self.node_occupancy.clear()
@@ -1289,6 +1443,15 @@ class ProtestEnv(gym.Env):
         This version enforces safety, avoids out-of-bounds increments,
         and logs overcrowding only once per cell per step to prevent spam.
         """
+        # Guard: Skip in graph-based mode
+        if getattr(self, "osm_graph", None) is not None:
+            # Graph mode: occupancy is tracked via node_occupancy, not grid
+            return
+        
+        # Grid mode
+        if not hasattr(self, "occupancy_count"):
+            raise AttributeError("Environment missing occupancy_count grid for grid-based tracking.")
+        
         # Reset occupancy map
         self.occupancy_count.fill(0)
 
@@ -1305,7 +1468,7 @@ class ProtestEnv(gym.Env):
                 agent.pos = (fx, fy)
                 self.occupancy_count[fy, fx] += 1
 
-        # === Diagnostic Section ===
+        # Diagnostic Section
         max_occupancy = self.occupancy_count.max()
         if max_occupancy > self.n_cell_max:
             overcrowded = np.argwhere(self.occupancy_count > self.n_cell_max)

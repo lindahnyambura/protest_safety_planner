@@ -212,4 +212,4 @@ def run_all_tests():
 
 
 if __name__ == "__main__":
-    test_panic_state_transitions()
+    test_spawn_on_roads()

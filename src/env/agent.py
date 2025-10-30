@@ -460,9 +460,10 @@ class Agent:
         - Uses softmax sampling over exit utilities to encourage dispersion.
         - Hysteresis: only resample every `goal_update_period` steps unless
           current path hazard exceeds `risk_tolerance_immediate`.
+        - Ensures goal_node is kept in sync with goal for OSM graph mode.
         """
         
-        # === Parameters (tweakable) ===
+        # Parameters (tweakable)
         goal_update_period = getattr(self, "goal_update_period", 20)  # default every 20 steps
         beta_exit = getattr(self, "beta_exit", 0.2)                  # softmax inverse-temperature
         congestion_exp = getattr(self, "congestion_exp", 2.0)       # superlinear exponent
@@ -472,7 +473,7 @@ class Agent:
         hysteresis_factor = getattr(self, "goal_hysteresis_factor", 1.05)
         
         
-        # initialize counters if needed
+        # Step1: initialize counters if needed
         if not hasattr(self, '_goal_update_counter'):
             self._goal_update_counter = 0
         self._goal_update_counter += 1
@@ -496,12 +497,12 @@ class Agent:
         if not do_resample:
             return  # keep current goal
         
-        # Precompute exit usage counts (how many agents currently targeting each exit)
+        # Step 2: Precompute exit usage counts (how many agents currently targeting each exit)
         exit_usage = [self._count_agents_targeting(env, exit_pos) for exit_pos in exits]
         total_agents = max(1, len(getattr(env, "agents", [])))
-        
         # Score all exits
         exit_scores = []
+        
         for idx, exit_pos in enumerate(exits):
             # Distance cost
             dist = math.hypot(self.pos[0] - exit_pos[0], self.pos[1] - exit_pos[1])
@@ -528,7 +529,7 @@ class Agent:
             )
             exit_scores.append(utility)
         
-        # Convert to probabilities via stabilized softmax
+        # Step 3: Convert to probabilities via stabilized softmax
         scores = np.array(exit_scores, dtype=np.float64)
         # numerical stabilization
         max_s = np.max(scores)
@@ -538,48 +539,39 @@ class Agent:
         # Sample exit according to probs (stochastic choice)
         chosen_idx = self.rng.choice(len(exits), p=probs)
         chosen_exit = tuple(exits[chosen_idx])
-
-        # --- DEBUG PRINT: now probs and chosen_exit exist ---
-        if getattr(self, "id", -1) < 5:
-            print(f"[Agent {self.id}] exit_scores={np.round(exit_scores,3)} probs={np.round(probs,3)} chosen={chosen_exit}")
         
-        # Hysteresis: only switch if chosen exit gives a sufficient improvement over current
+        # Step 4: Hysteresis: only switch if chosen exit gives a sufficient improvement over current
         # (avoid flip-flopping if probabilities similar). We measure expected utility difference.
         current_goal = tuple(self.goal) if hasattr(self, "goal") else None
         if current_goal is None:
             self.goal = chosen_exit
-            return
-        
-        # compute current_goal_score for comparison
-        try:
-            curr_idx = exits.index(list(current_goal))
-        except ValueError:
-            curr_idx = None
-
-        if curr_idx is not None:
-            current_score = scores[curr_idx]
         else:
-            # fallback revision of utility for current goal
-            d0 = math.hypot(self.pos[0] - current_goal[0], self.pos[1] - current_goal[1])
-            norm_d0 = d0 / max(env.width, env.height)
-            ph0 = self._estimate_path_hazard(env, current_goal)
-            cong0 = self._count_agents_near(env, current_goal, radius=5)
-            cc0 = 0.5 * (cong0 ** congestion_exp)
-            up0 = self._count_agents_targeting(env, current_goal) / float(total_agents)
-            usage0 = usage_penalty_k * up0
-            current_score = (
-                - (norm_d0 * 10.0)
-                - (5.0 * ph0)
-                - cc0
-                - (20.0 * usage0)
-            )
-        
-        # require at least a fractional improvement to switch (hysteresis factor)
-        if scores[chosen_idx] > hysteresis_factor * current_score or \
-            self._estimate_path_hazard(env, current_goal) > getattr(self, "risk_tolerance", 0.3) * 2.0:
-                self.goal = chosen_exit
-        # else: keep current goal
+            # compute current_goal_score for comparison
+            try:
+                curr_idx = exits.index(list(current_goal))
+                current_score = scores[curr_idx]
+            except ValueError:
+                current_score = -np.inf
 
+            should_switch = (
+                scores[chosen_idx] > hysteresis_factor * current_score
+                or self._estimate_path_hazard(env, current_goal)
+                    > getattr(self, "risk_tolerance", 0.3) * 2.0
+            )
+
+            if should_switch:
+                self.goal = chosen_exit
+        
+        # --- Step 5: sync to graph goal if applicable ---
+        # Keep grid goal for visualization; update goal_node only if in graph mode
+        if hasattr(self, "goal_node") and hasattr(env, "cell_to_node"):
+            gx, gy = map(int, np.clip(chosen_exit, [0, 0], [env.width - 1, env.height - 1]))
+            try:
+                goal_node_id = env.cell_to_node[gy, gx]
+                if goal_node_id not in (-1, None, "None", "nan"):
+                    self.goal_node = str(goal_node_id)
+            except Exception as e:
+                print(f"[WARN] Agent {self.id} failed to sync goal_node: {e}")
     
     def _count_agents_targeting(self, env, exit_pos, radius: int = 2) -> int:
         """
@@ -924,9 +916,19 @@ class PoliceAgent(Agent):
         # 7. Deploy gas (respect cooldown)
         if not hasattr(self, 'deploy_cooldown'):
             self.deploy_cooldown = 0
+        
         if self.deploy_cooldown <= 0:
-            # try gas
-            self._attempt_gas_deployment(env)
+            # Check if protesters nearby
+            nearby_protesters = sum(
+                1 for p in env.protesters 
+                if p.state == AgentState.MOVING and 
+                np.hypot(p.pos[0] - pos_x, p.pos[1] - pos_y) < 15
+            )
+            # Deploy if 5+ protesters within range (instead of random prob)
+            if nearby_protesters >= 2:
+                self._attempt_gas_deployment(env)
+                self.deploy_cooldown = self.deploy_cooldown_max
+                print(f"[DEBUG] Police {self.id} deployed gas at step {env.step_count}")
         else:
             self.deploy_cooldown -= 1
 
