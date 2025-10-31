@@ -1,0 +1,206 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            257140.36533777206,
+            9857724.527878206
+          ],
+          [
+            257266.7565252912,
+            9857789.542691084
+          ],
+          [
+            257246.1591394502,
+            9857830.539761977
+          ],
+          [
+            257242.54679993136,
+            9857836.741970118
+          ],
+          [
+            257330.61205209806,
+            9857883.594707439
+          ],
+          [
+            257324.8553863269,
+            9857897.792277927
+          ],
+          [
+            257301.58075455102,
+            9857945.1140314
+          ],
+          [
+            257267.49911393964,
+            9858015.035522593
+          ],
+          [
+            257295.7974102253,
+            9858029.715663256
+          ],
+          [
+            257312.36750141374,
+            9858037.583199324
+          ],
+          [
+            257379.23571468546,
+            9858071.619999865
+          ]
+        ]
+      },
+      "properties": {
+        "type": "route",
+        "n_nodes": 11,
+        "safety": 1.0,
+        "total_distance_m": 566.0397620157278
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257140.36533777206,
+          9857724.527878206
+        ]
+      },
+      "properties": {
+        "node": "12168049895"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257266.7565252912,
+          9857789.542691084
+        ]
+      },
+      "properties": {
+        "node": "12168049894"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257246.1591394502,
+          9857830.539761977
+        ]
+      },
+      "properties": {
+        "node": "8527067112"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257242.54679993136,
+          9857836.741970118
+        ]
+      },
+      "properties": {
+        "node": "282041291"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257330.61205209806,
+          9857883.594707439
+        ]
+      },
+      "properties": {
+        "node": "504962114"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257324.8553863269,
+          9857897.792277927
+        ]
+      },
+      "properties": {
+        "node": "6372331348"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257301.58075455102,
+          9857945.1140314
+        ]
+      },
+      "properties": {
+        "node": "504962089"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257267.49911393964,
+          9858015.035522593
+        ]
+      },
+      "properties": {
+        "node": "282040654"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257295.7974102253,
+          9858029.715663256
+        ]
+      },
+      "properties": {
+        "node": "282040655"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257312.36750141374,
+          9858037.583199324
+        ]
+      },
+      "properties": {
+        "node": "1284303765"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257379.23571468546,
+          9858071.619999865
+        ]
+      },
+      "properties": {
+        "node": "504962211"
+      }
+    }
+  ]
+}

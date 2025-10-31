@@ -1,334 +1,351 @@
 """
-route_planner.py - FR6: Risk-Aware Route Planner
+route_optimizer.py - Path finding algorithms for risk-aware routing
 
-Computes real-road routes that minimize expected harm while maintaining 
-reasonable travel distance and practicality.
+Implements Dijkstra's algorithm and A* search with risk-aware cost functions.
 """
 
 import numpy as np
 import networkx as nx
-from typing import Dict, List, Tuple, Optional
-from pathlib import Path
-import json
-from collections import deque
-
-from .cost_functions import get_cost_function, CostFunction
-from .route_optimizer import RouteOptimizer
+import heapq
+from typing import Dict, List, Tuple, Optional, Callable
+from dataclasses import dataclass
 
 
-class RiskAwareRoutePlanner:
+@dataclass
+class PathMetadata:
+    """Metadata about a computed path."""
+    total_distance_m: float
+    total_cost: float
+    p_safe: float
+    edge_risks: List[float]
+    num_turns: int
+    estimated_time_s: float
+    nodes_explored: int
+
+
+class RouteOptimizer:
     """
-    Risk-aware route planner for protest navigation.
+    Path finding algorithms for risk-aware routing.
     
-    Integrates Monte Carlo harm probabilities with OSM road network to
-    produce safe, practical routes with uncertainty quantification.
+    Supports both Dijkstra's algorithm (optimal) and A* (faster with heuristic).
     """
     
-    def __init__(self, 
-                 osm_graph: nx.Graph,
-                 p_sim: np.ndarray,
-                 config: Dict,
-                 cell_to_node: Optional[np.ndarray] = None,
-                 street_names: Optional[Dict] = None):
+    def __init__(self, graph: nx.Graph):
         """
-        Initialize route planner.
+        Initialize optimizer.
         
         Args:
-            osm_graph: NetworkX graph with node coords and edge lengths
-            p_sim: Harm probability grid from Monte Carlo (height, width)
-            config: Planner configuration
-            cell_to_node: Optional grid-to-node mapping array
-            street_names: Optional dict mapping node_id → street name
+            graph: NetworkX graph with node coordinates and edge attributes
         """
-        self.graph = osm_graph
-        self.p_sim = p_sim
-        self.config = config
-        self.cell_to_node = cell_to_node
-        self.street_names = street_names or {}
+        self.graph = graph
         
-        # Grid dimensions
-        self.height, self.width = p_sim.shape
-        
-        # Initialize cost function
-        cost_type = config.get('cost_function', 'log_odds')
-        self.cost_fn = get_cost_function(cost_type, config)
-        
-        # Initialize optimizer
-        self.optimizer = RouteOptimizer(osm_graph)
-        
-        # Map harm probabilities to graph edges
-        self._map_risk_to_edges()
-        
-        # Route cache (stores last N routes)
-        self.cache_size = config.get('cache_size', 10)
-        self.route_cache = deque(maxlen=self.cache_size)
-        
-        print(f"[Planner] Initialized with {len(self.graph.nodes)} nodes, "
-              f"{len(self.graph.edges)} edges")
-        print(f"[Planner] Cost function: {cost_type}")
-        print(f"[Planner] Mean p(harm): {p_sim.mean():.4f}, "
-              f"Max p(harm): {p_sim.max():.4f}")
-    
-    def _map_risk_to_edges(self):
-        """
-        Map grid-based harm probabilities to graph edges.
-        
-        Strategy:
-        1. For each edge (u, v), sample p_sim along the edge
-        2. Take max or mean of sampled probabilities
-        3. Store as edge attribute 'p_harm'
-        """
-        # Get node positions
-        node_positions = {
+        # Precompute node positions for heuristic
+        self.node_positions = {
             node: (data['x'], data['y']) 
-            for node, data in self.graph.nodes(data=True)
+            for node, data in graph.nodes(data=True)
         }
         
-        # Process each edge
-        for u, v, data in self.graph.edges(data=True):
-            # Get endpoint coordinates (UTM)
-            x1, y1 = node_positions[u]
-            x2, y2 = node_positions[v]
-            
-            # Sample p_sim along edge (use 5 samples)
-            p_harms = []
-            for t in np.linspace(0, 1, 5):
-                x = x1 + t * (x2 - x1)
-                y = y1 + t * (y2 - y1)
-                
-                # Convert UTM to grid cell
-                cell_x, cell_y = self._utm_to_cell(x, y)
-                
-                # Bounds check
-                if 0 <= cell_x < self.width and 0 <= cell_y < self.height:
-                    p_harms.append(self.p_sim[cell_y, cell_x])
-            
-            # Take max (conservative) or mean
-            if p_harms:
-                strategy = self.config.get('edge_risk_strategy', 'max')
-                if strategy == 'max':
-                    p_harm = np.max(p_harms)
-                else:
-                    p_harm = np.mean(p_harms)
-            else:
-                p_harm = 0.0  # Edge outside grid
-            
-            # Store on edge
-            data['p_harm'] = float(p_harm)
+        # Average walking speed for time estimates (m/s)
+        self.walking_speed = 1.4  # ~5 km/h
     
-    def _utm_to_cell(self, x_utm: float, y_utm: float) -> Tuple[int, int]:
+    def dijkstra(self, 
+                 start: str, 
+                 goal: str, 
+                 cost_fn: Callable) -> Tuple[List[str], float, Dict]:
         """
-        Convert UTM coordinates to grid cell indices.
-        
-        Assumes affine transformation is available in environment.
-        For now, use simple linear interpolation from node bounds.
+        Dijkstra's algorithm with risk-aware costs.
         
         Args:
-            x_utm, y_utm: UTM coordinates
+            start: Start node ID
+            goal: Goal node ID
+            cost_fn: CostFunction instance with compute_cost method
             
         Returns:
-            cell_x, cell_y: Grid cell indices
+            path: List of node IDs (empty if no path)
+            total_cost: Cumulative cost
+            metadata: PathMetadata dictionary
         """
-        # Get graph bounds
-        xs = [data['x'] for _, data in self.graph.nodes(data=True)]
-        ys = [data['y'] for _, data in self.graph.nodes(data=True)]
+        # Priority queue: (cost, node, path_so_far)
+        heap = [(0.0, start, [start])]
+        visited = set()
+        nodes_explored = 0
         
-        x_min, x_max = min(xs), max(xs)
-        y_min, y_max = min(ys), max(ys)
+        # Best costs to each node
+        best_cost = {start: 0.0}
         
-        # Normalize to [0, 1]
-        x_norm = (x_utm - x_min) / (x_max - x_min) if x_max > x_min else 0.5
-        y_norm = (y_utm - y_min) / (y_max - y_min) if y_max > y_min else 0.5
-        
-        # Scale to grid
-        cell_x = int(x_norm * self.width)
-        cell_y = int((1.0 - y_norm) * self.height)  # Flip Y (image coords)
-        
-        return cell_x, cell_y
-    
-    def plan_route(self, 
-                   start: str, 
-                   goal: str, 
-                   algorithm: str = 'astar') -> Dict:
-        """
-        Compute risk-aware route from start to goal.
-        
-        Args:
-            start: Start node ID (string)
-            goal: Goal node ID (string)
-            algorithm: 'dijkstra' or 'astar' (default: 'astar')
+        while heap:
+            current_cost, current_node, path = heapq.heappop(heap)
             
-        Returns:
-            route_dict: Dictionary with:
-                - path: List of node IDs
-                - geometry: List of (x, y) coordinates
-                - directions: List of textual instructions
-                - safety_score: P(safe arrival)
-                - metadata: Path statistics
-        """
-        # Validate inputs
-        if start not in self.graph:
-            return {'error': f'Start node {start} not in graph'}
-        if goal not in self.graph:
-            return {'error': f'Goal node {goal} not in graph'}
+            # Goal check
+            if current_node == goal:
+                metadata = self._compute_metadata(path, cost_fn)
+                metadata['nodes_explored'] = nodes_explored
+                return path, current_cost, metadata
+            
+            # Skip if already visited
+            if current_node in visited:
+                continue
+            
+            visited.add(current_node)
+            nodes_explored += 1
+            
+            # Explore neighbors
+            for neighbor in self.graph.neighbors(current_node):
+                if neighbor in visited:
+                    continue
+                
+                # Get edge data
+                edge_data = self.graph[current_node][neighbor]
+                distance = edge_data.get('length', 0.0)
+                p_harm = edge_data.get('p_harm', 0.0)
+                
+                # Compute edge cost
+                edge_cost = cost_fn.compute_cost(distance, p_harm)
+                new_cost = current_cost + edge_cost
+                
+                # Update if better
+                if neighbor not in best_cost or new_cost < best_cost[neighbor]:
+                    best_cost[neighbor] = new_cost
+                    new_path = path + [neighbor]
+                    heapq.heappush(heap, (new_cost, neighbor, new_path))
         
-        # Check cache
-        cache_key = (start, goal, algorithm)
-        for cached in self.route_cache:
-            if cached['cache_key'] == cache_key:
-                print(f"[Planner] Cache hit for {start} → {goal}")
-                return cached['route']
-        
-        # Run path finding
-        if algorithm == 'dijkstra':
-            path, cost, metadata = self.optimizer.dijkstra(start, goal, self.cost_fn)
-        elif algorithm == 'astar':
-            path, cost, metadata = self.optimizer.astar(start, goal, self.cost_fn)
-        else:
-            return {'error': f'Unknown algorithm: {algorithm}'}
-        
-        if not path:
-            return {'error': 'No path found', 'metadata': metadata}
-        
-        # Generate geometry
-        geometry = self._path_to_geometry(path)
-        
-        # Generate directions
-        directions = self._generate_directions(path)
-        
-        # Assemble result
-        route_dict = {
-            'path': path,
-            'geometry': geometry,
-            'directions': directions,
-            'safety_score': metadata.get('p_safe', 0.0),
-            'metadata': metadata,
-            'algorithm': algorithm
+        # No path found
+        return [], float('inf'), {
+            'error': 'No path found',
+            'nodes_explored': nodes_explored
         }
-        
-        # Cache result
-        self.route_cache.append({
-            'cache_key': cache_key,
-            'route': route_dict
-        })
-        
-        return route_dict
     
-    def _path_to_geometry(self, path: List[str]) -> List[Tuple[float, float]]:
-        """Convert path to list of (x, y) UTM coordinates."""
-        geometry = []
-        for node in path:
-            data = self.graph.nodes[node]
-            geometry.append((data['x'], data['y']))
-        return geometry
-    
-    def _generate_directions(self, path: List[str]) -> List[Dict]:
+    def astar(self, 
+              start: str, 
+              goal: str, 
+              cost_fn: Callable) -> Tuple[List[str], float, Dict]:
         """
-        Generate turn-by-turn directions.
+        A* search with Euclidean distance heuristic.
+        
+        Args:
+            start: Start node ID
+            goal: Goal node ID
+            cost_fn: CostFunction instance
+            
+        Returns:
+            path: List of node IDs
+            total_cost: Cumulative cost
+            metadata: PathMetadata dictionary
+        """
+        # Heuristic: Euclidean distance to goal
+        goal_x, goal_y = self.node_positions[goal]
+        
+        def heuristic(node: str) -> float:
+            """Admissible heuristic (straight-line distance)."""
+            x, y = self.node_positions[node]
+            return np.sqrt((x - goal_x)**2 + (y - goal_y)**2)
+        
+        # Priority queue: (f_score, g_score, node, path)
+        # f_score = g_score + heuristic
+        h_start = heuristic(start)
+        heap = [(h_start, 0.0, start, [start])]
+        
+        visited = set()
+        best_g = {start: 0.0}
+        nodes_explored = 0
+        
+        while heap:
+            f_score, g_score, current_node, path = heapq.heappop(heap)
+            
+            # Goal check
+            if current_node == goal:
+                metadata = self._compute_metadata(path, cost_fn)
+                metadata['nodes_explored'] = nodes_explored
+                return path, g_score, metadata
+            
+            # Skip if visited
+            if current_node in visited:
+                continue
+            
+            visited.add(current_node)
+            nodes_explored += 1
+            
+            # Explore neighbors
+            for neighbor in self.graph.neighbors(current_node):
+                if neighbor in visited:
+                    continue
+                
+                # Edge cost
+                edge_data = self.graph[current_node][neighbor]
+                distance = edge_data.get('length', 0.0)
+                p_harm = edge_data.get('p_harm', 0.0)
+                edge_cost = cost_fn.compute_cost(distance, p_harm)
+                
+                new_g = g_score + edge_cost
+                
+                # Update if better
+                if neighbor not in best_g or new_g < best_g[neighbor]:
+                    best_g[neighbor] = new_g
+                    h = heuristic(neighbor)
+                    new_f = new_g + h
+                    new_path = path + [neighbor]
+                    heapq.heappush(heap, (new_f, new_g, neighbor, new_path))
+        
+        # No path found
+        return [], float('inf'), {
+            'error': 'No path found',
+            'nodes_explored': nodes_explored
+        }
+    
+    def _compute_metadata(self, path: List[str], cost_fn: Callable) -> Dict:
+        """
+        Compute comprehensive path metadata.
         
         Args:
             path: List of node IDs
+            cost_fn: CostFunction instance
             
         Returns:
-            directions: List of instruction dicts
+            metadata: Dictionary with path statistics
         """
         if len(path) < 2:
-            return []
+            return {
+                'total_distance_m': 0.0,
+                'total_cost': 0.0,
+                'p_safe': 1.0,
+                'edge_risks': [],
+                'num_turns': 0,
+                'estimated_time_s': 0.0
+            }
         
-        directions = []
+        # Collect edge statistics
+        distances = []
+        p_harms = []
+        costs = []
         
-        # Start instruction
-        start_street = self.street_names.get(path[0], "your location")
-        directions.append({
-            'step': 0,
-            'instruction': f"Start at {start_street}",
-            'node': path[0],
-            'distance_m': 0.0
-        })
-        
-        # Middle segments
-        for i in range(1, len(path) - 1):
-            u, v = path[i-1], path[i]
+        for i in range(len(path) - 1):
+            u, v = path[i], path[i + 1]
             edge_data = self.graph[u][v]
-            
-            street = self.street_names.get(v, "unnamed road")
-            distance = edge_data.get('length', 0.0)
-            
-            # Simple direction (TODO: compute actual bearing)
-            directions.append({
-                'step': i,
-                'instruction': f"Continue on {street}",
-                'node': v,
-                'distance_m': float(distance)
-            })
+
+            # --- Compute distance (fallback if missing) ---
+            if 'length' in edge_data and edge_data['length'] > 0:
+                distance = edge_data['length']
+            else:
+                # Fallback: Euclidean distance between node coordinates
+                u_data = self.graph.nodes[u]
+                v_data = self.graph.nodes[v]
+                dx = u_data['x'] - v_data['x']
+                dy = u_data['y'] - v_data['y']
+                distance = float((dx**2 + dy**2) ** 0.5)
+
+            # --- Risk & cost ---
+            p_harm = edge_data.get('p_harm', 0.0)
+            cost = cost_fn.compute_cost(distance, p_harm)
+
+            distances.append(distance)
+            p_harms.append(p_harm)
+            costs.append(cost)
+
         
-        # End instruction
-        goal_street = self.street_names.get(path[-1], "destination")
-        u, v = path[-2], path[-1]
-        final_distance = self.graph[u][v].get('length', 0.0)
+        # Aggregate metrics
+        total_distance = sum(distances)
+        total_cost = sum(costs)
         
-        directions.append({
-            'step': len(path) - 1,
-            'instruction': f"Arrive at {goal_street}",
-            'node': path[-1],
-            'distance_m': float(final_distance)
-        })
+        # Route safety (independence assumption)
+        p_safe = cost_fn.compute_route_safety(np.array(p_harms))
         
-        return directions
-    
-    def compare_routes(self, 
-                      start: str, 
-                      goal: str) -> Dict:
-        """
-        Compare baseline shortest path vs risk-aware route.
+        # Count turns (bearing change > 30°)
+        num_turns = self._count_turns(path)
         
-        Args:
-            start, goal: Node IDs
-            
-        Returns:
-            comparison: Dict with both routes and metrics
-        """
-        # Baseline: shortest path (ignore risk)
-        baseline_config = self.config.copy()
-        baseline_config['lambda_risk'] = 0.0  # Zero risk weight
-        baseline_cost_fn = get_cost_function('linear', baseline_config)
-        
-        baseline_path, _, baseline_meta = self.optimizer.dijkstra(
-            start, goal, baseline_cost_fn
-        )
-        
-        # Risk-aware: use configured cost function
-        risk_path, _, risk_meta = self.optimizer.astar(
-            start, goal, self.cost_fn
-        )
+        # Estimated time
+        estimated_time_s = total_distance / self.walking_speed
         
         return {
-            'baseline': {
-                'path': baseline_path,
-                'geometry': self._path_to_geometry(baseline_path),
-                'metadata': baseline_meta
-            },
-            'risk_aware': {
-                'path': risk_path,
-                'geometry': self._path_to_geometry(risk_path),
-                'metadata': risk_meta
-            },
-            'comparison': {
-                'distance_increase_pct': 100 * (
-                    risk_meta['total_distance_m'] / baseline_meta['total_distance_m'] - 1.0
-                ),
-                'safety_improvement': risk_meta['p_safe'] - baseline_meta['p_safe'],
-                'baseline_safety': baseline_meta['p_safe'],
-                'risk_aware_safety': risk_meta['p_safe']
-            }
+            'total_distance_m': float(total_distance),
+            'total_cost': float(total_cost),
+            'p_safe': float(p_safe),
+            'edge_risks': [float(p) for p in p_harms],
+            'num_turns': num_turns,
+            'estimated_time_s': float(estimated_time_s),
+            'mean_edge_risk': float(np.mean(p_harms)) if p_harms else 0.0,
+            'max_edge_risk': float(np.max(p_harms)) if p_harms else 0.0
         }
     
-    def save_results(self, route: Dict, output_path: str):
-        """Save route to JSON file."""
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+    def _count_turns(self, path: List[str], threshold_deg: float = 30.0) -> int:
+        """
+        Count number of significant turns in path.
         
-        with open(output_path, 'w') as f:
-            json.dump(route, f, indent=2)
+        Args:
+            path: List of node IDs
+            threshold_deg: Minimum bearing change to count as turn
+            
+        Returns:
+            num_turns: Count of turns
+        """
+        if len(path) < 3:
+            return 0
         
-        print(f"[Planner] Saved route to {output_path}")
+        num_turns = 0
+        
+        for i in range(1, len(path) - 1):
+            # Get three consecutive points
+            prev_node = path[i-1]
+            curr_node = path[i]
+            next_node = path[i+1]
+            
+            # Get positions
+            x1, y1 = self.node_positions[prev_node]
+            x2, y2 = self.node_positions[curr_node]
+            x3, y3 = self.node_positions[next_node]
+            
+            # Compute bearings
+            bearing1 = np.arctan2(y2 - y1, x2 - x1)
+            bearing2 = np.arctan2(y3 - y2, x3 - x2)
+            
+            # Bearing change
+            delta = np.abs(np.degrees(bearing2 - bearing1))
+            
+            # Normalize to [0, 180]
+            if delta > 180:
+                delta = 360 - delta
+            
+            if delta > threshold_deg:
+                num_turns += 1
+        
+        return num_turns
+    
+    def compute_bearing(self, node1: str, node2: str) -> float:
+        """
+        Compute bearing from node1 to node2 (degrees, 0=North).
+        
+        Args:
+            node1, node2: Node IDs
+            
+        Returns:
+            bearing: Bearing in degrees [0, 360)
+        """
+        x1, y1 = self.node_positions[node1]
+        x2, y2 = self.node_positions[node2]
+        
+        # Compute angle (0=East, counterclockwise)
+        angle_rad = np.arctan2(y2 - y1, x2 - x1)
+        
+        # Convert to bearing (0=North, clockwise)
+        bearing = (90 - np.degrees(angle_rad)) % 360
+        
+        return bearing
+    
+    def bearing_to_direction(self, bearing: float) -> str:
+        """
+        Convert bearing to cardinal direction.
+        
+        Args:
+            bearing: Bearing in degrees [0, 360)
+            
+        Returns:
+            direction: One of ['north', 'northeast', 'east', 'southeast',
+                              'south', 'southwest', 'west', 'northwest']
+        """
+        directions = [
+            'north', 'northeast', 'east', 'southeast',
+            'south', 'southwest', 'west', 'northwest'
+        ]
+        
+        # Map to 8 directions
+        idx = int((bearing + 22.5) / 45.0) % 8
+        return directions[idx]

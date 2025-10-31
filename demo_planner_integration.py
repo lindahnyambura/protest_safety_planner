@@ -23,7 +23,7 @@ from datetime import datetime
 
 # Import your existing components
 from src.env.real_nairobi_loader import RealNairobiLoader
-from src.env.protest_env import ProtestEnvironment
+from src.env.protest_env import ProtestEnv
 from src.monte_carlo.aggregator import MonteCarloAggregator
 
 # Import new planner module
@@ -43,44 +43,62 @@ def setup_environment(config: dict):
     print("STEP 1: Environment Setup")
     print("=" * 60)
     
-    loader = RealNairobiLoader()
-    
-    env = ProtestEnvironment(
-        grid_size=(config['grid_size'], config['grid_size']),
-        real_nairobi_mode=True,
-        real_nairobi_loader=loader
-    )
-    
+    # --- 1. Load real map and graph ---
+    from src.env.real_nairobi_loader import load_real_nairobi_cbd_map
+
+    map_data = load_real_nairobi_cbd_map(config)
+    if map_data is None or "graph" not in map_data:
+        raise RuntimeError("Failed to load real Nairobi CBD map or graph")
+
+    # --- 2. Initialize protest environment ---
+    env = ProtestEnv(config=config)
+
+    # Attach graph + metadata + obstacle mask
+    env.G = map_data["graph"]
+    env.metadata = map_data["metadata"]
+    env.obstacle_mask = map_data["obstacle_mask"]
+    env.is_real_osm = True
+
     print(f"✓ Loaded Nairobi CBD environment")
     print(f"  Grid: {env.height}x{env.width}")
     print(f"  Nodes: {len(env.G.nodes)}")
     print(f"  Edges: {len(env.G.edges)}")
-    print(f"  Bounds: ({loader.metadata['x_range'][0]:.0f}, {loader.metadata['y_range'][0]:.0f}) "
-          f"to ({loader.metadata['x_range'][1]:.0f}, {loader.metadata['y_range'][1]:.0f})")
-    
-    return env, loader
+
+    bounds = env.metadata["bounds"]
+    print(f"  Bounds: ({bounds[0]:.0f}, {bounds[1]:.0f}) to ({bounds[2]:.0f}, {bounds[3]:.0f})")
+
+    return env, map_data
 
 
-def run_monte_carlo(env, config: dict, n_rollouts: int = 100):
-    """Run Monte Carlo risk aggregation."""
-    print("\n" + "=" * 60)
-    print("STEP 2: Monte Carlo Simulation")
-    print("=" * 60)
-    
+def load_or_run_monte_carlo(env, config, n_rollouts=100, use_cached=True):
+    """
+    Either load precomputed Monte Carlo results or run fresh simulations.
+    """
+    from pathlib import Path
+    import numpy as np
+
+    run_dir = Path("artifacts/rollouts/production_run")
+    p_sim_path = run_dir / "p_sim.npy"
+
+    if use_cached and p_sim_path.exists():
+        print("\n" + "=" * 60)
+        print("STEP 2: Load Cached Monte Carlo Results")
+        print("=" * 60)
+        p_sim = np.load(p_sim_path)
+        print(f"✓ Loaded precomputed p_sim from {p_sim_path}")
+        print(f"  Shape: {p_sim.shape}, Mean={p_sim.mean():.4f}, Max={p_sim.max():.4f}")
+        return {"p_sim": p_sim}
+
+    # Otherwise, run Monte Carlo fresh
+    print("\nNo cached results found — running Monte Carlo simulation...")
     aggregator = MonteCarloAggregator(
-        env=env,
-        scenario_config=config,
-        output_dir='artifacts/planner_demo'
+        env_class=env.__class__,
+        config=config,
+        output_dir="artifacts/rollouts"
     )
-    
-    print(f"Running {n_rollouts} rollouts...")
-    results = aggregator.run_parallel_rollouts(n=n_rollouts)
-    
-    print(f"✓ Monte Carlo complete")
-    print(f"  Mean p(harm): {results['p_sim'].mean():.4f}")
-    print(f"  Max p(harm): {results['p_sim'].max():.4f}")
-    print(f"  Std dev: {results['sigma_sim'].mean():.4f}")
-    
+    aggregator.n_rollouts = n_rollouts
+    results = aggregator.run_monte_carlo(verbose=True)
+    aggregator.save_results(results, run_id="production_run")
     return results
 
 
@@ -88,11 +106,19 @@ def extract_street_names(graph: nx.Graph) -> dict:
     """Extract street names from OSM graph."""
     street_names = {}
     
-    for u, v, data in graph.edges(data=True):
-        if 'name' in data:
-            edge_key = f"{u}_{v}"
-            street_names[edge_key] = data['name']
-    
+    for u, v, key, data in graph.edges(keys=True, data=True):
+        name = data.get('name')
+        if not name:
+            continue
+        
+        # OSM can have multiple names (list or comma-separated)
+        if isinstance(name, list):
+            name = ", ".join(name)
+
+        # Use all edge identifiers for uniqueness
+        edge_key = f"{u}_{v}_{key}"
+        street_names[edge_key] = name
+
     return street_names
 
 
@@ -107,16 +133,21 @@ def find_interesting_nodes(graph: nx.Graph, n_samples: int = 10):
     nodes = list(graph.nodes())
     node_positions = {n: (graph.nodes[n]['x'], graph.nodes[n]['y']) for n in nodes}
     
+    # --- Handle directed graphs ---
+    if graph.is_directed():
+        undirected_graph = graph.to_undirected(as_view=True)
+    else:
+        undirected_graph = graph
+    
     # Find largest connected component
-    components = list(nx.connected_components(graph))
+    components = list(nx.connected_components(undirected_graph))
     largest_component = max(components, key=len)
     valid_nodes = list(largest_component)
     
     print(f"\n[Finding interesting routes]")
-    print(f"  Valid nodes: {len(valid_nodes)}")
+    print(f"  Valid nodes in largest component: {len(valid_nodes)}")
     
     pairs = []
-    
     import random
     random.seed(42)
     
@@ -131,16 +162,17 @@ def find_interesting_nodes(graph: nx.Graph, n_samples: int = 10):
         xv, yv = node_positions[v]
         dist = np.sqrt((xu - xv)**2 + (yu - yv)**2)
         
-        if dist > 200 and dist < 800:  # 200-800m range
+        if 200 < dist < 800:  # 200–800m range
             pairs.append((u, v, dist))
     
     # Sort by distance
     pairs.sort(key=lambda x: x[2])
     
+    print(f"  Selected {len(pairs)} valid pairs for routing.")
     return pairs[:n_samples]
 
 
-def initialize_planner(env, loader, results: dict, config: dict):
+def initialize_planner(env, map_data, results: dict, config: dict):
     """Initialize route planner with Monte Carlo results."""
     print("\n" + "=" * 60)
     print("STEP 3: Route Planner Initialization")
@@ -149,33 +181,44 @@ def initialize_planner(env, loader, results: dict, config: dict):
     # Extract street names
     street_names = extract_street_names(env.G)
     print(f"✓ Extracted {len(street_names)} street names")
-    
-    # Planner config
+
+    # Get metadata safely
+    metadata = map_data.get("metadata", {})
+    bounds = metadata.get("bounds", None)
+
+    if bounds is not None:
+        x_min, y_min, x_max, y_max = bounds
+    else:
+        # Fallback if using explicit ranges
+        x_min, x_max = metadata.get("x_range", (0, 0))
+        y_min, y_max = metadata.get("y_range", (0, 0))
+
     planner_config = {
         'cost_function': config.get('cost_function', 'log_odds'),
         'lambda_distance': config.get('lambda_distance', 1.0),
         'lambda_risk': config.get('lambda_risk', 10.0),
-        'x_min': loader.metadata['x_range'][0],
-        'x_max': loader.metadata['x_range'][1],
-        'y_min': loader.metadata['y_range'][0],
-        'y_max': loader.metadata['y_range'][1],
+        'x_min': x_min,
+        'x_max': x_max,
+        'y_min': y_min,
+        'y_max': y_max,
         'debug_mode': True,
         'cache_size': 10,
         'reroute_threshold': 0.1
     }
-    
+
     planner = RiskAwareRoutePlanner(
         osm_graph=env.G,
         p_sim=results['p_sim'],
         config=planner_config,
         street_names=street_names
     )
-    
+
     print(f"✓ Planner initialized")
     print(f"  Cost function: {planner_config['cost_function']}")
     print(f"  λ_distance: {planner_config['lambda_distance']}")
     print(f"  λ_risk: {planner_config['lambda_risk']}")
-    
+    print(f"  Bounds: x[{x_min:.0f}, {x_max:.0f}], y[{y_min:.0f}, {y_max:.0f}]")
+
     return planner
 
 
@@ -212,10 +255,22 @@ def compute_routes(planner: RiskAwareRoutePlanner, pairs: list, output_dir: Path
         
         if 'error' not in comparison:
             comp = comparison['comparison']
-            print(f"    vs Baseline:")
-            print(f"      Distance +{comp['distance_increase_pct']:.1f}%")
-            print(f"      Safety +{comp['safety_improvement']:.3f}")
-            
+
+            # Safe printing
+            dist_increase = comp.get('distance_increase_pct')
+            safety_improvement = comp.get('safety_improvement')
+
+            print("    vs Baseline:")
+            if dist_increase is None:
+                print("      Distance: N/A (baseline had zero distance)")
+            else:
+                print(f"      Distance +{dist_increase:.1f}%")
+
+            if safety_improvement is None:
+                print("      Safety improvement: N/A")
+            else:
+                print(f"      Safety +{safety_improvement:.3f}")
+
             all_comparisons.append(comparison)
         
         # Save route
@@ -263,8 +318,18 @@ def generate_summary(all_routes: list, all_comparisons: list, output_dir: Path):
     
     # Comparison statistics
     if all_comparisons:
-        dist_increases = [c['comparison']['distance_increase_pct'] 
-                         for c in all_comparisons]
+        dist_increases = [
+            c.get('comparison', {}).get('distance_increase_pct')
+            for c in all_comparisons
+            if c.get('comparison', {}).get('distance_increase_pct') is not None
+        ]
+
+        if dist_increases:
+            print(f"    Mean: {np.mean(dist_increases):.1f}%")
+            print(f"    Median: {np.median(dist_increases):.1f}%")
+        else:
+            print("    No valid distance comparisons (some baselines had zero distance).")
+
         safety_improvements = [c['comparison']['safety_improvement'] 
                               for c in all_comparisons]
         
@@ -347,10 +412,12 @@ def main():
     env, loader = setup_environment(config)
     
     # Step 2: Run Monte Carlo
-    results = run_monte_carlo(env, config, args.n_rollouts)
+    results = load_or_run_monte_carlo(env, config, args.n_rollouts, use_cached=True)
     
     # Step 3: Initialize planner
-    planner = initialize_planner(env, loader, results, config)
+    env, map_data = setup_environment(config)
+    planner = initialize_planner(env, map_data, results, config)
+
     
     # Step 4: Select routes
     if args.start_node and args.goal_node:

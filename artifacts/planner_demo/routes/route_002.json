@@ -1,0 +1,141 @@
+{
+  "path": [
+    "5536006821",
+    "7191350123",
+    "4102502808",
+    "280120749",
+    "282041291",
+    "8527067112",
+    "12168049894",
+    "12168049895",
+    "1284303801",
+    "566546053"
+  ],
+  "geometry": [
+    [
+      257165.06564023579,
+      9857989.120341618
+    ],
+    [
+      257189.62255568296,
+      9857939.487872312
+    ],
+    [
+      257211.6119767716,
+      9857897.983155362
+    ],
+    [
+      257214.1990181359,
+      9857893.041038534
+    ],
+    [
+      257242.54679993136,
+      9857836.741970118
+    ],
+    [
+      257246.1591394502,
+      9857830.539761977
+    ],
+    [
+      257266.7565252912,
+      9857789.542691084
+    ],
+    [
+      257140.36533777206,
+      9857724.527878206
+    ],
+    [
+      257157.91705060718,
+      9857717.098747818
+    ],
+    [
+      257220.636688352,
+      9857746.375911282
+    ]
+  ],
+  "directions": [
+    {
+      "step": 0,
+      "instruction": "Start at your location",
+      "node": "5536006821",
+      "distance_m": 0.0
+    },
+    {
+      "step": 1,
+      "instruction": "Continue on unnamed road",
+      "node": "7191350123",
+      "distance_m": 0.0
+    },
+    {
+      "step": 2,
+      "instruction": "Continue on unnamed road",
+      "node": "4102502808",
+      "distance_m": 0.0
+    },
+    {
+      "step": 3,
+      "instruction": "Continue on unnamed road",
+      "node": "280120749",
+      "distance_m": 0.0
+    },
+    {
+      "step": 4,
+      "instruction": "Continue on unnamed road",
+      "node": "282041291",
+      "distance_m": 0.0
+    },
+    {
+      "step": 5,
+      "instruction": "Continue on unnamed road",
+      "node": "8527067112",
+      "distance_m": 0.0
+    },
+    {
+      "step": 6,
+      "instruction": "Continue on unnamed road",
+      "node": "12168049894",
+      "distance_m": 0.0
+    },
+    {
+      "step": 7,
+      "instruction": "Continue on unnamed road",
+      "node": "12168049895",
+      "distance_m": 0.0
+    },
+    {
+      "step": 8,
+      "instruction": "Continue on unnamed road",
+      "node": "1284303801",
+      "distance_m": 0.0
+    },
+    {
+      "step": 9,
+      "instruction": "Arrive at destination",
+      "node": "566546053",
+      "distance_m": 0.0
+    }
+  ],
+  "safety_score": 1.0,
+  "metadata": {
+    "total_distance_m": 454.42276551393616,
+    "total_cost": 454.42276551393616,
+    "p_safe": 1.0,
+    "edge_risks": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "num_turns": 3,
+    "estimated_time_s": 324.58768965281155,
+    "mean_edge_risk": 0.0,
+    "max_edge_risk": 0.0,
+    "nodes_explored": 21
+  },
+  "algorithm": "astar"
+}

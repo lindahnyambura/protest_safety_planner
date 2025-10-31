@@ -1,0 +1,189 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            257165.06564023579,
+            9857989.120341618
+          ],
+          [
+            257189.62255568296,
+            9857939.487872312
+          ],
+          [
+            257211.6119767716,
+            9857897.983155362
+          ],
+          [
+            257214.1990181359,
+            9857893.041038534
+          ],
+          [
+            257242.54679993136,
+            9857836.741970118
+          ],
+          [
+            257246.1591394502,
+            9857830.539761977
+          ],
+          [
+            257266.7565252912,
+            9857789.542691084
+          ],
+          [
+            257140.36533777206,
+            9857724.527878206
+          ],
+          [
+            257157.91705060718,
+            9857717.098747818
+          ],
+          [
+            257220.636688352,
+            9857746.375911282
+          ]
+        ]
+      },
+      "properties": {
+        "type": "route",
+        "n_nodes": 10,
+        "safety": 1.0,
+        "total_distance_m": 454.42276551393616
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257165.06564023579,
+          9857989.120341618
+        ]
+      },
+      "properties": {
+        "node": "5536006821"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257189.62255568296,
+          9857939.487872312
+        ]
+      },
+      "properties": {
+        "node": "7191350123"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257211.6119767716,
+          9857897.983155362
+        ]
+      },
+      "properties": {
+        "node": "4102502808"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257214.1990181359,
+          9857893.041038534
+        ]
+      },
+      "properties": {
+        "node": "280120749"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257242.54679993136,
+          9857836.741970118
+        ]
+      },
+      "properties": {
+        "node": "282041291"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257246.1591394502,
+          9857830.539761977
+        ]
+      },
+      "properties": {
+        "node": "8527067112"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257266.7565252912,
+          9857789.542691084
+        ]
+      },
+      "properties": {
+        "node": "12168049894"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257140.36533777206,
+          9857724.527878206
+        ]
+      },
+      "properties": {
+        "node": "12168049895"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257157.91705060718,
+          9857717.098747818
+        ]
+      },
+      "properties": {
+        "node": "1284303801"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          257220.636688352,
+          9857746.375911282
+        ]
+      },
+      "properties": {
+        "node": "566546053"
+      }
+    }
+  ]
+}
