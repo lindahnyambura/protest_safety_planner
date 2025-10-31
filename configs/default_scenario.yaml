@@ -12,7 +12,7 @@ grid:
 # Time configuration
 time:
   delta_t: 1.0
-  max_steps: 2000
+  max_steps: 300
 
 # Agent configuration
 agents:
@@ -61,18 +61,18 @@ agents:
     spawn:
       type: "fixed"
       positions:
-        - [50, 53]
-        - [25, 35]
-        - [75, 74]
-        - [75, 25]
-        - [25, 40]
-        - [49, 25]
-        - [49, 74]
-        - [25, 50]
-        - [70, 48]
-        - [40, 40]
+        - [40, 60]  # Northwest cluster intercept
+        - [50, 60]  # Center intercept
+        - [60, 60]  # Northeast intercept
+        - [35, 45]  # West flank
+        - [65, 45]  # East flank
+        - [40, 30]  # South coverage
+        - [50, 30]
+        - [60, 30]
+        - [45, 50]  # Central reserves
+        - [55, 50]
     speed_m_s: 1.5
-    deploy_prob: 0.25    # INCREASED from 0.01 (5% vs 1%)
+    deploy_prob: 0.05    # INCREASED from 0.01 (5% vs 1%)
     deploy_cooldown: 30
 
 # Hazards configuration
@@ -83,10 +83,10 @@ hazards:
     # Decay parameters
     decay_rate: 0.01             # per second or per time-step (1%)
     # Emission parameters
-    inj_intensity: 12.0          # mg/m^3 at source (peak)
+    inj_intensity: 50.0          # mg/m^3 at source (peak)
     emission_duration: 30       # Seconds per canister
     # Wind parameters
-    wind_direction: [1, 0]     # East wind (normalized later)
+    wind_direction: [0, 1]     # South wind (normalized later)
     wind_speed_m_s: 2.0        # 2 m/s (light breeze)
     # Harm model: H(c,t) = k * c * delta_t
     k_harm: 0.0083               # (mg*s/m^3)^-1 -> yields H = 5.0 after 60s at 10 mg/m^3; will try k_harm: 0.15

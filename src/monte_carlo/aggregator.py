@@ -120,54 +120,64 @@ class MonteCarloAggregator:
     
     def _run_single_rollout(self, seed: int, rollout_idx: int) -> Dict:
         """
-        Run a single rollout of the environment and track harm indicators.
-
-        Args:
-            seed: int - Base seed for rollout
-            rollout_idx: int - Index of rollout (for debugging)
-
-        Returns:
-            Dict - Rollout results including harm grid, episode length,
-                number of agents harmed, and number of agents incapacitated
+        Run a single rollout with enhanced diagnostics.
         """
-        
         env = self.env_class(self.config)
         obs, info = env.reset(seed=seed)
-        
+    
         # Track time series
         hazard_history = []
         incapacitated_timeline = []
         harm_events_timeline = []
-
+    
         harm_grid = np.zeros((self.height, self.width), dtype=bool)
         done = False
         step_count = 0
         max_steps = self.config['time']['max_steps']
-        
-        # FIXED: Track all harm types
+    
+        # Track all harm types
         agents_harmed = set()
         agents_incapacitated = set()
-        
+    
+        # DEBUG: Track first rollout extensively
+        debug_first_rollout = (rollout_idx == 0)
+    
         while not done and step_count < max_steps:
             obs, reward, terminated, truncated, info = env.step(actions=None)
             harm_grid |= info['harm_grid']
-
+        
             # Record time series
             hazard_history.append(env.hazard_field.concentration.max())
-            incapacitated_timeline.append(sum(1 for a in env.agents 
-                                            if a.state == AgentState.INCAPACITATED))
+            incapacitated_timeline.append(
+                sum(1 for a in env.agents if a.state == AgentState.INCAPACITATED)
+            )
             harm_events_timeline.append(info['harm_grid'].sum())
-            
-            # Track by state (includes gas, water, shooting)
+        
+            # DEBUG: Log first rollout progress
+            if debug_first_rollout and step_count % 10 == 0:
+                n_harmed = len(agents_harmed)
+                peak_hazard = env.hazard_field.concentration.max()
+                harm_cells = info['harm_grid'].sum()
+                print(f"  [Rollout {rollout_idx}] Step {step_count}: "
+                    f"harmed={n_harmed}, hazard={peak_hazard:.1f}, harm_cells={harm_cells}")
+        
+            # Track by state
             for agent in env.agents:
                 if agent.harm_events > 0 or agent.state in [AgentState.STUNNED, AgentState.INCAPACITATED]:
                     agents_harmed.add(agent.id)
                 if agent.state == AgentState.INCAPACITATED:
                     agents_incapacitated.add(agent.id)
-            
+        
             done = terminated or truncated
             step_count += 1
-        
+    
+        # DEBUG: Final rollout summary
+        if debug_first_rollout:
+            total_harm_cells = harm_grid.sum()
+            print(f"  [Rollout {rollout_idx}] Completed: "
+                f"{step_count} steps, {len(agents_harmed)} harmed, "
+                f"{total_harm_cells} harm cells")
+    
         return {
             'harm_grid': harm_grid,
             'hazard_history': hazard_history,

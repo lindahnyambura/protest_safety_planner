@@ -433,15 +433,15 @@
 <edge source="3740165604" target="11895738195" id="0">
   <data key="d4">['1281827287', '370307127']</data>
   <data key="d5">footway</data>
-  <data key="d6">['unnamed_370307127', 'unnamed_1281827287']</data>
+  <data key="d6">['unnamed_1281827287', 'unnamed_370307127']</data>
   <data key="d7">False</data>
-  <data key="d8">['False', 'True']</data>
+  <data key="d8">['True', 'False']</data>
   <data key="d9">38.085948962203716</data>
   <data key="d10">LINESTRING (257116.59842604 9857670.495996563, 257115.06558094773 9857653.41628383, 257095.7903228769 9857645.446822166)</data>
   <data key="d11">[17.148358555269613, 20.85780172716702]</data>
 </edge>
 <edge source="3740165604" target="260573357" id="0">
-  <data key="d4">['1120654528', '1151069803', '1302579121']</data>
+  <data key="d4">['1151069803', '1120654528', '1302579121']</data>
   <data key="d5">trunk</data>
   <data key="d12">roundabout</data>
   <data key="d13">50</data>
@@ -456,9 +456,9 @@
 <edge source="11895738195" target="3740165604" id="0">
   <data key="d4">['1281827287', '370307127']</data>
   <data key="d5">footway</data>
-  <data key="d6">['unnamed_370307127', 'unnamed_1281827287']</data>
+  <data key="d6">['unnamed_1281827287', 'unnamed_370307127']</data>
   <data key="d7">False</data>
-  <data key="d8">['False', 'True']</data>
+  <data key="d8">['True', 'False']</data>
   <data key="d9">38.085948962203716</data>
   <data key="d10">LINESTRING (257095.7903228769 9857645.446822166, 257115.06558094773 9857653.41628383, 257116.59842604 9857670.495996563)</data>
   <data key="d11">[17.148358555269613, 20.85780172716702]</data>
@@ -1277,9 +1277,9 @@
   <data key="d11">6.29051948402963</data>
 </edge>
 <edge source="6572436603" target="6285582459" id="0">
-  <data key="d4">['[ 671208386, 671208382 ]', '671208382', '[ 671208384, 671218223 ]']</data>
+  <data key="d4">['[ 671208384, 671218223 ]', '671208382', '[ 671208386, 671208382 ]']</data>
   <data key="d5">service</data>
-  <data key="d6">['unnamed_[ 671208386, 671208382 ]', 'unnamed_671208382', 'unnamed_[ 671208384, 671218223 ]']</data>
+  <data key="d6">['unnamed_671208382', 'unnamed_[ 671208386, 671208382 ]', 'unnamed_[ 671208384, 671218223 ]']</data>
   <data key="d7">False</data>
   <data key="d8">False</data>
   <data key="d9">74.36969498455505</data>
@@ -1359,21 +1359,21 @@
   <data key="d11">102.04271699963778</data>
 </edge>
 <edge source="8527140565" target="8527067054" id="0">
-  <data key="d4">['918115577', '330461519']</data>
+  <data key="d4">['330461519', '918115577']</data>
   <data key="d5">['service', 'unclassified']</data>
   <data key="d6">['unnamed_918115577', 'Posta Street']</data>
   <data key="d7">False</data>
-  <data key="d8">['False', 'True']</data>
+  <data key="d8">['True', 'False']</data>
   <data key="d9">125.04280303132094</data>
   <data key="d10">LINESTRING (257251.09276956558 9857685.211774299, 257266.1145705104 9857654.96137035, 257345.2486954453 9857678.677742844)</data>
   <data key="d11">[33.77486409588093, 91.1241427735108]</data>
 </edge>
 <edge source="8527067054" target="8527140565" id="0">
   <data key="d4">['330461519', '918115577']</data>
-  <data key="d5">['unclassified', 'service']</data>
-  <data key="d6">['Posta Street', 'unnamed_918115577']</data>
+  <data key="d5">['service', 'unclassified']</data>
+  <data key="d6">['unnamed_918115577', 'Posta Street']</data>
   <data key="d7">False</data>
-  <data key="d8">['False', 'True']</data>
+  <data key="d8">['True', 'False']</data>
   <data key="d9">125.04280303132096</data>
   <data key="d10">LINESTRING (257345.2486954453 9857678.677742844, 257266.1145705104 9857654.96137035, 257251.09276956558 9857685.211774299)</data>
   <data key="d11">[33.77486409588093, 91.1241427735108]</data>
@@ -2000,9 +2000,9 @@
   <data key="d11">50.3354225170182</data>
 </edge>
 <edge source="6285582459" target="6572436603" id="0">
-  <data key="d4">['[ 671208386, 671208382 ]', '[ 671208384, 671218223 ]', '671208382']</data>
+  <data key="d4">['[ 671208384, 671218223 ]', '671208382', '[ 671208386, 671208382 ]']</data>
   <data key="d5">service</data>
-  <data key="d6">['unnamed_[ 671208386, 671208382 ]', 'unnamed_671208382', 'unnamed_[ 671208384, 671218223 ]']</data>
+  <data key="d6">['unnamed_[ 671208384, 671218223 ]', 'unnamed_[ 671208386, 671208382 ]', 'unnamed_671208382']</data>
   <data key="d7">False</data>
   <data key="d8">True</data>
   <data key="d9">74.36969498455505</data>
@@ -2632,8 +2632,8 @@
   <data key="d11">48.54351077886299</data>
 </edge>
 <edge source="504962211" target="3590911088" id="0">
-  <data key="d4">['388178010', '114394269']</data>
-  <data key="d5">['living_street', 'tertiary']</data>
+  <data key="d4">['114394269', '388178010']</data>
+  <data key="d5">['tertiary', 'living_street']</data>
   <data key="d13">50</data>
   <data key="d6">['Muindi Mbingu Street', 'Tubman Road']</data>
   <data key="d7">True</data>

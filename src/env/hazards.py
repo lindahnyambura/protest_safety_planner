@@ -104,11 +104,11 @@ class HazardField:
         Update concentration field for one timestep.
         
         Physics:
-            1. Diffusion: D∇²C
-            2. Advection: -v·∇C (wind transport)
-            3. Decay: -γC (settling + dispersion)
-            4. Emission: +S (sustained sources)
-            5. Obstacle blocking: C=0 inside walls
+            1. Emission: +S (sustained sources) ← MUST COME FIRST
+            2. Diffusion: D∇²C
+            3. Advection: -v·∇C (wind transport)
+            4. Decay: -γC (settling + dispersion)
+            5. Obstacle blocking: C=0 inside wallslls
         
         Args:
             delta_t: Timestep (should match self.delta_t)
@@ -119,8 +119,14 @@ class HazardField:
         
         for src in self.active_sources:
             x, y = src['x'], src['y']
-            if 0 <= x < self.width and 0 <= y < self.height:
-                source_term[y, x] += src['intensity']
+            
+            # Bounds check
+            if not (0 <= x < self.width and 0 <= y < self.height):
+                continue
+            
+            # CRITICAL: Emit concentration (not just mark as active)
+            intensity = src['intensity']
+            source_term[y, x] += intensity * delta_t  # ← FIX: Add emission per timestep
             
             # Decrement duration
             src['duration'] -= 1
@@ -129,7 +135,10 @@ class HazardField:
         
         self.active_sources = remaining_sources
         
-        # 2. Compute diffusion (Laplacian with Neumann BC)
+        # 2. Add source emissions to concentration field
+        self.concentration += source_term  
+
+        # 3. Compute diffusion (Laplacian with Neumann BC)
         laplacian = convolve2d(
             self.concentration,
             self.laplacian_kernel,
@@ -137,22 +146,28 @@ class HazardField:
             boundary='symm'  # No-flux at boundaries (represents walls)
         )
         
-        # 3. Compute wind advection (upwind finite difference)
+        # 4. Compute wind advection (upwind finite difference)
         advection = self._compute_advection()
         
-        # 4. Update equation: Forward Euler integration
+        # 5. Update equation: Forward Euler integration
         self.concentration += delta_t * (
             self.D_grid * laplacian                      # Diffusion
             - advection                                  # Advection
             - self.gamma_effective * self.concentration  # Decay
-            + source_term                                # Emission
+            # + source_term                                # Emission
         )
         
-        # 5. Enforce physical constraints
+        # 6. Enforce physical constraints
         self.concentration = np.clip(self.concentration, 0.0, 200.0)  # No negative concentrations
         
-        # 6. Zero concentration inside obstacles (gas doesn't penetrate walls)
+        # 7. Zero concentration inside obstacles (gas doesn't penetrate walls)
         self.concentration[self.obstacle_mask] = 0.0
+
+        # DEBUG: Log emission events
+        if len(remaining_sources) > 0:
+            total_emission = source_term.sum()
+            if total_emission > 0:
+                print(f"[DEBUG] Emitted {total_emission:.2f} total, {len(remaining_sources)} sources active")
     
     def _compute_advection(self) -> np.ndarray:
         """

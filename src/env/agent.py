@@ -2,7 +2,7 @@
 agent.py - Agent classes for protesters and police
 
 Version 1: Basic agent movement with fractional speed, homogeneous protesters
-Version 2: Add agent heterogeneity (3 types)
+Version 2: Add agent heterogeneity (4 types)
 """
 
 import numpy as np
@@ -139,7 +139,9 @@ class Agent:
         self.last_move_direction: Optional[int] = None
         
         # RNG for stochastic decisions
-        self.rng = rng
+        agent_seed = rng.integers(0, 2**31)  # Draw unique seed from parent RNG
+        self.rng = np.random.default_rng(agent_seed)  # Create independent RNG
+        print(f"[DEBUG] Agent {agent_id} RNG created: seed drawn from parent")
         
         # Scoring weights (locked parameters, modified by profile)
         # w_goal: preference for goal proximity
@@ -449,7 +451,7 @@ class Agent:
         scores = self._score_neighbors(env)
         
         # Stochastic action selection (Boltzmann softmax)
-        action = self._select_action_stochastic(scores)
+        action = self._select_action_stochastic(scores, env)
         
         return action
     
@@ -537,7 +539,7 @@ class Agent:
         probs = exp_scores / (np.sum(exp_scores) + 1e-12)
 
         # Sample exit according to probs (stochastic choice)
-        chosen_idx = self.rng.choice(len(exits), p=probs)
+        chosen_idx = env.rng.choice(len(exits), p=probs)
         chosen_exit = tuple(exits[chosen_idx])
         
         # Step 4: Hysteresis: only switch if chosen exit gives a sufficient improvement over current
@@ -737,7 +739,7 @@ class Agent:
             return 0.0
         return 1.0 if action_idx == self.last_move_direction else 0.0
     
-    def _select_action_stochastic(self, scores: np.ndarray) -> int:
+    def _select_action_stochastic(self, scores: np.ndarray, env) -> int:
         """
         Select action using Boltzmann softmax.
         
@@ -759,7 +761,7 @@ class Agent:
         
         # Sample action
         valid_actions = np.where(valid_mask)[0]
-        action = self.rng.choice(valid_actions, p=probs)
+        action = env.rng.choice(valid_actions, p=probs)
         
         self.last_move_direction = action
         return int(action)
@@ -864,17 +866,30 @@ class PoliceAgent(Agent):
         # Ensure we have x,y defined early (fixes NameError)
         pos_x, pos_y = self.pos 
 
-        # 1. Get moving protesters positions
-        protester_positions = [a.pos for a in env.protesters if a.state == AgentState.MOVING]
+        # 1. Get moving protesters with proper position handling
+        protester_positions = []
+        for a in env.protesters:
+            if a.state != AgentState.MOVING:
+                continue
+
+            # Get actual grid position (critical for graph mode)
+            if hasattr(a, 'current_node') and env.osm_graph is not None:
+                try:
+                    px, py = env._node_to_cell(a.current_node)
+                    protester_positions.append((px, py))
+                except:
+                    continue
+            else:
+                protester_positions.append(a.pos)
+
         if not protester_positions:
             return 0  # STAY if no active protesters
         
         # 2. Crowd centroid (as float)
         centroid = np.mean(protester_positions, axis=0)  # array([x, y])
 
-        # 3. Find nearest exit from config
+        # 3. Find nearest exit and compute intercept
         exits = env.config['agents']['protesters'].get('goals', {}).get('exit_points', [])
-        # sanitize exit coordinates
         clean_exits = []
         for ex in exits:
             if isinstance(ex, (list, tuple)) and len(ex) >= 2:
@@ -882,26 +897,20 @@ class PoliceAgent(Agent):
                     clean_exits.append((float(ex[0]), float(ex[1])))
                 except (ValueError, TypeError):
                     continue
-            
+    
         if not clean_exits:
             nearest_exit = np.array([env.width // 2, env.height // 2], dtype=float)
         else:
             dists = [np.hypot(centroid[0] - ex[0], centroid[1] - ex[1]) for ex in clean_exits]
             nearest_exit = np.array(clean_exits[int(np.argmin(dists))], dtype=float)
         
-        # 4. Intercept point: halfway between centroid and chosen exit
+        # 4. Intercept point with offset
         intercept = ((centroid + nearest_exit) / 2.0).astype(int)
-
-        # 5. Compute a small perpendicular offset to spread police along a short line
-        #    Use police id to make offset deterministic and reproducible
         dir_vec = nearest_exit - centroid
         perp = np.array([-dir_vec[1], dir_vec[0]])
         perp_norm = perp / (np.linalg.norm(perp) + 1e-8)
-
-        # offset magnitude (cells)
-        offset_magnitude = (self.id % 7) - 3  # values [-3..3] -> spreads police deterministically
+        offset_magnitude = (self.id % 7) - 3
         offset = (perp_norm * offset_magnitude).astype(int)
-
         target = intercept + offset
         target_x = int(np.clip(target[0], 0, env.width - 1))
         target_y = int(np.clip(target[1], 0, env.height - 1))
@@ -909,30 +918,51 @@ class PoliceAgent(Agent):
         # set goal toward intercept-target
         self.goal = (target_x, target_y)
 
-        # 6. Score moves toward goal (use base class scoring)
+        # 5. Score moves toward goal
         scores = self._score_neighbors(env)
-        action = self._select_action_stochastic(scores)
+        action = self._select_action_stochastic(scores, env)
 
-        # 7. Deploy gas (respect cooldown)
+        # 6. SMART GAS DEPLOYMENT
         if not hasattr(self, 'deploy_cooldown'):
             self.deploy_cooldown = 0
-        
+    
         if self.deploy_cooldown <= 0:
-            # Check if protesters nearby
-            nearby_protesters = sum(
-                1 for p in env.protesters 
-                if p.state == AgentState.MOVING and 
-                np.hypot(p.pos[0] - pos_x, p.pos[1] - pos_y) < 15
-            )
-            # Deploy if 5+ protesters within range (instead of random prob)
-            if nearby_protesters >= 2:
+            # Count protesters within tactical range (< 20 cells)
+            nearby_protesters = []
+            for px, py in protester_positions:
+                dist = np.hypot(px - pos_x, py - pos_y)
+                if dist < 20:  # Within tactical range
+                    nearby_protesters.append((px, py, dist))
+        
+            n_nearby = len(nearby_protesters)
+        
+            # ADAPTIVE deployment probability based on proximity and density
+            if n_nearby >= 10:
+                # High density: deploy more frequently
+                effective_prob = self.deploy_prob * 2.0
+            elif n_nearby >= 5:
+                # Medium density: normal rate
+                effective_prob = self.deploy_prob
+            elif n_nearby >= 2:
+                # Low density: reduced rate
+                effective_prob = self.deploy_prob * 0.3
+            else:
+                # No nearby targets: don't deploy
+                effective_prob = 0.0
+        
+            # Deploy if probability check passes
+            if effective_prob > 0 and env.rng.random() < effective_prob:
                 self._attempt_gas_deployment(env)
                 self.deploy_cooldown = self.deploy_cooldown_max
-                print(f"[DEBUG] Police {self.id} deployed gas at step {env.step_count}")
+            
+                # DEBUG logging (first 20 steps only)
+                if env.step_count <= 20:
+                    print(f"[DEBUG] Police {self.id} deployed gas at step {env.step_count} "
+                        f"({n_nearby} protesters within 20 cells)")
         else:
             self.deploy_cooldown -= 1
 
-        # 8. Water cannon: separate cooldown + probability, via config hazards.water_cannon
+        # 7. Water cannon: separate cooldown + probability, via config hazards.water_cannon
         wc_cfg = env.config.get('hazards', {}).get('water_cannon', {})
         if wc_cfg.get('enabled', False):
             if not hasattr(self, 'wc_cooldown'):
@@ -946,7 +976,7 @@ class PoliceAgent(Agent):
                             nearby_density += env.occupancy_count[ny, nx]
                 
                 wc_prob = wc_cfg.get('prob', 0.01)
-                if nearby_density >= 15 and self.rng.random() < wc_prob:
+                if nearby_density >= 15 and env.rng.random() < wc_prob:
                     env.hazards.deploy_water_cannon(
                         env=env,
                         x=pos_x, y=pos_y,
@@ -960,13 +990,13 @@ class PoliceAgent(Agent):
             else:
                 self.wc_cooldown = max(0, self.wc_cooldown - 1)
 
-        # 9. Shooting: very rare, via hazards.shooting_event
+        # 8. Shooting: very rare, via hazards.shooting_event
         shoot_cfg = env.config.get('hazards', {}).get('shooting', {})
         if shoot_cfg.get('enabled', False):
             if not hasattr(self, 'shoot_cooldown'):
                 self.shoot_cooldown = 0
             p_shoot = shoot_cfg.get('prob_per_step', 0.005)
-            if self.shoot_cooldown <= 0 and self.rng.random() < p_shoot:
+            if self.shoot_cooldown <= 0 and env.rng.random() < p_shoot:
                 candidates = [p for p in env.protesters if p.state == AgentState.MOVING]
                 if candidates:
                     target = min(candidates, key=lambda a: (a.pos[0] - pos_x)**2 + (a.pos[1] - pos_y)**2)
@@ -978,47 +1008,104 @@ class PoliceAgent(Agent):
 
     
     def _attempt_gas_deployment(self, env):
-        """Deploy gas AHEAD toward crowd, not at police position."""
+        """Deploy gas AHEAD toward crowd, avoiding obstacles."""
         pos_x, pos_y = self.pos
 
         # Get crowd centroid
         protester_positions = [a.pos for a in env.protesters if a.state == AgentState.MOVING]
         if not protester_positions:
             return
-    
+
         centroid = np.mean(protester_positions, axis=0)
-    
-        # Deploy at point between police and crowd (not on obstacle)
+
+        # Deploy at point between police and crowd
         deploy_x = int((pos_x + centroid[0]) / 2)
         deploy_y = int((pos_y + centroid[1]) / 2)
+
+        # CRITICAL FIX 1: Bounds check FIRST
+        if not (0 <= deploy_x < env.width and 0 <= deploy_y < env.height):
+            print(f"[WARN] Police {self.id} deployment out of bounds: ({deploy_x},{deploy_y})")
+            return
     
-        # Ensure deployment location is valid
+        # CRITICAL FIX 2: Find valid deployment location with improved search
         if env.obstacle_mask[deploy_y, deploy_x]:
-            # Find nearest non-obstacle cell
-            for offset in range(1, 10):
-                for dx, dy in [(-offset,0), (offset,0), (0,-offset), (0,offset)]:
-                    test_x, test_y = deploy_x + dx, deploy_y + dy
-                    if (0 <= test_x < env.width and 0 <= test_y < env.height and 
-                        not env.obstacle_mask[test_y, test_x]):
-                        deploy_x, deploy_y = test_x, test_y
-                        break
+            print(f"[WARN] Police {self.id} initial deployment on obstacle at ({deploy_x},{deploy_y}); relocating...")
+        
+            found_valid = False
+            # Radial search outward from intended location
+            for radius in range(1, 20):
+                candidates = []
+            
+                # Collect all valid cells at this radius
+                for dx in range(-radius, radius + 1):
+                    for dy in range(-radius, radius + 1):
+                        # Only check perimeter (Manhattan distance = radius)
+                        if abs(dx) + abs(dy) != radius:
+                            continue
+                    
+                        test_x = deploy_x + dx
+                        test_y = deploy_y + dy
+                    
+                        # Bounds check
+                        if not (0 <= test_x < env.width and 0 <= test_y < env.height):
+                            continue
+                    
+                        # Check if valid (not obstacle)
+                        if not env.obstacle_mask[test_y, test_x]:
+                            # ADDITIONAL CHECK: Ensure cell is reachable (has adjacent non-obstacles)
+                            adjacent_free = False
+                            for adj_dx, adj_dy in [(-1,0), (1,0), (0,-1), (0,1)]:
+                                adj_x, adj_y = test_x + adj_dx, test_y + adj_dy
+                                if (0 <= adj_x < env.width and 0 <= adj_y < env.height):
+                                    if not env.obstacle_mask[adj_y, adj_x]:
+                                        adjacent_free = True
+                                        break
                         
-        # Deploy gas
+                            if adjacent_free:
+                                candidates.append((test_x, test_y))
+            
+                if candidates:
+                    # Choose candidate closest to crowd centroid (most effective deployment)
+                    deploy_x, deploy_y = min(
+                        candidates, 
+                        key=lambda c: np.hypot(c[0] - centroid[0], c[1] - centroid[1])
+                    )
+                    found_valid = True
+                    print(f"  Relocated to ({deploy_x},{deploy_y}) at radius {radius}")
+                    break
+        
+            if not found_valid:
+                print(f"[ERROR] Police {self.id} cannot find valid deployment location within 20 cells")
+                return
+    
+        # FINAL VERIFICATION (defensive programming)
+        if env.obstacle_mask[deploy_y, deploy_x]:
+            print(f"[FATAL] Police {self.id} final deployment STILL on obstacle at ({deploy_x},{deploy_y})")
+            return
+    
+        # Deploy gas with validated location
         inj_intensity = self.config['hazards']['gas'].get('inj_intensity', 12.0)
-        env.hazards.deploy_gas(env=env, x=deploy_x, y=deploy_y, 
-                            intensity=inj_intensity, agent_id=self.id)
+        env.hazards.deploy_gas(
+            env=env, 
+            x=deploy_x, 
+            y=deploy_y, 
+            intensity=inj_intensity, 
+            agent_id=self.id
+        )
         self.deploy_cooldown = self.deploy_cooldown_max
 
-        print(f"[HAZARD] Step {env.step_count}: Police {self.id} deployed tear gas at ({deploy_x}, {deploy_y}), intensity={inj_intensity:.1f}")
-        
-        # NEW: Log with street name
+        # Conditional logging
+        from src.utils.logging_config import logger
+        logger.debug(f"[GAS] Police {self.id} deployed at ({deploy_x},{deploy_y}), intensity={inj_intensity:.1f}")
+
+        # Log with street name (if available)
         if hasattr(env, "_log_event"):
             deploy_node = None
             if hasattr(env, "cell_to_node"):
                 try:
                     deploy_node = env.cell_to_node[deploy_y, deploy_x]
                 except Exception:
-                    pass  # fail-safe if grid-node mapping incomplete
+                    pass
             env._log_event(
                 "hazard_deployed",
                 agent_id=self.id,

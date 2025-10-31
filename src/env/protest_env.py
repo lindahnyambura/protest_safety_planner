@@ -714,6 +714,7 @@ class ProtestEnv(gym.Env):
                     ]
 
                     if available_nodes:
+                        # Sort by distance to original spawn location
                         node_id = min(
                             available_nodes,
                             key=lambda n: (
@@ -723,21 +724,17 @@ class ProtestEnv(gym.Env):
                         )
                         # Convert node coordinates to grid cell indices
                         node_data = self.osm_graph.nodes[node_id]
-                        node_x_utm = node_data["x"]  # UTM coordinate
-                        node_y_utm = node_data["y"]  # UTM coordinate
         
                         # Transform UTM to grid cell using affine transform
                         if self.affine is not None:
-                            col, row = ~self.affine * (node_x_utm, node_y_utm)
+                            col, row = ~self.affine * (node_data["x"], node_data["y"])
                             x = int(np.clip(col, 0, self.width - 1))
                             y = int(np.clip(row, 0, self.height - 1))
-                        else:
-                            # Fallback: use node_to_cell helper
-                            x, y = self._node_to_cell(str(node_id))
         
-                        print(f"         Relocated to node {node_id} at grid cell ({x}, {y})")
                     else:
-                        print("[ERROR] No nodes with available capacity; spawning anyway (may cause overflow)")
+                        # FALLBACK: Force spawn anyway (with warning)
+                        from src.utils.logging_config import logger
+                        logger.minimal(f"[ERROR] All nodes at capacity; spawning agent {i} anyway")
 
                 # Map goal to node
                 gx, gy = map(int, np.clip(goal_pos, [0, 0], [self.width - 1, self.height - 1]))
@@ -1498,32 +1495,95 @@ class ProtestEnv(gym.Env):
     
     def _update_agent_harm(self) -> np.ndarray:
         """
-        Update agent harm status and return binary harm grid.
-        
-        Returns:
-            harm_grid: Boolean array (True if any harm occurred in cell)
+        Update agent harm with CRITICAL FIX for graph mode.
+    
+        ISSUE: In graph mode, agent.pos may be stale. We must call _node_to_cell() 
+        at harm-check time to get current grid position where gas actually is.
         """
         harm_grid = np.zeros((self.height, self.width), dtype=bool)
-        
+    
+        # Minimum concentration threshold
+        CONC_THRESHOLD = 0.1  # mg/m³
+    
+        # Debugging counters (only first 10 steps)
+        agents_checked = 0
+        agents_exposed = 0
+        harm_events_this_step = 0
+    
         for agent in self.agents:
-            x, y = agent.pos
+            agents_checked += 1
+        
+            # CRITICAL FIX: Always get fresh grid position for graph agents
+            if hasattr(agent, 'current_node') and self.osm_graph is not None:
+                try:
+                    # Get current grid position from node
+                    x, y = self._node_to_cell(agent.current_node)
+                
+                    # IMPORTANT: Update agent.pos to stay in sync
+                    agent.pos = (x, y)
+                except Exception as e:
+                    # Only log errors in first step
+                    if self.step_count == 0:
+                        print(f"[ERROR] _node_to_cell failed for agent {agent.id}: {e}")
+                    continue
+            else:
+                # Grid mode: use agent.pos directly
+                x, y = agent.pos
+        
+            # Bounds check
+            if not (0 <= x < self.width and 0 <= y < self.height):
+                if self.step_count <= 10:
+                    print(f"[WARN] Agent {agent.id} out of bounds: ({x},{y})")
+                continue
+        
+            # Get hazard concentration at agent's CURRENT position
             concentration = self.hazard_field.concentration[y, x]
-            
-            # Update agent harm (dual-purpose model)
+        
+            # Skip if below threshold
+            if concentration < CONC_THRESHOLD:
+                continue
+        
+            agents_exposed += 1
+        
+            # DEBUG: Log first few exposures (only in first 20 steps)
+            if self.step_count <= 20 and agents_exposed <= 5:
+                print(f"[HARM] Agent {agent.id} at grid ({x},{y}) exposed to {concentration:.2f} mg/m³")
+        
+            # Calculate harm probability for debugging
+            p_harm = 1.0 - np.exp(-self.hazard_field.k_harm * concentration * self.delta_t)
+        
+            # Update harm (use environment RNG for consistency)
             harm_occurred = agent.update_harm(
                 concentration=concentration,
                 k_harm=self.hazard_field.k_harm,
                 delta_t=self.delta_t,
-                rng=self.rng
+                rng=self.rng  # Use env RNG (not agent RNG)
             )
-            
+        
             if harm_occurred:
                 harm_grid[y, x] = True
+                harm_events_this_step += 1
             
-            # Check incapacitation
-            if agent.cumulative_harm >= self.config['hazards']['gas'].get('H_crit', 5.0):
-                agent.state = AgentState.INCAPACITATED
+                # DEBUG: Log harm events (first 20 steps)
+                if self.step_count <= 20:
+                    print(f"[HARM] ✓ Agent {agent.id} HARMED! (p={p_harm:.4f}, rolled={harm_occurred})")
         
+            # Check incapacitation
+            H_crit = self.config['hazards']['gas'].get('H_crit', 5.0)
+            if agent.cumulative_harm >= H_crit:
+                agent.state = AgentState.INCAPACITATED
+                harm_grid[y, x] = True
+            
+                # Log incapacitation (once per agent)
+                if not hasattr(agent, '_incap_logged'):
+                    agent._incap_logged = True
+                    print(f"[INCAP] Agent {agent.id} incapacitated at step {self.step_count} (H={agent.cumulative_harm:.2f})")
+    
+        # Summary logging (every 5 steps for first 20 steps, then every 20)
+        log_interval = 5 if self.step_count <= 20 else 20
+        if self.step_count % log_interval == 0 and agents_exposed > 0:
+            print(f"[HARM] Step {self.step_count}: {agents_exposed}/{agents_checked} agents exposed, {harm_events_this_step} harm events")
+    
         return harm_grid
     
     def _compute_exposure_grid(self) -> np.ndarray:
