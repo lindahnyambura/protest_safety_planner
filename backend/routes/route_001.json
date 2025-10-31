@@ -1,0 +1,213 @@
+{
+  "path": [
+    "8527010453",
+    "8527010452",
+    "8527010462",
+    "9859577503",
+    "9859577507",
+    "504962114",
+    "6372331348",
+    "504962089",
+    "6807551639",
+    "6370390608",
+    "280120749",
+    "4102502808",
+    "7191350123",
+    "7191350121",
+    "7191350116",
+    "7191350118"
+  ],
+  "geometry": [
+    [
+      257284.56602054895,
+      9857819.157493003
+    ],
+    [
+      257300.90176232153,
+      9857827.65533543
+    ],
+    [
+      257311.80528734715,
+      9857809.380607191
+    ],
+    [
+      257341.8300723288,
+      9857822.95613702
+    ],
+    [
+      257346.65861734038,
+      9857852.659381721
+    ],
+    [
+      257330.61205209806,
+      9857883.594707439
+    ],
+    [
+      257324.8553863269,
+      9857897.792277927
+    ],
+    [
+      257301.58075455102,
+      9857945.1140314
+    ],
+    [
+      257255.73318450153,
+      9857922.001372604
+    ],
+    [
+      257216.99702830383,
+      9857901.781724066
+    ],
+    [
+      257214.1990181359,
+      9857893.041038534
+    ],
+    [
+      257211.6119767716,
+      9857897.983155362
+    ],
+    [
+      257189.62255568296,
+      9857939.487872312
+    ],
+    [
+      257166.72041240142,
+      9857928.650520239
+    ],
+    [
+      257124.80867717607,
+      9857924.6216452
+    ],
+    [
+      257118.62947781457,
+      9857938.19944567
+    ]
+  ],
+  "directions": [
+    {
+      "step": 0,
+      "instruction": "Start at your location",
+      "node": "8527010453",
+      "distance_m": 0.0
+    },
+    {
+      "step": 1,
+      "instruction": "Continue on unnamed road",
+      "node": "8527010452",
+      "distance_m": 0.0
+    },
+    {
+      "step": 2,
+      "instruction": "Continue on unnamed road",
+      "node": "8527010462",
+      "distance_m": 0.0
+    },
+    {
+      "step": 3,
+      "instruction": "Continue on unnamed road",
+      "node": "9859577503",
+      "distance_m": 0.0
+    },
+    {
+      "step": 4,
+      "instruction": "Continue on unnamed road",
+      "node": "9859577507",
+      "distance_m": 0.0
+    },
+    {
+      "step": 5,
+      "instruction": "Continue on unnamed road",
+      "node": "504962114",
+      "distance_m": 0.0
+    },
+    {
+      "step": 6,
+      "instruction": "Continue on unnamed road",
+      "node": "6372331348",
+      "distance_m": 0.0
+    },
+    {
+      "step": 7,
+      "instruction": "Continue on unnamed road",
+      "node": "504962089",
+      "distance_m": 0.0
+    },
+    {
+      "step": 8,
+      "instruction": "Continue on unnamed road",
+      "node": "6807551639",
+      "distance_m": 0.0
+    },
+    {
+      "step": 9,
+      "instruction": "Continue on unnamed road",
+      "node": "6370390608",
+      "distance_m": 0.0
+    },
+    {
+      "step": 10,
+      "instruction": "Continue on unnamed road",
+      "node": "280120749",
+      "distance_m": 0.0
+    },
+    {
+      "step": 11,
+      "instruction": "Continue on unnamed road",
+      "node": "4102502808",
+      "distance_m": 0.0
+    },
+    {
+      "step": 12,
+      "instruction": "Continue on unnamed road",
+      "node": "7191350123",
+      "distance_m": 0.0
+    },
+    {
+      "step": 13,
+      "instruction": "Continue on unnamed road",
+      "node": "7191350121",
+      "distance_m": 0.0
+    },
+    {
+      "step": 14,
+      "instruction": "Continue on unnamed road",
+      "node": "7191350116",
+      "distance_m": 0.0
+    },
+    {
+      "step": 15,
+      "instruction": "Arrive at destination",
+      "node": "7191350118",
+      "distance_m": 0.0
+    }
+  ],
+  "safety_score": 1.0,
+  "metadata": {
+    "total_distance_m": 444.7690924707051,
+    "total_cost": 444.7690924707051,
+    "p_safe": 1.0,
+    "edge_risks": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "num_turns": 9,
+    "estimated_time_s": 317.69220890764655,
+    "mean_edge_risk": 0.0,
+    "max_edge_risk": 0.0,
+    "nodes_explored": 19
+  },
+  "algorithm": "astar"
+}

@@ -1,0 +1,54 @@
+# planner_config.yaml - Risk-Aware Route Planner Configuration
+
+# Cost function settings
+cost_function: log_odds  # Options: log_odds, linear, exponential, threshold
+
+# Cost function parameters
+lambda_distance: 1.0      # Distance cost weight (meters)
+lambda_risk: 10.0         # Risk cost weight (unitless)
+beta: 5.0                 # Exponential risk aversion (for exponential cost)
+risk_threshold: 0.1       # Binary threshold (for threshold cost)
+
+# Edge risk mapping
+edge_risk_strategy: max   # Options: max, mean
+# max = conservative (use worst risk along edge)
+# mean = average risk along edge
+
+# Routing algorithms
+default_algorithm: astar  # Options: astar, dijkstra
+# astar = faster with heuristic
+# dijkstra = optimal but slower
+
+# Route caching
+cache_size: 10            # Number of routes to cache
+enable_cache: true        # Toggle caching on/off
+
+# Dynamic re-routing (FR6.6)
+reroute_threshold: 0.1    # Min safety loss to trigger re-route
+enable_reroute: true      # Toggle automatic re-routing
+
+# Debug and visualization
+debug_mode: false         # Enable per-edge cost breakdown
+export_geojson: true      # Export routes as GeoJSON
+
+# Grid coordinate system
+# These should match your environment metadata
+x_min: 252500.0           # UTM Easting min (Nairobi CBD)
+x_max: 253500.0           # UTM Easting max
+y_min: 9856000.0          # UTM Northing min
+y_max: 9857000.0          # UTM Northing max
+
+# Performance tuning
+walking_speed: 1.4        # Average walking speed (m/s) for time estimates
+turn_threshold: 30.0      # Min bearing change to count as turn (degrees)
+
+# Street names and landmarks
+# Can be loaded from geospatial knowledge base
+street_names_file: null   # Optional: path to street names JSON
+landmarks_file: null      # Optional: path to landmarks JSON
+
+# Output paths
+output_dir: artifacts/routes
+save_routes: true
+save_comparisons: true
+save_debug_viz: false     # Only if debug_mode=true
