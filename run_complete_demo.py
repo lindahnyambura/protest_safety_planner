@@ -24,7 +24,7 @@ import os
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-from src.env import ProtestEnv, load_config
+from src.env.protest_env import ProtestEnv, load_config
 from src.monte_carlo.aggregator import MonteCarloAggregator
 from src.utils.visualization import ProtestVisualizer
 
@@ -41,28 +41,29 @@ print("\n[1/6] Loading configuration...")
 config_path = Path(__file__).parent / 'configs' / 'default_scenario.yaml'
 
 if not config_path.exists():
-    print(f" Config file not found: {config_path}")
+    print(f"✗ Config file not found: {config_path}")
     sys.exit(1)
 
-# FIXED: Add UTF-8 encoding
+# Load with UTF-8 encoding
 try:
     with open(config_path, 'r', encoding='utf-8') as f:
         import yaml
         config = yaml.safe_load(f)
 except UnicodeDecodeError as e:
-    print(f" Config file encoding error: {e}")
-    print("  Check for non-ASCII characters in YAML comments (em-dashes, special symbols)")
+    print(f"✗ Config file encoding error: {e}")
+    print("  Check for non-ASCII characters in YAML comments")
     sys.exit(1)
 
-# Ensure OSM is disabled
-config['grid']['obstacle_source'] = 'generate'
+# UPDATED: Support both OSM and synthetic modes
+obstacle_source = config['grid'].get('obstacle_source', 'generate')
+using_osm = (obstacle_source == 'nairobi')
 
 print(f"  Grid: {config['grid']['width']}×{config['grid']['height']}")
 print(f"  Cell size: {config['grid']['cell_size_m']}m")
-print(f"  Obstacle source: {config['grid']['obstacle_source']}")
+print(f"  Obstacle source: {obstacle_source} {'(Real Nairobi OSM)' if using_osm else '(Synthetic)'}")
 print(f"  Protesters: {config['agents']['protesters']['count']}")
 print(f"  Police: {config['agents']['police']['count']}")
-print(f"  Parallel jobs: {config['monte_carlo']['n_jobs']}")
+print(f"  Monte Carlo jobs: {config['monte_carlo']['n_jobs']}")
 
 # ============================================================================
 # Part 2: Initialize Environment

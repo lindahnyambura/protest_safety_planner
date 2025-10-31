@@ -1,23 +1,20 @@
 {
-  "n_rollouts": 200,
+  "n_rollouts": 50,
   "base_seed": 42,
   "summary": {
-    "mean_episode_length": 211.285,
-    "std_episode_length": 50.90730571342388,
-    "mean_agents_harmed": 9.665,
-    "std_agents_harmed": 7.461419100948559,
-    "mean_agents_incapacitated": 6.43,
-    "incapacitation_rate": 0.0643,
-    "min_episode_length": 137,
-    "max_episode_length": 397
+    "mean_episode_length": 496.36,
+    "std_episode_length": 25.479999999999997,
+    "mean_agents_harmed": 9.58,
+    "std_agents_harmed": 4.123542166632955,
+    "mean_agents_incapacitated": 4.32,
+    "incapacitation_rate": 0.0432,
+    "min_episode_length": 318,
+    "max_episode_length": 500
   },
-  "convergence": {
-    "mae_50_to_100": 0.00045200000000000004,
-    "mae_100_to_200": 0.0003905
-  },
-  "runtime_seconds": 1159.3250524997711,
-  "config_hash": "a4e62fa64d5406d9",
-  "timestamp": "2025-10-19 11:58:03",
+  "convergence": {},
+  "runtime_seconds": 1609.529037952423,
+  "config_hash": "0ee95ea62388bea5",
+  "timestamp": "2025-10-31 10:12:38",
   "grid_shape": [
     100,
     100

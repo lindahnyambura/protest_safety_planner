@@ -1,38 +1,35 @@
 {
   "experiment_id": "FR1_FR2_validation_run",
-  "timestamp": "2025-10-19 11:58:10",
-  "config_hash": "a4e62fa64d5406d9",
-  "git_commit": "57b4e3b4cf384239466b9a1b4e28ca101c38fb1f",
+  "timestamp": "2025-10-31 10:12:46",
+  "config_hash": "0ee95ea62388bea5",
+  "git_commit": "3f5dc6c52921aae05e26f821546e272f7e34a120",
   "parameters": {
-    "n_rollouts": 200,
-    "n_bootstrap": 1000,
-    "inj_intensity": 12.0,
+    "n_rollouts": 50,
+    "n_bootstrap": 200,
+    "inj_intensity": 50.0,
     "k_harm": 0.0083,
     "cell_size_m": 5.0
   },
   "results_summary": {
-    "mean_episode_length": 211.285,
-    "std_episode_length": 50.90730571342388,
-    "mean_agents_harmed": 9.665,
-    "std_agents_harmed": 7.461419100948559,
-    "mean_agents_incapacitated": 6.43,
-    "incapacitation_rate": 0.0643,
-    "min_episode_length": 137,
-    "max_episode_length": 397
+    "mean_episode_length": 496.36,
+    "std_episode_length": 25.479999999999997,
+    "mean_agents_harmed": 9.58,
+    "std_agents_harmed": 4.123542166632955,
+    "mean_agents_incapacitated": 4.32,
+    "incapacitation_rate": 0.0432,
+    "min_episode_length": 318,
+    "max_episode_length": 500
   },
   "calibration": {
-    "mean_brier": 0.0005370475000000001,
+    "mean_brier": 0.00017503999999999998,
     "median_brier": 0.0
   },
-  "convergence": {
-    "mae_50_to_100": 0.00045200000000000004,
-    "mae_100_to_200": 0.0003905
-  },
+  "convergence": {},
   "demo_episode": {
-    "incapacitation_rate": 0.1,
-    "final_step": 203,
-    "gas_deployments": 40,
-    "peak_harm_cells": 5,
-    "max_concentration": 179.72463989257812
+    "incapacitation_rate": 0.01,
+    "final_step": 500,
+    "gas_deployments": 106,
+    "peak_harm_cells": 2,
+    "max_concentration": 200.0
   }
 }

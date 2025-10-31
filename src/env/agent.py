@@ -141,7 +141,7 @@ class Agent:
         # RNG for stochastic decisions
         agent_seed = rng.integers(0, 2**31)  # Draw unique seed from parent RNG
         self.rng = np.random.default_rng(agent_seed)  # Create independent RNG
-        print(f"[DEBUG] Agent {agent_id} RNG created: seed drawn from parent")
+        #print(f"[DEBUG] Agent {agent_id} RNG created: seed drawn from parent")
         
         # Scoring weights (locked parameters, modified by profile)
         # w_goal: preference for goal proximity

@@ -221,8 +221,9 @@ class ProtestVisualizer:
         
         # Count agent types
         profile_counts = {}
-        speeds = {'cautious': [], 'average': [], 'bold': []}
-        risk_tolerances = {'cautious': [], 'average': [], 'bold': []}
+        speeds = {'cautious': [], 'average': [], 'bold': [], 'vulnerable': []}
+        risk_tolerances = {'cautious': [], 'average': [], 'bold': [], 'vulnerable': []}
+
         
         for agent in env.protesters:
             profile = agent.profile_name
@@ -335,21 +336,31 @@ class ProtestVisualizer:
             env: ProtestEnv instance (must have OSM data loaded)
             save_path: Path to save figure
         """
-        if env.osm_metadata is None:
+        # Check if OSM data is available
+        if not hasattr(env, 'osm_metadata') or env.osm_metadata is None:
             print("Warning: No OSM data loaded in environment")
+            return None
+        
+        # Verify metadata has required fields
+        if not isinstance(env.osm_metadata, dict):
+            print(f"Warning: osm_metadata is {type(env.osm_metadata)}, expected dict")
             return None
         
         fig, axes = plt.subplots(1, 2, figsize=(14 * self.figsize_scale, 
                                                 6 * self.figsize_scale))
         
         # Panel 1: Building footprints
-        if env.buildings_gdf is not None:
+        if env.buildings_gdf is not None and len(env.buildings_gdf) > 0:
             env.buildings_gdf.plot(ax=axes[0], color='gray', edgecolor='black', alpha=0.6)
             axes[0].set_title('OSM Building Footprints (UTM)', 
                              fontsize=12, fontweight='bold')
             axes[0].set_xlabel('Easting (m)')
             axes[0].set_ylabel('Northing (m)')
             axes[0].grid(True, alpha=0.3)
+        else:
+            axes[0].text(0.5, 0.5, 'No building data available', 
+                        ha='center', va='center', transform=axes[0].transAxes)
+            axes[0].set_title('OSM Building Footprints', fontsize=12, fontweight='bold')
         
         # Panel 2: Rasterized obstacle grid
         axes[1].imshow(env.obstacle_mask, cmap='gray', origin='upper')
@@ -358,16 +369,24 @@ class ProtestVisualizer:
         axes[1].set_xlabel('X (cells)')
         axes[1].set_ylabel('Y (cells)')
         
-        # Add grid info
-        metadata = env.osm_metadata
-        info_text = f"Grid: {metadata['width']}×{metadata['height']}\n" \
-                   f"Cell size: {metadata['cell_size_m']}m\n" \
-                   f"Coverage: {metadata['cell_size_m']*metadata['width']:.0f}m × " \
-                   f"{metadata['cell_size_m']*metadata['height']:.0f}m\n" \
-                   f"CRS: {metadata['crs']}"
-        axes[1].text(0.02, 0.98, info_text, transform=axes[1].transAxes,
-                    fontsize=9, verticalalignment='top',
-                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        # Add grid info (handle missing fields gracefully)
+        try:
+            metadata = env.osm_metadata
+            info_text = f"Grid: {metadata.get('width', env.width)}×{metadata.get('height', env.height)}\n"
+            
+            cell_size = metadata.get('cell_size_m', env.cell_size if hasattr(env, 'cell_size') else 'N/A')
+            width_m = metadata.get('width', env.width) * cell_size if isinstance(cell_size, (int, float)) else 'N/A'
+            height_m = metadata.get('height', env.height) * cell_size if isinstance(cell_size, (int, float)) else 'N/A'
+            
+            info_text += f"Cell size: {cell_size}m\n"
+            info_text += f"Coverage: {width_m}m × {height_m}m\n"
+            info_text += f"CRS: {metadata.get('crs', 'N/A')}"
+            
+            axes[1].text(0.02, 0.98, info_text, transform=axes[1].transAxes,
+                        fontsize=9, verticalalignment='top',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        except Exception as e:
+            print(f"Warning: Could not format metadata text: {e}")
         
         plt.suptitle('Nairobi CBD Map (OpenStreetMap)', 
                     fontsize=16, fontweight='bold', y=0.98)
@@ -375,7 +394,7 @@ class ProtestVisualizer:
         
         if save_path:
             plt.savefig(save_path, dpi=self.dpi, bbox_inches='tight')
-            print(f" Saved OSM map to {save_path}")
+            print(f"✓ Saved OSM map to {save_path}")
         
         return fig
     

@@ -1,0 +1,22 @@
+{
+  "n_rollouts": 3,
+  "base_seed": 42,
+  "summary": {
+    "mean_episode_length": 500.0,
+    "std_episode_length": 0.0,
+    "mean_agents_harmed": 12.666666666666666,
+    "std_agents_harmed": 5.436502143433364,
+    "mean_agents_incapacitated": 5.0,
+    "incapacitation_rate": 0.05,
+    "min_episode_length": 500,
+    "max_episode_length": 500
+  },
+  "convergence": {},
+  "runtime_seconds": 302.05816984176636,
+  "config_hash": "5711d6a640b772be",
+  "timestamp": "2025-10-31 09:45:43",
+  "grid_shape": [
+    100,
+    100
+  ]
+}

@@ -1596,25 +1596,50 @@ class ProtestEnv(gym.Env):
     
     def _check_termination(self) -> Tuple[bool, Optional[str]]:
         """
-        Check if episode should terminate.
-        
+        Check if episode should terminate EARLY.
+    
+        CRITICAL: This prevents wasting computation on finished episodes.
+    
         Returns:
             (is_terminated, reason)
         """
-        # Count agent states (use AgentState enum)
+        # Count agent states
         active = sum(a.state == AgentState.MOVING for a in self.protesters)
+        waiting = sum(a.state == AgentState.WAITING for a in self.protesters)
         safe = sum(a.state == AgentState.SAFE for a in self.protesters)
         incapacitated = sum(a.state == AgentState.INCAPACITATED for a in self.protesters)
     
-        # All protesters either safe or incapacitated
-        if active == 0:
+        total_protesters = len(self.protesters)
+    
+        # TERMINATION CONDITIONS (from most to least common)
+    
+        # 1. All protesters either safe or incapacitated (MOST COMMON)
+        if active + waiting == 0:
             return True, "all_protesters_done"
     
-        # Mass casualty (>80% incapacitated)
-        if len(self.protesters) > 0:
-            incap_rate = incapacitated / len(self.protesters)
-            if incap_rate > 0.8:
-                return True, "mass_casualty"
+        # 2. Supermajority (90%) have exited safely (COMMON)
+        if safe / total_protesters > 0.9:
+            return True, "mass_exodus"
+    
+        # 3. Mass casualty (80% incapacitated) (RARE)
+        if incapacitated / total_protesters > 0.8:
+            return True, "mass_casualty"
+    
+        # 4. Stalemate: very few active protesters left (10%) and no movement for 50 steps
+        if (active + waiting) / total_protesters < 0.1:
+            # Check if agents are stuck
+            if not hasattr(self, '_stalemate_counter'):
+                self._stalemate_counter = 0
+                self._last_active_count = active + waiting
+        
+            if active + waiting == self._last_active_count:
+                self._stalemate_counter += 1
+            else:
+                self._stalemate_counter = 0
+                self._last_active_count = active + waiting
+        
+            if self._stalemate_counter > 50:
+                return True, "stalemate"
     
         return False, None
     
