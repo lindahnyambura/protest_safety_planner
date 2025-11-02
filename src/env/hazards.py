@@ -113,61 +113,80 @@ class HazardField:
         Args:
             delta_t: Timestep (should match self.delta_t)
         """
-        # 1. Inject from active sources
+        # 1. SOURCE EMISSION (FIRST - critical ordering)
         source_term = np.zeros((self.height, self.width), dtype=np.float32)
         remaining_sources = []
-        
+    
         for src in self.active_sources:
             x, y = src['x'], src['y']
-            
-            # Bounds check
+        
             if not (0 <= x < self.width and 0 <= y < self.height):
                 continue
-            
-            # CRITICAL: Emit concentration (not just mark as active)
-            intensity = src['intensity']
-            source_term[y, x] += intensity * delta_t  # ← FIX: Add emission per timestep
-            
+        
+            # SUSTAINED emission profile (Gaussian temporal distribution)
+            # Peak at 30% through duration, then gradual decline
+            t_frac = (src['initial_duration'] - src['duration']) / src['initial_duration']
+        
+            if t_frac < 0.3:
+                # Ramp-up phase
+                emission_multiplier = t_frac / 0.3
+            elif t_frac < 0.7:
+                # Peak phase
+                emission_multiplier = 1.0
+            else:
+                # Decline phase
+                emission_multiplier = (1.0 - t_frac) / 0.3
+        
+            intensity = src['intensity'] * emission_multiplier
+            source_term[y, x] += intensity * delta_t
+        
             # Decrement duration
             src['duration'] -= 1
             if src['duration'] > 0:
                 remaining_sources.append(src)
-        
+    
         self.active_sources = remaining_sources
-        
-        # 2. Add source emissions to concentration field
-        self.concentration += source_term  
-
-        # 3. Compute diffusion (Laplacian with Neumann BC)
+    
+        # 2. ADD emissions to field (BEFORE diffusion)
+        self.concentration += source_term
+    
+        # 3. DIFFUSION (with obstacle-aware boundaries)
         laplacian = convolve2d(
             self.concentration,
             self.laplacian_kernel,
             mode='same',
-            boundary='symm'  # No-flux at boundaries (represents walls)
+            boundary='fill',  # Changed from 'symm' to 'fill'
+            fillvalue=0.0     # Gas disperses at boundaries (not reflected)
         )
-        
-        # 4. Compute wind advection (upwind finite difference)
+    
+        # 4. WIND ADVECTION (enhanced for urban channeling)
         advection = self._compute_advection()
-        
-        # 5. Update equation: Forward Euler integration
+    
+        # 5. DECAY (reduced for realistic persistence)
+        # Literature: CS gas half-life 60-300s depending on ventilation
+        # Urban canyon: slower decay due to recirculation
+        effective_decay = self.gamma_effective * 0.7  # 30% slower decay
+    
+        # 6. UPDATE CONCENTRATION
         self.concentration += delta_t * (
-            self.D_grid * laplacian                      # Diffusion
-            - advection                                  # Advection
-            - self.gamma_effective * self.concentration  # Decay
-            # + source_term                                # Emission
+            self.D_grid * laplacian - advection - effective_decay * self.concentration
         )
-        
-        # 6. Enforce physical constraints
-        self.concentration = np.clip(self.concentration, 0.0, 200.0)  # No negative concentrations
-        
-        # 7. Zero concentration inside obstacles (gas doesn't penetrate walls)
-        self.concentration[self.obstacle_mask] = 0.0
-
-        # DEBUG: Log emission events
+    
+        # 7. CONSTRAINTS
+        self.concentration = np.clip(self.concentration, 0.0, 200.0)
+    
+        # 8. OBSTACLE HANDLING (gas pools near walls, doesn't penetrate)
+        # NEW: Apply exponential decay only inside obstacles
+        self.concentration[self.obstacle_mask] *= 0.5  # Rapid decay inside buildings
+    
+        # DEBUG: Enhanced logging
         if len(remaining_sources) > 0:
             total_emission = source_term.sum()
-            if total_emission > 0:
-                print(f"[DEBUG] Emitted {total_emission:.2f} total, {len(remaining_sources)} sources active")
+            peak_conc = self.concentration.max()
+            mean_conc = self.concentration[self.concentration > 0.1].mean() if (self.concentration > 0.1).any() else 0.0
+        
+            print(f"[HAZARD] Emitted {total_emission:.1f} mg, {len(remaining_sources)} sources active, "
+                f"peak={peak_conc:.1f}, mean={mean_conc:.1f}")
     
     def _compute_advection(self) -> np.ndarray:
         """

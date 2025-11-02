@@ -73,7 +73,7 @@ def test_obstacle_grid():
     """Test the obstacle grid"""
     print("\n🔍 TEST 3: Obstacle grid...")
     
-    grid_path = Path("data/real_nairobi_cbd_100x100.npy")
+    grid_path = Path("data/real_nairobi_cbd_200x200.npy")
     if grid_path.exists():
         try:
             obstacle_mask = np.load(grid_path)

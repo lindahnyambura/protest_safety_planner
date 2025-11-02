@@ -1,8 +1,7 @@
 
   # SafeNav
 
-  This is a code bundle for SafeNav.
-
+  This is a code bundle for SafeNav. 
   ## Running the code
 
   Run `npm i` to install the dependencies.

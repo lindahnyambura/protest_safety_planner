@@ -113,18 +113,27 @@ class HazardManager:
         """
         
         duration = self.config.get('gas', {}).get('emission_duration', 30)
-        self.gas.add_source(x, y, intensity, duration_steps=duration)
-
+    
+        # Add source with metadata
+        self.gas.active_sources.append({
+            'x': int(x),
+            'y': int(y),
+            'intensity': float(intensity),
+            'duration': int(duration),
+            'initial_duration': int(duration),  # NEW: Track for emission profile
+            'deployed_at_step': env.step_count  # NEW: For analytics
+        })
+    
+        # Log event
         ev = {
             'timestep': env.step_count,
             'event_type': 'gas_deployment',
             'agent_id': agent_id,
             'location': (int(x), int(y)),
             'intensity': float(intensity),
-            'duration_steps': int(duration_steps) #log duration
+            'duration_steps': int(duration)
         }
         self.events.append(ev)
-        # also add to env events_log for compatibility if available
         if hasattr(env, 'events_log'):
             env.events_log.append(ev)
 

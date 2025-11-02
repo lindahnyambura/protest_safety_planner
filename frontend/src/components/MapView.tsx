@@ -1,107 +1,248 @@
-import { MapPin, AlertTriangle, Wind, Users } from "lucide-react";
+// frontend/src/components/MapView.tsx
+import { useEffect, useRef, useState } from 'react';
+import mapboxgl from 'mapbox-gl';
+import { apiClient, type RiskMapResponse } from '../lib/api';
 
-interface HazardMarker {
-  id: string;
-  type: "gas" | "police" | "crowd" | "safe";
-  x: number;
-  y: number;
-}
+mapboxgl.accessToken = 'pk.eyJ1IjoibnlhbWJ1cmFsIiwiYSI6ImNtaGV5OGtldDAxNHEyanF2ODZ5eGd0YjYifQ.Tl1_xuqn3wEEzOWh5A9tbA'; // Replace with your token
 
 interface MapViewProps {
   showUserLocation?: boolean;
   showHazards?: boolean;
   showRoute?: boolean;
-  className?: string;
+  routeGeometry?: [number, number][];
+  userLocation?: { lat: number; lng: number } | null;
+  onLocationUpdate?: (location: { lat: number; lng: number }, name: string) => void;
 }
 
 export function MapView({ 
   showUserLocation = true, 
-  showHazards = true,
-  showRoute = false,
-  className = "" 
+  showHazards = true, 
+  showRoute = false, 
+  routeGeometry, 
+  userLocation,
+  onLocationUpdate 
 }: MapViewProps) {
-  const hazards: HazardMarker[] = [
-    { id: "1", type: "gas", x: 45, y: 40 },
-    { id: "2", type: "police", x: 65, y: 55 },
-    { id: "3", type: "crowd", x: 30, y: 75 },
-  ];
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const [riskData, setRiskData] = useState<RiskMapResponse | null>(null);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
 
-  const getHazardColor = (type: string) => {
-    switch (type) {
-      case "gas": return "#AE1E2A";
-      case "police": return "#19647E";
-      case "crowd": return "#E8E3D8";
-      default: return "#04771B";
+  useEffect(() => {
+    if (!mapContainer.current) return;
+
+    // Initialize map
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: userLocation ? [userLocation.lng, userLocation.lat] : [36.817, -1.283], // Nairobi CBD
+      zoom: 15,
+    });
+
+    map.current.addControl(new mapboxgl.NavigationControl());
+
+    // Load risk data when map is ready
+    map.current.on('load', () => {
+      setIsMapLoaded(true);
+      if (showHazards) {
+        loadRiskData();
+      }
+      if (showUserLocation && userLocation) {
+        addUserLocationMarker();
+      }
+    });
+
+    // Watch for location updates
+    if (showUserLocation && !userLocation) {
+      getUserLocation();
+    }
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+      }
+    };
+  }, []);
+
+  // Update map when user location changes
+  useEffect(() => {
+    if (map.current && userLocation && isMapLoaded) {
+      map.current.flyTo({
+        center: [userLocation.lng, userLocation.lat],
+        zoom: 15,
+        essential: true
+      });
+      addUserLocationMarker();
+    }
+  }, [userLocation, isMapLoaded]);
+
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          if (onLocationUpdate) {
+            onLocationUpdate({ lat: latitude, lng: longitude }, "Your Location");
+          }
+        },
+        (error) => {
+          console.warn("Geolocation failed:", error);
+        }
+      );
     }
   };
 
-  const getHazardIcon = (type: string) => {
-    switch (type) {
-      case "gas": return <Wind size={16} className="text-black" />;
-      case "police": return <AlertTriangle size={16} className="text-black" />;
-      case "crowd": return <Users size={16} className="text-black" />;
-      default: return null;
+  const addUserLocationMarker = () => {
+    if (!map.current || !userLocation) return;
+
+    // Remove existing user location marker
+    if (map.current.getLayer('user-location')) {
+      map.current.removeLayer('user-location');
+    }
+    if (map.current.getSource('user-location')) {
+      map.current.removeSource('user-location');
+    }
+
+    // Add user location marker
+    map.current.addSource('user-location', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [userLocation.lng, userLocation.lat]
+        },
+        properties: {}
+      }
+    });
+
+    map.current.addLayer({
+      id: 'user-location',
+      type: 'circle',
+      source: 'user-location',
+      paint: {
+        'circle-radius': 8,
+        'circle-color': '#04771B',
+        'circle-stroke-color': '#000',
+        'circle-stroke-width': 2,
+        'circle-opacity': 0.8
+      }
+    });
+  };
+
+  const loadRiskData = async () => {
+    try {
+      const data = await apiClient.getRiskMap();
+      setRiskData(data);
+    } catch (error) {
+      console.error('Failed to load risk data:', error);
     }
   };
 
-  return (
-    <div className={`relative w-full h-full bg-[#E8E3D8] border-2 border-black ${className}`}>
-      {/* Grid pattern for map aesthetic */}
-      <div 
-        className="absolute inset-0 opacity-20" 
-        style={{
-          backgroundImage: `
-            linear-gradient(#000 1px, transparent 1px),
-            linear-gradient(90deg, #000 1px, transparent 1px)
-          `,
-          backgroundSize: '20px 20px'
-        }}
-      />
+  // Add risk overlay when data loads
+  useEffect(() => {
+    if (!map.current || !riskData || !showHazards || !isMapLoaded) return;
 
-      {/* Street-like patterns */}
-      <div className="absolute top-1/4 left-0 right-0 h-[2px] bg-black opacity-30" />
-      <div className="absolute top-2/3 left-0 right-0 h-[2px] bg-black opacity-30" />
-      <div className="absolute left-1/3 top-0 bottom-0 w-[2px] bg-black opacity-30" />
-      <div className="absolute left-2/3 top-0 bottom-0 w-[2px] bg-black opacity-30" />
+    const mapInstance = map.current;
 
-      {/* Route polyline */}
-      {showRoute && (
-        <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
-          <path
-            d="M 20% 80% L 35% 65% L 50% 50% L 65% 40% L 80% 25%"
-            stroke="#6B7F59"
-            strokeWidth="4"
-            fill="none"
-            strokeDasharray="8,4"
-          />
-        </svg>
-      )}
+    // Add risk data source
+    if (!mapInstance.getSource('risk-data')) {
+      mapInstance.addSource('risk-data', {
+        type: 'geojson',
+        data: riskData,
+      });
 
-      {/* Hazard markers */}
-      {showHazards && hazards.map((hazard) => (
-        <div
-          key={hazard.id}
-          className="absolute -translate-x-1/2 -translate-y-1/2 border-2 border-black p-2"
-          style={{
-            left: `${hazard.x}%`,
-            top: `${hazard.y}%`,
-            backgroundColor: getHazardColor(hazard.type),
-            zIndex: 2
-          }}
-        >
-          {getHazardIcon(hazard.type)}
-        </div>
-      ))}
+      // Add risk heatmap layer
+      mapInstance.addLayer({
+        id: 'risk-heatmap',
+        type: 'circle',
+        source: 'risk-data',
+        paint: {
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            14, 6,
+            16, 10,
+            18, 15
+          ],
+          'circle-color': [
+            'interpolate',
+            ['linear'],
+            ['get', 'risk'],
+            0, '#00ff00',    // Green - low risk
+            0.3, '#ffff00',  // Yellow - medium risk
+            0.7, '#ff9900',  // Orange - high risk
+            1, '#ff0000'     // Red - very high risk
+          ],
+          'circle-opacity': 0.7,
+          'circle-blur': 0.8,
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#000'
+        },
+      });
 
-      {/* User location marker */}
-      {showUserLocation && (
-        <div
-          className="absolute -translate-x-1/2 -translate-y-1/2 border-3 border-black p-2 bg-[#FDF8F0]"
-          style={{ left: '50%', top: '60%', zIndex: 3 }}
-        >
-          <MapPin size={20} className="text-black" fill="#000" />
-        </div>
-      )}
-    </div>
-  );
+      // Add risk labels on hover
+      mapInstance.addLayer({
+        id: 'risk-labels',
+        type: 'symbol',
+        source: 'risk-data',
+        layout: {
+          'text-field': ['get', 'intensity'],
+          'text-size': 12,
+          'text-offset': [0, 1.5],
+          'visibility': 'none' // Hidden by default
+        },
+        paint: {
+          'text-color': '#000',
+          'text-halo-color': '#fff',
+          'text-halo-width': 2
+        }
+      });
+    } else {
+      // Update existing source
+      (mapInstance.getSource('risk-data') as mapboxgl.GeoJSONSource).setData(riskData);
+    }
+  }, [riskData, showHazards, isMapLoaded]);
+
+  // Add route layer
+  useEffect(() => {
+    if (!map.current || !routeGeometry || !showRoute || !isMapLoaded) return;
+
+    const mapInstance = map.current;
+
+    // Create GeoJSON for route
+    const routeGeoJSON = {
+      type: 'Feature' as const,
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: routeGeometry,
+      },
+      properties: {},
+    };
+
+    // Add or update route source
+    if (!mapInstance.getSource('route')) {
+      mapInstance.addSource('route', {
+        type: 'geojson',
+        data: routeGeoJSON,
+      });
+
+      mapInstance.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+        },
+        paint: {
+          'line-color': '#04771B',
+          'line-width': 4,
+          'line-opacity': 0.8,
+        },
+      });
+    } else {
+      (mapInstance.getSource('route') as mapboxgl.GeoJSONSource).setData(routeGeoJSON);
+    }
+  }, [routeGeometry, showRoute, isMapLoaded]);
+
+  return <div ref={mapContainer} className="w-full h-full" />;
 }

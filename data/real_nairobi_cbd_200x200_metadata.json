@@ -1,0 +1,29 @@
+{
+  "bbox": {
+    "north": -1.28,
+    "south": -1.295,
+    "east": 36.835,
+    "west": 36.81
+  },
+  "bounds_m": [
+    257178.29204338358,
+    9857069.74174053,
+    258178.29204338358,
+    9858069.74174053
+  ],
+  "crs": "EPSG:32737",
+  "width": 200,
+  "height": 200,
+  "cell_size_m": 5.0,
+  "buildings_count": 2860,
+  "road_segments_drive": 1076,
+  "road_segments_all": 3442,
+  "obstacle_cells": 11307,
+  "coverage_percent": 28.2675,
+  "output_files": {
+    "obstacle": "real_nairobi_cbd_200x200.npy",
+    "roads": "real_nairobi_cbd_200x200_roads.npy",
+    "metadata": "real_nairobi_cbd_200x200_metadata.json"
+  },
+  "note": "Buildings and roads from OSM - Nairobi CBD (drive + all variants)"
+}

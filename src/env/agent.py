@@ -37,32 +37,47 @@ class Agent:
         'cautious': {
             'speed_multiplier': 0.83,      # 1.0 m/s (typical cautious walking speed)
             'risk_tolerance': 0.1,         # Flees at low hazard concentration
-            'w_hazard_multiplier': 1.5,     # 50% more sensitive to hazards
-            'lookahead_multiplier': 1.5,  # More concerned about future hazards'
-            'profile_multiplier': 1.5
+            'w_hazard_multiplier': 3.0,     # sensitive to hazards
+            'lookahead_multiplier': 2.0,  # More concerned about future hazards'
+            'profile_multiplier': 2.0,
+            'panic_threshold': 0.3,
+            'goal_update_period': 8,       # NEW: Faster reassessment
+            'T_MIN_SAFE': 60,  # NEW: Shorter wait (was 300, now 60s = 1 min)
+            'exit_urgency_multiplier': 2.0  # NEW: Boost exit seeking
         },
         'average': {
             'speed_multiplier': 1.0,       # 1.2 m/s (normal walking speed)
             'risk_tolerance': 0.3,         # Moderate caution
-            'w_hazard_multiplier': 1.0,     # Standard weight
-            'lookahead_multiplier': 1.0,  # Standard lookahead
-            'profile_multiplier': 1.0
+            'w_hazard_multiplier': 2.0,     # Standard weight
+            'lookahead_multiplier': 1.5,  # Standard lookahead
+            'profile_multiplier': 1.5,
+            'panic_threshold': 0.5,
+            'goal_update_period': 12,       # NEW: Slower reassessment   
+            'T_MIN_SAFE': 80,  # NEW: Was 300
+            'exit_urgency_multiplier': 1.5
         },
         'bold': {
             'speed_multiplier': 1.17,      # 1.4 m/s (fast walking/jogging speed)
             'risk_tolerance': 0.6,         # Risk-taking
-            'w_hazard_multiplier': 0.5 ,    # Less concerned about hazards
-            'lookahead_multiplier': 0.5,  # Less concerned about future hazards
-            'profile_multiplier': 0.5
+            'w_hazard_multiplier': 1.0 ,    # Less concerned about hazards
+            'lookahead_multiplier': 1.0,  # Less concerned about future hazards
+            'profile_multiplier': 1.0,
+            'panic_threshold': 0.7,
+            'goal_update_period': 15,       # NEW: Faster reassessment
+            'T_MIN_SAFE': 100,  # NEW: Bold agents stay longer
+            'exit_urgency_multiplier': 1.0
         },
         'vulnerable': {
             'speed_multiplier': 0.58,      # 0.7 m/s
             'risk_tolerance': 0.05,
-            'w_hazard_multiplier': 2.0,    # Highly sensitive
-            'lookahead_multiplier': 2.0,
-            'profile_multiplier': 2.0,
+            'w_hazard_multiplier': 5.0,    # Highly sensitive
+            'lookahead_multiplier': 3.0,
+            'profile_multiplier': 3.0,
             'panic_threshold': 0.2,
-            'clustering_affinity': 0.9
+            'clustering_affinity': 0.9,
+            'goal_update_period': 6,       # NEW: Faster reassessment
+            'T_MIN_SAFE': 40,  # NEW: Vulnerable flee quickly
+            'exit_urgency_multiplier': 3.0
         }
     }
     
@@ -127,6 +142,11 @@ class Agent:
         # Apply profile lookahead multiplier
         self.lookahead_multiplier: float = profile.get('lookahead_multiplier', 1.0)
 
+        # Apply profile-specific parameters
+        self.T_MIN_SAFE = profile.get('T_MIN_SAFE', 80)
+        self.exit_urgency_multiplier = profile.get('exit_urgency_multiplier', 1.0)
+        self.goal_update_period = profile.get('goal_update_period', 12)
+        
         # State
         self.state: str = AgentState.MOVING
         
@@ -150,7 +170,7 @@ class Agent:
         # w_inertia: bias toward continuing previous direction
         # beta: Boltzmann temperature for stochastic action choice
         self.w_goal: float = 1.0
-        self.w_hazard: float = 15.0 * (1.0 - self.risk_tolerance) * profile['w_hazard_multiplier'] # Now average agent: w_hazard = 15 × 0.7 × 1.0 = 10.5 (much stronger)
+        self.w_hazard = 20.0 * (1.0 - self.risk_tolerance) * profile['w_hazard_multiplier'] # Now average agent: w_hazard = 20 × 0.7 × 2.0 = 28.0 (much stronger)
         self.w_occupancy: float = 0.5
         self.w_inertia: float = 0.2
         self.beta: float = 5.0  # Boltzmann temperature model - controls randomness in movement choice
@@ -186,17 +206,24 @@ class Agent:
         x, y = self.pos
         local_hazard = env.hazard_field.concentration[y, x]
         
-        # Check nearby hazard (3x3 neighborhood)
+        # Check nearby hazard (5X5 neighborhood)
         nearby_hazard = 0.0
-        for dx in range(-1, 2):
-            for dy in range(-1, 2):
+        for dx in range(-2, 3):
+            for dy in range(-2, 3):
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < env.width and 0 <= ny < env.height:
                     nearby_hazard = max(nearby_hazard, env.hazard_field.concentration[ny, nx])
         
+        # NEW: Safe zone detection (even while moving)
+        SAFE_ZONE_THRESHOLD = self.panic_threshold * 0.15  # Very low hazard
+        if nearby_hazard < SAFE_ZONE_THRESHOLD:
+            self.time_in_safe_zone += 1
+        else:
+            self.time_in_safe_zone = max(0, self.time_in_safe_zone - 2)  # Decay faster
+
         # State transitions
         if self.behavioral_state == 'CALM':
-            if nearby_hazard > self.panic_threshold * 0.5:
+            if nearby_hazard > self.panic_threshold * 0.4:
                 self.behavioral_state = 'ALERT'
                 self._update_goal_weights('ALERT')
         
@@ -204,7 +231,7 @@ class Agent:
             if local_hazard > self.panic_threshold:
                 self.behavioral_state = 'PANIC'
                 self._update_goal_weights('PANIC')
-            elif nearby_hazard < self.panic_threshold * 0.3:
+            elif nearby_hazard < self.panic_threshold * 0.2:
                 self.behavioral_state = 'CALM'
                 self._update_goal_weights('CALM')
         
@@ -212,17 +239,17 @@ class Agent:
             if local_hazard > self.panic_threshold * 1.5:
                 self.behavioral_state = 'FLEEING'
                 self._update_goal_weights('FLEEING')
-            elif local_hazard < self.panic_threshold * 0.5:
+            elif local_hazard < self.panic_threshold * 0.4:
                 self.behavioral_state = 'ALERT'
                 self._update_goal_weights('ALERT')
         
         elif self.behavioral_state == 'FLEEING':
-            if local_hazard < self.panic_threshold * 0.2 and nearby_hazard < self.panic_threshold * 0.3:
+            if local_hazard < self.panic_threshold * 0.1 and nearby_hazard < self.panic_threshold * 0.2:
                 self.behavioral_state = 'CALM'
                 self._update_goal_weights('CALM')
-                self.time_in_safe_zone += 1
-            else:
-                self.time_in_safe_zone = 0
+            #     self.time_in_safe_zone += 1
+            # else:
+            #     self.time_in_safe_zone = 0
 
         # Log state changes
         if hasattr(self, '_prev_behavioral_state'):
@@ -235,38 +262,72 @@ class Agent:
                                 new_state=self.behavioral_state,
                                 current_node_id=current_node,
                                 grid_pos=self.pos)
+                    pass
     
         self._prev_behavioral_state = self.behavioral_state
     def _update_goal_weights(self, state: str):
         """Update goal weights based on behavioral state."""
         if state == 'CALM':
-            self.goal_weights = {
+            base_weights = {
                 'flee': 0.05,
                 'safety': 0.35,
                 'disperse': 0.35,
-                'exit': 0.25 if self.time_in_safe_zone > self.T_MIN_SAFE else 0.05
+                'exit': 0.15
             }
         elif state == 'ALERT':
-            self.goal_weights = {
+            base_weights = {
                 'flee': 0.4,
-                'safety': 0.4,
+                'safety': 0.3,
                 'disperse': 0.15,
-                'exit': 0.05
+                'exit': 0.15
             }
         elif state == 'PANIC':
-            self.goal_weights = {
-                'flee': 0.7,
-                'safety': 0.2,
+            base_weights = {
+                'flee': 0.6,
+                'safety': 0.15,
                 'disperse': 0.05,
-                'exit': 0.05
+                'exit': 0.15
             }
         elif state == 'FLEEING':
-            self.goal_weights = {
-                'flee': 0.85,
-                'safety': 0.10,
+            base_weights = {
+                'flee': 0.70,
+                'safety': 0.05,
                 'disperse': 0.00,
-                'exit': 0.05
+                'exit': 0.15
             }
+
+        else:
+            base_weights = {
+                'flee': 0.1,
+                'safety': 0.3,
+                'disperse': 0.3,
+                'exit': 0.3
+            }
+
+        # NEW: Time-based urgency boost
+        # After T_MIN_SAFE, gradually increase exit weight
+        T_MIN_SAFE = getattr(self, 'T_MIN_SAFE', 80)
+        safe_time = getattr(self, 'time_in_safe_zone', 0)
+    
+        if safe_time > T_MIN_SAFE:
+            # Exponential urgency increase
+            urgency_factor = min(3.0, 1.0 + (safe_time - T_MIN_SAFE) / 50.0)
+            exit_urgency_mult = getattr(self, 'exit_urgency_multiplier', 1.0)
+        
+            # Redistribute weights: boost exit, reduce others
+            total_non_exit = sum(v for k, v in base_weights.items() if k != 'exit')
+            scale_down = 1.0 - (base_weights['exit'] * urgency_factor * exit_urgency_mult)
+            scale_down = max(0.1, scale_down)  # Ensure we don't zero out other behaviors
+        
+            for key in ['flee', 'safety', 'disperse']:
+                base_weights[key] *= scale_down / total_non_exit
+        
+            base_weights['exit'] *= urgency_factor * exit_urgency_mult
+            base_weights['exit'] = min(0.85, base_weights['exit'])  # Cap at 85%
+    
+        # Normalize to sum to 1.0
+        total = sum(base_weights.values())
+        self.goal_weights = {k: v/total for k, v in base_weights.items()}
 
     def _select_dynamic_goal(self, env):
         """
@@ -346,58 +407,81 @@ class Agent:
 
     def _should_prioritize_exit(self, env) -> bool:
         """
-        Determine if agent should prioritize exiting based on:
-        1. Time spent in safe zone (T_MIN_SAFE threshold)
-        2. Cumulative harm budget exceeded
-        3. Mass exodus observed (social influence)
+        ENHANCED: Multiple exit triggers with global simulation time.
+    
+        New: After 150 steps (~2.5 minutes), agents start seeking exits
+        even if not in safe zone.
         """
-        # Sufficient time spent in a safe zone
-        if getattr(self, "time_in_safe_zone", 0.0) > getattr(self, "T_MIN_SAFE", 30.0):
+        # Trigger 1: Time in safe zone (personal)
+        T_MIN_SAFE = getattr(self, 'T_MIN_SAFE', 80)
+        T_MIN_SAFE_SCALED = T_MIN_SAFE * (100 / env.width)  # Scale with grid
+    
+        if getattr(self, 'time_in_safe_zone', 0) > T_MIN_SAFE_SCALED:
             return True
-
-        # Personal harm budget exceeded
-        # H_crit = (
-        #     self.config.get("hazards", {})
-        #     .get("gas", {})
-        #     .get("H_crit", 5.0)
-        # )
-        H_crit = getattr(self, "H_crit", 5.0)
+    
+        # Trigger 2: Global simulation time (NEW - CRITICAL)
+        # After 150 steps, protest is "winding down" - agents leave
+        if env.step_count > 150:
+            # Probability increases with time
+            exit_prob = (env.step_count - 150) / 100.0  # 0.0 at 150, 0.5 at 200
+            exit_prob = min(0.8, exit_prob)
+        
+            if env.rng.random() < exit_prob:
+                return True
+    
+        # Trigger 3: Harm budget (unchanged)
+        H_crit = env.config.get('hazards', {}).get('gas', {}).get('H_crit', 5.0)
         H_BUDGET = 0.5 * H_crit
-        if getattr(self, "cumulative_harm", 0.0) > H_BUDGET:
+        if getattr(self, 'cumulative_harm', 0.0) > H_BUDGET:
             return True
-
-        # Social influence: mass exodus around agent
-        if not hasattr(env, "exit_nodes"):
+    
+        # Trigger 4: Social influence (unchanged)
+        if not hasattr(env, 'exit_nodes'):
             return False
-
-        exits = env.exit_nodes.get("primary", []) + env.exit_nodes.get("secondary", [])
+    
+        exits = env.exit_nodes.get('primary', []) + env.exit_nodes.get('secondary', [])
         if not exits:
             return False
-
-        exit_positions = [e["grid_pos"] for e in exits]
+    
+        exit_positions = [e['grid_pos'] for e in exits]
         nearby_agents = 0
         exiting_agents = 0
-
+    
         for agent in env.agents:
-            # Skip self or inactive agents
             if agent.id == self.id or agent.state != AgentState.MOVING:
                 continue
-
+        
             dist = np.hypot(agent.pos[0] - self.pos[0], agent.pos[1] - self.pos[1])
-            if dist < 10:  # Within 10-cell neighborhood
+            if dist < 15:
                 nearby_agents += 1
-
-                # Check if this agent’s goal is near an exit
-                if hasattr(agent, "goal"):
+            
+                if hasattr(agent, 'goal'):
                     for exit_pos in exit_positions:
-                        if np.hypot(agent.goal[0] - exit_pos[0], agent.goal[1] - exit_pos[1]) < 5:
+                        if np.hypot(agent.goal[0] - exit_pos[0], 
+                                agent.goal[1] - exit_pos[1]) < 8:
                             exiting_agents += 1
                             break
-
-        # Require at least 5 neighbors to trigger social behavior
+    
         if nearby_agents >= 5 and (exiting_agents / nearby_agents) > 0.3:
             return True
-
+    
+        # Trigger 5: Hazard saturation (unchanged)
+        x, y = self.pos
+        hazard_count = 0
+        total_checked = 0
+    
+        for dx in range(-10, 11):
+            for dy in range(-10, 11):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < env.width and 0 <= ny < env.height:
+                    total_checked += 1
+                    if env.hazard_field.concentration[ny, nx] > self.panic_threshold * 0.5:
+                        hazard_count += 1
+    
+        hazard_saturation = hazard_count / total_checked if total_checked > 0 else 0.0
+        if hazard_saturation > 0.4:
+            return True
+    
         return False
 
     def _find_safest_direction(self, env) -> np.ndarray:
@@ -466,7 +550,7 @@ class Agent:
         """
         
         # Parameters (tweakable)
-        goal_update_period = getattr(self, "goal_update_period", 20)  # default every 20 steps
+        goal_update_period = getattr(self, "goal_update_period", 12)  # default every 12 steps
         beta_exit = getattr(self, "beta_exit", 0.2)                  # softmax inverse-temperature
         congestion_exp = getattr(self, "congestion_exp", 2.0)       # superlinear exponent
         congestion_thresh = getattr(self, "congestion_thresh", None) # optional thresholded behavior
@@ -491,7 +575,9 @@ class Agent:
                 curr_path_hazard = self._estimate_path_hazard(env, tuple(self.goal))
             except Exception:
                 curr_path_hazard = 0.0
-            if curr_path_hazard > immediate_reassess_hazard_factor * getattr(self, "risk_tolerance", 0.3):
+
+            immediate_threshold = getattr(self, 'risk_tolerance', 0.3) * 2.0
+            if curr_path_hazard > immediate_threshold:
                 do_resample = True
                 # reset counter so we don't immediately re-sample again next step
                 self._goal_update_counter = 0
@@ -967,26 +1053,58 @@ class PoliceAgent(Agent):
         if wc_cfg.get('enabled', False):
             if not hasattr(self, 'wc_cooldown'):
                 self.wc_cooldown = 0
+
             if self.wc_cooldown <= 0:
-                nearby_density = 0
-                for dx in range(-3, 4):
-                    for dy in range(-3, 4):
-                        nx, ny = pos_x + dx, pos_y + dy 
-                        if 0 <= nx < env.width and 0 <= ny < env.height:
-                            nearby_density += env.occupancy_count[ny, nx]
+                # Count nearby protesters (within tactical range)
+                nearby_protesters = []
+                for px, py in protester_positions:
+                    dist = np.hypot(px - pos_x, py - pos_y)
+                    if dist < 15:  # Within water cannon effective range
+                        nearby_protesters.append((px, py, dist))
+            
+                n_nearby = len(nearby_protesters)
                 
-                wc_prob = wc_cfg.get('prob', 0.01)
-                if nearby_density >= 15 and env.rng.random() < wc_prob:
-                    env.hazards.deploy_water_cannon(
-                        env=env,
-                        x=pos_x, y=pos_y,
-                        direction=(0, 1),
-                        strength=wc_cfg.get('strength_m', 5.0),
-                        radius=wc_cfg.get('radius', 6),
-                        stun_prob=wc_cfg.get('stun_prob', 0.1),
-                        agent_id=self.id
-                    )
-                    self.wc_cooldown = wc_cfg.get('cooldown', 30)
+                # ADAPTIVE probability based on proximity
+                if n_nearby >= 8:
+                    wc_prob = wc_cfg.get('prob', 0.02) * 2.0  # 4% if many nearby
+                elif n_nearby >= 4:
+                    wc_prob = wc_cfg.get('prob', 0.02) * 1.5  # 3% if some nearby
+                elif n_nearby >= 2:
+                    wc_prob = wc_cfg.get('prob', 0.02)        # 2% if few nearby
+                else:
+                    wc_prob = 0.0  # Don't waste on empty areas
+            
+                # Deploy if roll succeeds
+                if wc_prob > 0 and env.rng.random() < wc_prob:
+                    # Find nearest protester to target
+                    if nearby_protesters:
+                        target = min(nearby_protesters, key=lambda p: p[2])
+                        target_x, target_y, _ = target
+                    
+                        # Direction from police to target
+                        direction = np.array([target_x - pos_x, target_y - pos_y])
+                        norm = np.linalg.norm(direction)
+                        if norm > 0:
+                            direction = direction / norm
+                            direction = (int(np.sign(direction[0])), int(np.sign(direction[1])))
+                        else:
+                            direction = (0, 1)  # Default: forward
+                    
+                        env.hazards.deploy_water_cannon(
+                            env=env,
+                            x=pos_x, y=pos_y,
+                            direction=direction,
+                            strength=wc_cfg.get('strength_m', 5.0),
+                            radius=wc_cfg.get('radius', 6),
+                            stun_prob=wc_cfg.get('stun_prob', 0.15),
+                            agent_id=self.id
+                        )
+                        self.wc_cooldown = wc_cfg.get('cooldown', 30)
+                    
+                        # DEBUG logging
+                        from src.utils.logging_config import logger
+                        logger.debug(f"[WATER] Police {self.id} deployed water cannon "
+                                   f"at ({pos_x},{pos_y}), {n_nearby} targets")
             else:
                 self.wc_cooldown = max(0, self.wc_cooldown - 1)
 
@@ -995,122 +1113,131 @@ class PoliceAgent(Agent):
         if shoot_cfg.get('enabled', False):
             if not hasattr(self, 'shoot_cooldown'):
                 self.shoot_cooldown = 0
-            p_shoot = shoot_cfg.get('prob_per_step', 0.005)
-            if self.shoot_cooldown <= 0 and env.rng.random() < p_shoot:
-                candidates = [p for p in env.protesters if p.state == AgentState.MOVING]
+        
+            if self.shoot_cooldown <= 0:
+                # Count nearby moving protesters
+                candidates = []
+                for a in env.protesters:
+                    if a.state != AgentState.MOVING:
+                        continue
+                
+                    # Get position
+                    if hasattr(a, 'current_node') and env.osm_graph:
+                        try:
+                            ax, ay = env._node_to_cell(a.current_node)
+                        except:
+                            continue
+                    else:
+                        ax, ay = a.pos
+                
+                    dist = np.hypot(ax - pos_x, ay - pos_y)
+                    if dist < 20:  # Within shooting range
+                        candidates.append((a, dist))
+            
+                # Only shoot if close targets exist
                 if candidates:
-                    target = min(candidates, key=lambda a: (a.pos[0] - pos_x)**2 + (a.pos[1] - pos_y)**2)
-                    env.hazards.shooting_event(env=env, shooter_agent=self, targets=[target])
-                    self.shoot_cooldown = shoot_cfg.get('cooldown', 100)
+                    p_shoot = shoot_cfg.get('prob_per_step', 0.0005)
+                
+                    # INCREASED probability if many nearby (crowd control)
+                    n_candidates = len(candidates)
+                    if n_candidates >= 10:
+                        p_shoot *= 3.0  # 0.15% if dense crowd
+                    elif n_candidates >= 5:
+                        p_shoot *= 2.0  # 0.1% if some crowd
+                
+                    if env.rng.random() < p_shoot:
+                        # Target nearest protester
+                        target_agent, target_dist = min(candidates, key=lambda x: x[1])
+                    
+                        env.hazards.shooting_event(
+                            env=env,
+                            shooter_agent=self,
+                            targets=[target_agent]
+                        )
+                        self.shoot_cooldown = shoot_cfg.get('cooldown', 100)
+                    
+                        # DEBUG logging
+                        from src.utils.logging_config import logger
+                        outcome = "INCAP" if target_agent.state == AgentState.INCAPACITATED else "STUNNED"
+                        logger.debug(f"[SHOOT] Police {self.id} fired at Agent {target_agent.id} "
+                                   f"(dist={target_dist:.1f}) → {outcome}")
             else:
                 self.shoot_cooldown = max(0, self.shoot_cooldown - 1)
+
         return int(action)
 
     
     def _attempt_gas_deployment(self, env):
-        """Deploy gas AHEAD toward crowd, avoiding obstacles."""
+        """
+        STRATEGIC gas deployment with formation tactics.
+    
+        Literature: King & Waddington (2004) - Police tactical formations
+    
+        Strategy:
+        1. Deploy in line perpendicular to crowd flow
+        2. Create gas "curtain" to halt advance
+        3. Space deployments 15-20m apart (3-4 cells)
+        """
         pos_x, pos_y = self.pos
-
-        # Get crowd centroid
+    
+        # Get crowd flow direction
         protester_positions = [a.pos for a in env.protesters if a.state == AgentState.MOVING]
         if not protester_positions:
             return
-
+    
         centroid = np.mean(protester_positions, axis=0)
-
-        # Deploy at point between police and crowd
-        deploy_x = int((pos_x + centroid[0]) / 2)
-        deploy_y = int((pos_y + centroid[1]) / 2)
-
-        # CRITICAL FIX 1: Bounds check FIRST
+    
+        # Crowd movement vector
+        crowd_dir = centroid - np.array([pos_x, pos_y])
+        crowd_norm = np.linalg.norm(crowd_dir)
+        if crowd_norm < 1e-6:
+            return
+        crowd_dir = crowd_dir / crowd_norm
+    
+        # Perpendicular vector (for line formation)
+        perp_dir = np.array([-crowd_dir[1], crowd_dir[0]])
+    
+        # Deploy along perpendicular line (offset by police ID)
+        offset = ((self.id % 5) - 2) * 4  # -8, -4, 0, 4, 8 cells
+    
+        deploy_x = int(np.clip(pos_x + offset * perp_dir[0], 0, env.width - 1))
+        deploy_y = int(np.clip(pos_y + offset * perp_dir[1], 0, env.height - 1))
+    
+        # CRITICAL: Validate deployment location (with improved fallback)
         if not (0 <= deploy_x < env.width and 0 <= deploy_y < env.height):
-            print(f"[WARN] Police {self.id} deployment out of bounds: ({deploy_x},{deploy_y})")
             return
     
-        # CRITICAL FIX 2: Find valid deployment location with improved search
         if env.obstacle_mask[deploy_y, deploy_x]:
-            print(f"[WARN] Police {self.id} initial deployment on obstacle at ({deploy_x},{deploy_y}); relocating...")
-        
+            # Find nearest valid cell (within 10-cell radius)
             found_valid = False
-            # Radial search outward from intended location
-            for radius in range(1, 20):
-                candidates = []
-            
-                # Collect all valid cells at this radius
-                for dx in range(-radius, radius + 1):
-                    for dy in range(-radius, radius + 1):
-                        # Only check perimeter (Manhattan distance = radius)
-                        if abs(dx) + abs(dy) != radius:
-                            continue
-                    
-                        test_x = deploy_x + dx
-                        test_y = deploy_y + dy
-                    
-                        # Bounds check
-                        if not (0 <= test_x < env.width and 0 <= test_y < env.height):
-                            continue
-                    
-                        # Check if valid (not obstacle)
-                        if not env.obstacle_mask[test_y, test_x]:
-                            # ADDITIONAL CHECK: Ensure cell is reachable (has adjacent non-obstacles)
-                            adjacent_free = False
-                            for adj_dx, adj_dy in [(-1,0), (1,0), (0,-1), (0,1)]:
-                                adj_x, adj_y = test_x + adj_dx, test_y + adj_dy
-                                if (0 <= adj_x < env.width and 0 <= adj_y < env.height):
-                                    if not env.obstacle_mask[adj_y, adj_x]:
-                                        adjacent_free = True
-                                        break
-                        
-                            if adjacent_free:
-                                candidates.append((test_x, test_y))
-            
-                if candidates:
-                    # Choose candidate closest to crowd centroid (most effective deployment)
-                    deploy_x, deploy_y = min(
-                        candidates, 
-                        key=lambda c: np.hypot(c[0] - centroid[0], c[1] - centroid[1])
-                    )
-                    found_valid = True
-                    print(f"  Relocated to ({deploy_x},{deploy_y}) at radius {radius}")
+            for radius in range(1, 11):
+                for angle in np.linspace(0, 2*np.pi, 8*radius, endpoint=False):
+                    test_x = int(deploy_x + radius * np.cos(angle))
+                    test_y = int(deploy_y + radius * np.sin(angle))
+                
+                    if (0 <= test_x < env.width and 0 <= test_y < env.height and
+                        not env.obstacle_mask[test_y, test_x]):
+                        deploy_x, deploy_y = test_x, test_y
+                        found_valid = True
+                        break
+                if found_valid:
                     break
         
             if not found_valid:
-                print(f"[ERROR] Police {self.id} cannot find valid deployment location within 20 cells")
-                return
+                return  # Abort deployment
     
-        # FINAL VERIFICATION (defensive programming)
-        if env.obstacle_mask[deploy_y, deploy_x]:
-            print(f"[FATAL] Police {self.id} final deployment STILL on obstacle at ({deploy_x},{deploy_y})")
-            return
-    
-        # Deploy gas with validated location
-        inj_intensity = self.config['hazards']['gas'].get('inj_intensity', 12.0)
+        # Deploy with configured intensity
+        inj_intensity = self.config['hazards']['gas'].get('inj_intensity', 50.0)
         env.hazards.deploy_gas(
-            env=env, 
-            x=deploy_x, 
-            y=deploy_y, 
-            intensity=inj_intensity, 
+            env=env,
+            x=deploy_x,
+            y=deploy_y,
+            intensity=inj_intensity,
             agent_id=self.id
         )
         self.deploy_cooldown = self.deploy_cooldown_max
-
+    
         # Conditional logging
         from src.utils.logging_config import logger
-        logger.debug(f"[GAS] Police {self.id} deployed at ({deploy_x},{deploy_y}), intensity={inj_intensity:.1f}")
-
-        # Log with street name (if available)
-        if hasattr(env, "_log_event"):
-            deploy_node = None
-            if hasattr(env, "cell_to_node"):
-                try:
-                    deploy_node = env.cell_to_node[deploy_y, deploy_x]
-                except Exception:
-                    pass
-            env._log_event(
-                "hazard_deployed",
-                agent_id=self.id,
-                node_id=deploy_node,
-                grid_pos=(deploy_x, deploy_y),
-                hazard_type="tear_gas",
-                intensity=inj_intensity,
-            )
+        logger.debug(f"[GAS] Police {self.id} deployed at ({deploy_x},{deploy_y}), "
+                    f"intensity={inj_intensity:.1f}, formation_offset={offset}")

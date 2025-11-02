@@ -1,7 +1,10 @@
-import { useState } from "react";
+// frontend/src/components/HomeMap.tsx
+import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { AlertCircle, MapPin, Route, Menu, Bell, Settings as SettingsIcon, ChevronUp, ChevronDown } from "lucide-react";
+import { AlertCircle, MapPin, Route, Bell, Settings as SettingsIcon, ChevronUp, ChevronDown, ArrowLeft } from "lucide-react";
 import { MapView } from "./MapView";
+import type { Screen } from "../App";
+import { apiClient } from "../lib/api";
 
 interface Event {
   id: string;
@@ -13,17 +16,132 @@ interface Event {
 
 interface HomeMapProps {
   onNavigate: (screen: string, data?: any) => void;
+  onBack?: () => void;
 }
 
-export function HomeMap({ onNavigate }: HomeMapProps) {
+export function HomeMap({ onNavigate, onBack }: HomeMapProps) {
   const [eventsExpanded, setEventsExpanded] = useState(false);
   const [riskLevel, setRiskLevel] = useState<"low" | "moderate" | "high">("low");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationName, setLocationName] = useState<string>("Locating...");
+  const [alerts, setAlerts] = useState<Event[]>([]);
 
-  const mockEvents: Event[] = [
-    { id: "1", type: "Tear gas reported", location: "Tom Mboya St", time: "2 min ago", severity: "high" },
-    { id: "2", type: "Heavy crowd", location: "University Way", time: "8 min ago", severity: "medium" },
-    { id: "3", type: "Police presence", location: "Kenyatta Ave", time: "15 min ago", severity: "medium" },
-  ];
+  // Load user location and risk data on component mount
+  useEffect(() => {
+    loadUserLocation();
+    loadAlerts();
+    determineRiskLevel();
+  }, []);
+
+  const loadUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude });
+          reverseGeocode(latitude, longitude);
+        },
+        (error) => {
+          console.warn("Geolocation failed:", error);
+          // Fallback to Nairobi CBD center
+          setUserLocation({ lat: -1.2833, lng: 36.8172 });
+          setLocationName("Nairobi CBD");
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        }
+      );
+    } else {
+      // Fallback if geolocation not supported
+      setUserLocation({ lat: -1.2833, lng: 36.8172 });
+      setLocationName("Nairobi CBD");
+    }
+  };
+
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      // Simple reverse geocoding - in production you'd use MapBox Geocoding API
+      const landmarks = [
+        { name: "Uhuru Park", lat: -1.2921, lng: 36.8219, threshold: 0.005 },
+        { name: "Central Police Station", lat: -1.2836, lng: 36.8221, threshold: 0.003 },
+        { name: "Kenyatta International Conference Centre", lat: -1.2889, lng: 36.8233, threshold: 0.004 },
+        { name: "Nairobi Central", lat: -1.2833, lng: 36.8172, threshold: 0.01 }
+      ];
+
+      let closestLandmark = "Nairobi CBD";
+      let minDistance = Infinity;
+
+      landmarks.forEach(landmark => {
+        const distance = Math.sqrt(
+          Math.pow(lat - landmark.lat, 2) + Math.pow(lng - landmark.lng, 2)
+        );
+        if (distance < minDistance && distance < landmark.threshold) {
+          minDistance = distance;
+          closestLandmark = landmark.name;
+        }
+      });
+
+      setLocationName(closestLandmark);
+    } catch (error) {
+      console.error("Reverse geocoding failed:", error);
+      setLocationName("Nairobi CBD");
+    }
+  };
+
+  const loadAlerts = async () => {
+    try {
+      const alertsData = await apiClient.getAlerts();
+      setAlerts(alertsData);
+    } catch (error) {
+      console.error("Failed to load alerts:", error);
+      // Fallback to mock data
+      setAlerts([
+        { id: "1", type: "Tear gas reported", location: "Tom Mboya St", time: "2 min ago", severity: "high" },
+        { id: "2", type: "Heavy crowd", location: "University Way", time: "8 min ago", severity: "medium" },
+        { id: "3", type: "Police presence", location: "Kenyatta Ave", time: "15 min ago", severity: "medium" },
+      ]);
+    }
+  };
+
+  const determineRiskLevel = async () => {
+    try {
+      const riskData = await apiClient.getRiskMap();
+      
+      // Simple risk calculation based on nearby risk points
+      if (userLocation) {
+        let nearbyRisk = 0;
+        let riskCount = 0;
+        
+        riskData.features.forEach((feature: any) => {
+          const riskLat = feature.geometry.coordinates[1];
+          const riskLng = feature.geometry.coordinates[0];
+          
+          // Calculate distance (simplified)
+          const distance = Math.sqrt(
+            Math.pow(userLocation.lat - riskLat, 2) + 
+            Math.pow(userLocation.lng - riskLng, 2)
+          );
+          
+          if (distance < 0.002) { // ~200 meter radius
+            nearbyRisk += feature.properties.risk;
+            riskCount++;
+          }
+        });
+        
+        const avgRisk = riskCount > 0 ? nearbyRisk / riskCount : 0;
+        
+        if (avgRisk > 0.3) setRiskLevel("high");
+        else if (avgRisk > 0.1) setRiskLevel("moderate");
+        else setRiskLevel("low");
+      }
+    } catch (error) {
+      console.error("Failed to determine risk level:", error);
+      // Default to low risk if determination fails
+      setRiskLevel("low");
+    }
+  };
 
   const getRiskColor = () => {
     switch (riskLevel) {
@@ -45,12 +163,22 @@ export function HomeMap({ onNavigate }: HomeMapProps) {
     <div className="min-h-screen bg-[#FDF8F0] flex flex-col">
       {/* Simplified Top Bar */}
       <div className="border-b-2 border-black bg-[#FDF8F0] p-3 flex items-center justify-between">
-        <button 
-          onClick={() => onNavigate("settings")}
-          className="border-2 border-black p-2 hover:bg-[#E8E3D8] transition-colors"
-        >
-          <Menu size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="border-2 border-black p-2 hover:bg-[#E8E3D8] transition-colors"
+            >
+              <ArrowLeft size={18} />
+            </button>
+          )}
+          <button 
+            onClick={() => onNavigate("settings")}
+            className="border-2 border-black p-2 hover:bg-[#E8E3D8] transition-colors"
+          >
+            <SettingsIcon size={18} />
+          </button>
+        </div>
         <h1 className="text-base" style={{ fontWeight: 600 }}>SAFENAV</h1>
         <button 
           onClick={() => onNavigate("alerts")}
@@ -62,9 +190,18 @@ export function HomeMap({ onNavigate }: HomeMapProps) {
 
       {/* Map Container */}
       <div className="flex-1 relative">
-        <MapView showUserLocation showHazards />
+        <MapView 
+          showUserLocation 
+          showHazards 
+          userLocation={userLocation}
+          onLocationUpdate={(location, name) => {
+            setUserLocation(location);
+            setLocationName(name);
+            determineRiskLevel();
+          }}
+        />
 
-        {/* Risk Status Card - moved lower to avoid nav bar */}
+        {/* Risk Status Card */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -82,7 +219,7 @@ export function HomeMap({ onNavigate }: HomeMapProps) {
           </div>
         </motion.div>
 
-        {/* Current Location Label - positioned to not overlap */}
+        {/* Current Location Label */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -90,7 +227,7 @@ export function HomeMap({ onNavigate }: HomeMapProps) {
         >
           <div className="flex items-center gap-1.5">
             <MapPin size={12} />
-            <span className="truncate">Uhuru Park</span>
+            <span className="truncate">{locationName}</span>
           </div>
         </motion.div>
 
@@ -129,7 +266,7 @@ export function HomeMap({ onNavigate }: HomeMapProps) {
         </button>
 
         <div className="divide-y-2 divide-black">
-          {mockEvents.map((event, index) => (
+          {alerts.map((event, index) => (
             <motion.button
               key={event.id}
               onClick={() => onNavigate("alerts")}

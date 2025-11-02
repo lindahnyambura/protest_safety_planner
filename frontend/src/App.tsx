@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Toaster } from "./components/ui/sonner";
+import { Landing } from "./components/Landing";
 import { Onboarding } from "./components/Onboarding";
 import { HomeMap } from "./components/HomeMap";
 import { QuickReport } from "./components/QuickReport";
@@ -11,7 +12,8 @@ import { Settings } from "./components/Settings";
 import { Help } from "./components/Help";
 import { Ethics } from "./components/Ethics";
 
-type Screen = 
+export type Screen = 
+  | "landing"
   | "onboarding" 
   | "home" 
   | "quick-report" 
@@ -24,7 +26,7 @@ type Screen =
   | "ethics";
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>("onboarding");
+  const [currentScreen, setCurrentScreen] = useState<Screen>("landing");
   const [navigationStack, setNavigationStack] = useState<Screen[]>([]);
 
   const navigateTo = (screen: Screen, data?: any) => {
@@ -43,6 +45,10 @@ export default function App() {
     }
   };
 
+  const handleLandingComplete = () => {
+    setCurrentScreen("home");
+  };
+
   const handleOnboardingComplete = () => {
     setCurrentScreen("home");
   };
@@ -51,15 +57,24 @@ export default function App() {
     setCurrentScreen("home");
   };
 
+  const backToLanding = () => {
+    setCurrentScreen("landing");
+    setNavigationStack([]);
+  };
+
   return (
     <div className="min-h-screen bg-[#FDF8F0]">
       {/* Render appropriate screen */}
+      {currentScreen === "landing" && (
+        <Landing onComplete={handleLandingComplete} />
+      )}
+      
       {currentScreen === "onboarding" && (
         <Onboarding onComplete={handleOnboardingComplete} />
       )}
       
       {currentScreen === "home" && (
-        <HomeMap onNavigate={navigateTo} />
+        <HomeMap onNavigate={navigateTo} onBack={backToLanding} />
       )}
       
       {currentScreen === "quick-report" && (

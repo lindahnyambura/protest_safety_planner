@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """
-run_complete_demo.py - STABLE FR1 + FR2 Demonstration with Full Diagnostics
+run_complete_demo.py - ENHANCED FR1 + FR2 Validation
 
-Produces FR1 & FR2 validation with:
-- Synthetic obstacles (tested, stable)
-- Heterogeneous agents (3 profiles)
-- Single episode demonstration
-- Monte Carlo aggregation with convergence analysis
-- Calibration metrics (Brier score)
-- Comprehensive visualizations
-- Experiment logging
+NEW FEATURES:
+✓ Exit rate tracking and visualization
+✓ Interactive mode selection
+✓ Convergence plots
+✓ Reliability diagrams
+✓ Per-profile statistics
+✓ Comprehensive experiment logging
 
-OSM disabled for system stability.
 """
 
 import sys
@@ -21,54 +19,89 @@ import time
 import json
 import os
 
-# Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
 from src.env.protest_env import ProtestEnv, load_config
 from src.monte_carlo.aggregator import MonteCarloAggregator
 from src.utils.visualization import ProtestVisualizer
 
-print("="*70)
-print("PROTEST SAFETY PLANNER - FR1 + FR2 Validation")
-print("="*70)
-print("Configuration: STABLE (Synthetic obstacles, safe parallelization)")
-print("="*70)
+# ASCII Art Header
+print("""
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║      PROTEST SAFETY PLANNER - FR1 + FR2 VALIDATION                   ║
+║                                                                       ║
+║    Real-time Risk Intelligence for Protest Navigation                ║
+║    ─────────────────────────────────────────────────────              ║
+║    Monte Carlo Aggregation | Uncertainty Quantification              ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+""")
 
 # ============================================================================
-# Part 1: Load Configuration with UTF-8 Encoding
+# Configuration
 # ============================================================================
-print("\n[1/6] Loading configuration...")
+print("\n[1/7]  Loading configuration...")
 config_path = Path(__file__).parent / 'configs' / 'default_scenario.yaml'
 
 if not config_path.exists():
-    print(f"✗ Config file not found: {config_path}")
+    print(f" Config not found: {config_path}")
     sys.exit(1)
 
-# Load with UTF-8 encoding
 try:
     with open(config_path, 'r', encoding='utf-8') as f:
         import yaml
         config = yaml.safe_load(f)
-except UnicodeDecodeError as e:
-    print(f"✗ Config file encoding error: {e}")
-    print("  Check for non-ASCII characters in YAML comments")
+except Exception as e:
+    print(f" Config loading failed: {e}")
     sys.exit(1)
 
-# UPDATED: Support both OSM and synthetic modes
-obstacle_source = config['grid'].get('obstacle_source', 'generate')
-using_osm = (obstacle_source == 'nairobi')
-
-print(f"  Grid: {config['grid']['width']}×{config['grid']['height']}")
-print(f"  Cell size: {config['grid']['cell_size_m']}m")
-print(f"  Obstacle source: {obstacle_source} {'(Real Nairobi OSM)' if using_osm else '(Synthetic)'}")
-print(f"  Protesters: {config['agents']['protesters']['count']}")
-print(f"  Police: {config['agents']['police']['count']}")
-print(f"  Monte Carlo jobs: {config['monte_carlo']['n_jobs']}")
+# Display configuration
+print(f" Configuration loaded")
+print(f"     Grid: {config['grid']['width']}×{config['grid']['height']} "
+      f"({config['grid']['cell_size_m']}m cells)")
+print(f"     Agents: {config['agents']['protesters']['count']} protesters, "
+      f"{config['agents']['police']['count']} police")
+print(f"      Source: {config['grid'].get('obstacle_source', 'synthetic')}")
 
 # ============================================================================
-# Part 2: Initialize Environment
+# Interactive Mode Selection
 # ============================================================================
-print("\n[2/6] Initializing environment...")
+print(f"\n[2/7]  Mode selection...")
+print(f"""
+Available modes:
+  [1]  Quick demo: 50 rollouts, single episode (~3-5 min)
+  [2]  Development: 100 rollouts, single episode (~5-10 min)
+  [3]  Production: 200 rollouts, full validation (~15-30 min)
+  [4]  Visualization only: Load existing results
+""")
+
+mode = input("Select mode [1/2/3/4] (default=1): ").strip() or "1"
+
+if mode == "4":
+    print("\n Visualization mode not yet implemented")
+    sys.exit(0)
+
+MODE_CONFIG = {
+    "1": {"name": "Quick Demo", "n_rollouts": 50, "n_bootstrap": 200, "demo_steps": 150},
+    "2": {"name": "Development", "n_rollouts": 100, "n_bootstrap": 500, "demo_steps": 200},
+    "3": {"name": "Production", "n_rollouts": 200, "n_bootstrap": 1000, "demo_steps": 300}
+}
+
+selected = MODE_CONFIG.get(mode, MODE_CONFIG["1"])
+print(f"\n Mode: {selected['name']}")
+print(f"    Rollouts: {selected['n_rollouts']}")
+print(f"    Bootstrap samples: {selected['n_bootstrap']}")
+print(f"    Demo episode: {selected['demo_steps']} steps")
+
+# Update config
+config['monte_carlo']['n_rollouts'] = selected['n_rollouts']
+config['monte_carlo']['bootstrap_samples'] = selected['n_bootstrap']
+
+# ============================================================================
+# Environment Initialization
+# ============================================================================
+print(f"\n[3/7]  Initializing environment...")
 start_time = time.time()
 
 try:
@@ -76,116 +109,99 @@ try:
     obs, info = env.reset(seed=42)
     init_time = time.time() - start_time
     
-    print(f"   Environment initialized in {init_time:.2f}s")
-    print(f"  Agents spawned: {info['n_agents']}")
-    print(f"  Obstacles: {env.obstacle_mask.sum()} cells ({100*env.obstacle_mask.sum()/env.obstacle_mask.size:.1f}%)")
+    print(f" Environment initialized ({init_time:.2f}s)")
+    print(f"    Agents: {info['n_agents']}")
+    print(f"    Obstacles: {env.obstacle_mask.sum():,} cells "
+          f"({100*env.obstacle_mask.sum()/env.obstacle_mask.size:.1f}%)")
+    
+    if hasattr(env, 'osm_graph'):
+        print(f"    OSM graph: {len(env.osm_graph.nodes)} nodes, "
+              f"{len(env.osm_graph.edges)} edges")
     
 except Exception as e:
-    print(f"   Environment initialization failed: {e}")
+    print(f" Initialization failed: {e}")
     import traceback
     traceback.print_exc()
     sys.exit(1)
 
-# Check agent heterogeneity
+# Agent heterogeneity
 profile_counts = {}
 for agent in env.protesters:
     profile_counts[agent.profile_name] = profile_counts.get(agent.profile_name, 0) + 1
 
-print(f"\n  Agent Heterogeneity:")
-for profile in ['cautious', 'average', 'bold']:
-    count = profile_counts.get(profile, 0)
-    if count > 0:
-        print(f"    {profile:10s}: {count:3d} ({100*count/len(env.protesters):5.1f}%)")
+print(f"\n     Agent Profiles:")
+for profile, count in sorted(profile_counts.items()):
+    pct = 100 * count / len(env.protesters)
+    bar = '█' * int(pct / 5)
+    print(f"      {profile:12s}: {count:3d} ({pct:5.1f}%) {bar}")
 
 # ============================================================================
-# Part 3: Run Single Episode Demonstration
+# Demo Episode with Exit Tracking
 # ============================================================================
-print("\n[3/6] Running single episode demonstration...")
-print("  Target: 500 steps")
+print(f"\n[4/7]  Running demonstration episode...")
+print(f"    Target: {selected['demo_steps']} steps")
 
 episode_start = time.time()
 harm_timeline = []
 hazard_timeline = []
+exit_timeline = []  # NEW
+incap_timeline = []  # NEW
 
 try:
-    for i in range(500):
+    for i in range(selected['demo_steps']):
         obs, reward, terminated, truncated, info = env.step(actions=None)
+        
+        # Track metrics
         harm_timeline.append(info['harm_grid'].sum())
         hazard_timeline.append(env.hazard_field.concentration.max())
+        exit_timeline.append(sum(1 for a in env.protesters if a.state == 'safe'))
+        incap_timeline.append(info['agent_states']['n_incapacitated'])
         
-        if (i + 1) % 100 == 0:
+        # Progress updates
+        if (i + 1) % 50 == 0:
+            n_exited = sum(1 for a in env.protesters if a.state == 'safe')
             print(f"    Step {i+1:3d}: "
-                  f"{info['agent_states']['n_moving']:3d} moving, "
-                  f"{info['agent_states']['n_incapacitated']:3d} incapacitated, "
-                  f"harm cells: {info['harm_grid'].sum():4d}, "
-                  f"max hazard: {env.hazard_field.concentration.max():.1f}")
+                  f"moving={info['agent_states']['n_moving']:3d}, "
+                  f"exited={n_exited:3d}, "
+                  f"incap={info['agent_states']['n_incapacitated']:3d}, "
+                  f"harm={info['harm_grid'].sum():4d}, "
+                  f"hazard={env.hazard_field.concentration.max():.1f}")
         
         if terminated or truncated:
-            reason = info.get('termination_reason', 'time_limit')
-            print(f"  Episode terminated at step {i+1}: {reason}")
+            print(f"    Episode terminated: {info.get('termination_reason', 'unknown')}")
             break
     
     episode_time = time.time() - episode_start
-    steps_per_sec = (i + 1) / episode_time
     
-    print(f"\n   Episode complete in {episode_time:.1f}s ({steps_per_sec:.1f} steps/sec)")
-    print(f"    Final step: {env.step_count}")
-    print(f"    Total harm cells: {info['harm_grid'].sum()}")
-    print(f"    Mean agent harm: {info['agent_states']['mean_harm']:.3f}")
-    print(f"    Agents incapacitated: {info['agent_states']['n_incapacitated']}")
+    # Final statistics
+    n_exited = sum(1 for a in env.protesters if a.state == 'safe')
+    n_incap = info['agent_states']['n_incapacitated']
+    n_moving = info['agent_states']['n_moving']
     
-    # Incapacitation rate
-    incap_rate = info['agent_states']['n_incapacitated'] / len(env.protesters)
-    print(f"    Incapacitation rate: {incap_rate:.1%}")
-
-    # Gas Deployment Analysis
-    print(f"\n  Gas Deployment Analysis:")
-    gas_deployments = [e for e in env.events_log if e['event_type'] == 'gas_deployment']
-    print(f"    Total deployments: {len(gas_deployments)}")
-    print(f"    Max hazard concentration (final): {env.hazard_field.concentration.max():.2f}")
+    exit_rate = n_exited / len(env.protesters)
+    incap_rate = n_incap / len(env.protesters)
     
-    # Harm Timeline
-    print(f"\n  Harm Timeline:")
-    print(f"    Peak harm cells: {max(harm_timeline)}")
-    print(f"    Average harm cells: {np.mean(harm_timeline):.2f}")
-    
-    # Diagnostic Check
-    print(f"\n  Diagnostic Check:")
-    print(f"    Max concentration ever: {max(hazard_timeline):.2f}")
-    print(f"    Steps with visible gas (>1.0): {sum(1 for h in hazard_timeline if h > 1.0)}")
+    print(f"\n Episode complete ({episode_time:.1f}s, {(i+1)/episode_time:.1f} steps/s)")
+    print(f"     Final Outcomes:")
+    print(f"      Exited safely: {n_exited}/{len(env.protesters)} ({exit_rate*100:.1f}%)")
+    print(f"      Incapacitated: {n_incap}/{len(env.protesters)} ({incap_rate*100:.1f}%)")
+    print(f"      Still moving: {n_moving}/{len(env.protesters)} ({100*n_moving/len(env.protesters):.1f}%)")
+    print(f"      Hazards:")
+    print(f"      Total deployments: {len([e for e in env.events_log if 'deploy' in e.get('event_type', '')])}")
+    print(f"      Peak concentration: {max(hazard_timeline):.2f} mg/m³")
+    print(f"      Total harm cells: {sum(harm_timeline):,}")
 
 except Exception as e:
-    print(f"   Episode failed: {e}")
+    print(f" Episode failed: {e}")
     import traceback
     traceback.print_exc()
     sys.exit(1)
 
 # ============================================================================
-# Part 4: Monte Carlo Aggregation (FR2) with Diagnostics
+# Monte Carlo Aggregation
 # ============================================================================
-print("\n[4/6] Monte Carlo Aggregation (FR2)...")
+print(f"\n[5/7]  Monte Carlo aggregation...")
 
-# Ask user for settings
-print(f"\n  Available settings:")
-print(f"    [1] Development: {config['monte_carlo'].get('n_rollouts_dev', 50)} rollouts (~2-5 min)")
-print(f"    [2] Production:  {config['monte_carlo']['n_rollouts']} rollouts (~10-30 min)")
-
-choice = input("  Select [1/2] (default=1): ").strip()
-
-if choice == '2':
-    n_rollouts = config['monte_carlo']['n_rollouts']
-    n_bootstrap = config['monte_carlo']['bootstrap_samples']
-    print(f"  Using production settings: {n_rollouts} rollouts")
-else:
-    n_rollouts = config['monte_carlo'].get('n_rollouts_dev', 50)
-    n_bootstrap = config['monte_carlo'].get('bootstrap_samples_dev', 200)
-    print(f"  Using development settings: {n_rollouts} rollouts")
-
-# Update config
-config['monte_carlo']['n_rollouts'] = n_rollouts
-config['monte_carlo']['bootstrap_samples'] = n_bootstrap
-
-# Create aggregator
 aggregator = MonteCarloAggregator(
     env_class=ProtestEnv,
     config=config,
@@ -193,46 +209,30 @@ aggregator = MonteCarloAggregator(
 )
 
 try:
-    # Run Monte Carlo with convergence analysis
     mc_start = time.time()
-    results = aggregator.run_monte_carlo(base_seed=42, verbose=True)
+    results = aggregator.run_monte_carlo(
+        base_seed=42,
+        verbose=True,
+        convergence_check=True
+    )
     mc_time = time.time() - mc_start
     
-    print(f"\n   Monte Carlo complete in {mc_time:.1f}s")
-    print(f"    Average per rollout: {mc_time/n_rollouts:.2f}s")
+    print(f"\n Monte Carlo complete ({mc_time:.1f}s)")
+    print(f"    Average: {mc_time/selected['n_rollouts']:.2f}s/rollout")
     
     # Save results
-    aggregator.save_results(results, run_id="production_run")
+    aggregator.save_results(results, run_id=f"{selected['name'].lower().replace(' ', '_')}_run")
     
 except Exception as e:
-    print(f"   Monte Carlo failed: {e}")
+    print(f" Monte Carlo failed: {e}")
     import traceback
     traceback.print_exc()
     sys.exit(1)
 
 # ============================================================================
-# Part 5: Compute Calibration Metrics
+# Visualization Generation
 # ============================================================================
-print("\n[5/6] Computing calibration metrics...")
-
-try:
-    # Compute Brier score
-    calibration_metrics = aggregator.compute_calibration_metrics()
-    print(f"   Calibration complete")
-    print(f"    Mean Brier score: {calibration_metrics['mean_brier']:.4f}")
-    print(f"    Median Brier score: {calibration_metrics['median_brier']:.4f}")
-    
-    # Add to results
-    results['calibration'] = calibration_metrics
-    
-except Exception as e:
-    print(f"   Calibration metrics failed (non-fatal): {e}")
-    results['calibration'] = None
-
-# ============================================================================
-# Part 6: Generate Visualizations
-# ============================================================================
-print("\n[6/6] Generating visualizations...")
+print(f"\n[6/7]  Generating visualizations...")
 
 try:
     visualizer = ProtestVisualizer(figsize_scale=1.0, dpi=150)
@@ -244,127 +244,149 @@ try:
         output_dir="artifacts/validation"
     )
     
-    print("   Visualizations complete")
+    # Additional time series plot
+    if harm_timeline:
+        visualizer.plot_time_series(
+            hazard_history=hazard_timeline,
+            incapacitated_timeline=incap_timeline,
+            mean_harm_timeline=harm_timeline,
+            save_path="artifacts/validation/05_time_series.png"
+        )
+    
+    print(f" Visualizations complete")
     
 except Exception as e:
-    print(f"   Visualization failed: {e}")
-    import traceback
-    traceback.print_exc()
-    # Non-fatal, continue
+    print(f"  Visualization warning: {e}")
+    # Non-fatal
 
 # ============================================================================
 # Experiment Logging
 # ============================================================================
-print("\nLogging experiment metadata...")
-
-def convert_to_json_serializable(obj):
-    """ Convert numpy types to native Python types for JSON serialization """
-    if isinstance(obj, np.integer):
-        return int(obj)
-    elif isinstance(obj, np.floating):
-        return float(obj)
-    elif isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, (list, tuple)):
-        return [convert_to_json_serializable(i) for i in obj]
-    elif isinstance(obj, dict):
-        return {k: convert_to_json_serializable(v) for k, v in obj.items()}
-    else:
-        return obj
+print(f"\n[7/7]  Experiment logging...")
 
 try:
-    # Get git commit (if available)
-    try:
-        git_commit = os.popen('git rev-parse HEAD').read().strip()
-    except:
-        git_commit = "unknown"
+    git_commit = os.popen('git rev-parse HEAD').read().strip() or "unknown"
     
-    experiment_log = convert_to_json_serializable({
-        'experiment_id': 'FR1_FR2_validation_run',
+    def make_serializable(obj):
+        """Convert numpy types to Python types."""
+        if isinstance(obj, (np.integer, np.int64)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64)):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, (list, tuple)):
+            return [make_serializable(i) for i in obj]
+        elif isinstance(obj, dict):
+            return {k: make_serializable(v) for k, v in obj.items()}
+        return obj
+    
+    experiment_log = {
+        'experiment_id': f'FR1_FR2_{selected["name"].lower().replace(" ", "_")}',
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+        'mode': selected['name'],
         'config_hash': results.get('config_hash', 'N/A'),
         'git_commit': git_commit,
+        
         'parameters': {
-            'n_rollouts': int(n_rollouts),
-            'n_bootstrap': int(n_bootstrap),
-            'inj_intensity': config['hazards']['gas']['inj_intensity'],
-            'k_harm': config['hazards']['gas']['k_harm'],
-            'cell_size_m': config['grid']['cell_size_m']
+            'n_rollouts': selected['n_rollouts'],
+            'n_bootstrap': selected['n_bootstrap'],
+            'demo_steps': selected['demo_steps'],
+            'grid_size': f"{config['grid']['width']}×{config['grid']['height']}",
+            'cell_size_m': config['grid']['cell_size_m'],
+            'n_protesters': config['agents']['protesters']['count'],
+            'n_police': config['agents']['police']['count']
         },
-        'results_summary': results['summary'],
-        'calibration': results.get('calibration'),
-        'convergence': results.get('convergence', {}),
+        
         'demo_episode': {
-            'incapacitation_rate': incap_rate,
-            'final_step': env.step_count,
-            'gas_deployments': len(gas_deployments),
-            'peak_harm_cells': max(harm_timeline),
-            'max_concentration': max(hazard_timeline)
+            'duration_s': float(episode_time),
+            'final_step': int(i + 1),
+            'exit_rate': float(exit_rate),
+            'incapacitation_rate': float(incap_rate),
+            'peak_hazard': float(max(hazard_timeline)),
+            'total_harm_cells': int(sum(harm_timeline)),
+            'gas_deployments': len([e for e in env.events_log if 'deploy' in e.get('event_type', '')])
+        },
+        
+        'monte_carlo_results': make_serializable({
+            'mean_harm_probability': results['p_sim'].mean(),
+            'max_harm_probability': results['p_sim'].max(),
+            'cells_high_risk': int((results['p_sim'] > 0.1).sum()),
+            'summary': results['summary'],
+            'calibration': results.get('calibration', {}),
+            'spatial_analysis': results.get('spatial_analysis', {})
+        }),
+        
+        'convergence': make_serializable(results.get('convergence', {})),
+        
+        'runtime': {
+            'initialization_s': float(init_time),
+            'episode_s': float(episode_time),
+            'monte_carlo_s': float(mc_time),
+            'total_s': float(init_time + episode_time + mc_time)
         }
-    })
+    }
     
     log_path = Path('artifacts') / 'experiment_log.json'
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    
     with open(log_path, 'w') as f:
         json.dump(experiment_log, f, indent=2)
     
-    print(f"   Experiment log saved to {log_path}")
+    print(f" Experiment log saved: {log_path}")
     
 except Exception as e:
-    print(f"   Experiment logging failed: {e}")
+    print(f"  Logging warning: {e}")
 
 # ============================================================================
 # Final Summary
 # ============================================================================
-print("\n" + "="*70)
-print("VALIDATION COMPLETE ")
-print("="*70)
+print(f"\n{'='*75}")
+print(f" VALIDATION COMPLETE")
+print(f"{'='*75}")
 
-print("\n FR1: Stylized Digital Twin")
-print(f"  Grid: {env.width}×{env.height} cells ({env.cell_size}m resolution)")
-print(f"  Agents: {len(env.agents)} ({len(env.protesters)} protesters, {len(env.police_agents)} police)")
-print(f"  Heterogeneity: {len(profile_counts)} agent profiles")
-print(f"  Episode performance: {steps_per_sec:.1f} steps/sec")
-print(f"  Obstacles: Synthetic (tested, stable)")
-print(f"  Incapacitation rate: {incap_rate:.1%}")
+print(f"\n FR1: Stylized Digital Twin")
+print(f"    Grid: {env.width}×{env.height} @ {env.cell_size}m/cell")
+print(f"    Agents: {len(env.agents)} ({len(profile_counts)} profiles)")
+print(f"    Performance: {(i+1)/episode_time:.1f} steps/s")
 
-print("\n FR2: Monte Carlo Aggregator")
-print(f"  Rollouts: {results['n_rollouts']}")
-print(f"  Runtime: {results['runtime_seconds']:.1f}s ({results['runtime_seconds']/60:.1f} min)")
-print(f"  Mean harm probability: {results['p_sim'].mean():.4f}")
-print(f"  Max harm probability: {results['p_sim'].max():.4f}")
-print(f"  High-risk cells (p>0.1): {(results['p_sim'] > 0.1).sum()} / {results['p_sim'].size}")
-print(f"  Incapacitation rate: {results['summary'].get('incapacitation_rate', 'N/A'):.1%}")
+print(f"\n FR2: Monte Carlo Aggregator")
+print(f"    Rollouts: {results['n_rollouts']}")
+print(f"    Runtime: {mc_time/60:.1f} min")
+print(f"    Mean p(harm): {results['p_sim'].mean():.4f}")
+print(f"    Incapacitation rate: {results['summary']['incapacitation_rate']*100:.1f}%")
+print(f"    Exit rate: {results['summary']['exit_rate']*100:.1f}%")
+
 if results.get('calibration'):
-    print(f"  Calibration (Brier): {results['calibration']['mean_brier']:.4f}")
-if results.get('convergence'):
-    print(f"  Convergence: {results['convergence']}")
+    print(f"    Brier score: {results['calibration']['mean_brier']:.4f}")
+    print(f"    ECE: {results['calibration']['ece']:.4f}")
 
-print("\n Outputs Generated:")
-print(f"  Monte Carlo data:")
-print(f"    artifacts/rollouts/production_run/p_sim.npy")
-print(f"    artifacts/rollouts/production_run/metadata.json")
+if results.get('convergence', {}).get('is_converged'):
+    print(f"     Converged")
+else:
+    print(f"      May need more rollouts")
 
-print(f"\n  Validation figures:")
-print(f"    artifacts/validation/01_environment_state.png")
-print(f"    artifacts/validation/02_monte_carlo_results.png")
-print(f"    artifacts/validation/03_agent_profiles.png")
+print(f"\n Outputs:")
+print(f"    Monte Carlo: artifacts/rollouts/{selected['name'].lower().replace(' ', '_')}_run/")
+print(f"    Figures: artifacts/validation/")
+print(f"    Log: artifacts/experiment_log.json")
 
-print(f"\n  Experiment log:")
-print(f"    artifacts/experiment_log.json")
+print(f"\n Key Results:")
+if results['summary']['exit_rate'] > 0.3:
+    print(f"     Exit behavior: WORKING ({results['summary']['exit_rate']*100:.1f}%)")
+else:
+    print(f"      Exit behavior: LOW ({results['summary']['exit_rate']*100:.1f}%) - check agent.py fixes")
 
-print("\n System Status: STABLE & PRODUCTION-READY")
-print("   - Deterministic (same seed = same results)")
-print("   - Tested parallelization (no system freeze)")
-print("   - Heterogeneous agents working")
-print("   - Monte Carlo bootstrap validated")
-print("   - Calibration metrics computed")
+if 0.10 <= results['summary']['incapacitation_rate'] <= 0.25:
+    print(f"     Incapacitation rate: REALISTIC ({results['summary']['incapacitation_rate']*100:.1f}%)")
+else:
+    print(f"      Incapacitation rate: {results['summary']['incapacitation_rate']*100:.1f}% "
+          f"(target: 10-25%)")
 
-print("\n Next Steps:")
-print("  1. Review figures in artifacts/validation/")
-print("  2. Verify p_sim values are reasonable (target: incap 15-25%)")
-print("  3. Check experiment_log.json for parameter record")
-print("  4. Run tests: pytest tests/ -v")
-print("  5. Document results in research notebook")
+print(f"\n💡 Next Steps:")
+print(f"    1. Review validation figures in artifacts/validation/")
+print(f"    2. Check convergence plot for MC stability")
+print(f"    3. Verify exit rate ≥30% (if low, apply agent.py fixes)")
+print(f"    4. Run full production mode if satisfied with dev results")
 
-print("\n" + "="*70)
+print(f"\n{'='*75}\n")

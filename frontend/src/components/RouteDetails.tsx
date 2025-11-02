@@ -1,34 +1,84 @@
-import { useState } from "react";
+// frontend/src/components/RouteDetails.tsx
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { ArrowLeft, Navigation, Share2, ChevronDown, ChevronUp, Clock, TrendingUp } from "lucide-react";
 import { MapView } from "./MapView";
 import { toast } from "sonner";
 
 interface RouteDetailsProps {
-  onNavigate: (screen: string) => void;
+  onNavigate: (screen: string, data?: any) => void;
   onBack: () => void;
+  routeData?: any; // The route data passed from RouteDestination
 }
 
-export function RouteDetails({ onNavigate, onBack }: RouteDetailsProps) {
+export function RouteDetails({ onNavigate, onBack, routeData }: RouteDetailsProps) {
   const [stepsExpanded, setStepsExpanded] = useState(false);
+  const [route, setRoute] = useState<any>(null);
 
-  const routeSteps = [
-    { id: "1", instruction: "Head west on Moi Ave", distance: "120 m", risk: "low" },
-    { id: "2", instruction: "Turn right onto Haile Selassie Ave", distance: "450 m", risk: "low" },
-    { id: "3", instruction: "Continue straight (avoid Tom Mboya St)", distance: "200 m", risk: "medium" },
-    { id: "4", instruction: "Turn left onto Kenyatta Ave", distance: "300 m", risk: "low" },
-    { id: "5", instruction: "Arrive at Uhuru Park", distance: "50 m", risk: "low" },
-  ];
+  useEffect(() => {
+    if (routeData?.route) {
+      setRoute(routeData.route);
+    } else {
+      // Fallback to mock data if no route provided
+      setRoute(getMockRouteData());
+    }
+  }, [routeData]);
 
   const handleShare = () => {
-    toast("Route copied as text", {
-      description: "You can now share it safely",
-    });
+    if (route) {
+      const routeText = route.directions
+        .map((step: any) => `${step.instruction} (${step.distance_m}m)`)
+        .join('\n');
+      
+      navigator.clipboard.writeText(routeText);
+      toast("Route copied as text", {
+        description: "You can now share it safely",
+      });
+    }
   };
 
   const handleStartGuidance = () => {
-    onNavigate("live-guidance");
+    if (route) {
+      onNavigate("live-guidance", { route });
+    }
   };
+
+  const getMockRouteData = () => ({
+    path: ["node_42", "node_43", "node_44", "node_45"],
+    geometry: [
+      [36.8172, -1.2833],
+      [36.8175, -1.2830], 
+      [36.8178, -1.2827],
+      [36.8180, -1.2825]
+    ],
+    directions: [
+      { step: 0, instruction: "Start at your location", node: "node_42", distance_m: 0, risk: "low" },
+      { step: 1, instruction: "Head west on Moi Ave", node: "node_43", distance_m: 120, risk: "low" },
+      { step: 2, instruction: "Turn right onto Haile Selassie Ave", node: "node_44", distance_m: 450, risk: "low" },
+      { step: 3, instruction: "Continue straight (avoid Tom Mboya St)", node: "node_45", distance_m: 200, risk: "medium" },
+      { step: 4, instruction: "Arrive at destination", node: "node_46", distance_m: 50, risk: "low" }
+    ],
+    safety_score: 0.85,
+    metadata: {
+      total_distance_m: 820,
+      total_risk: 0.15,
+      algorithm: "astar",
+      estimated_time_min: 12
+    },
+    algorithm: "astar"
+  });
+
+  if (!route) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F0] flex items-center justify-center">
+        <p>Loading route...</p>
+      </div>
+    );
+  }
+
+  const totalDistanceKm = (route.metadata.total_distance_m / 1000).toFixed(1);
+  const safetyScore = Math.round(route.safety_score * 10);
+  const estimatedTime = route.metadata.estimated_time_min || 12;
 
   return (
     <div className="min-h-screen bg-[#FDF8F0] flex flex-col">
@@ -51,7 +101,12 @@ export function RouteDetails({ onNavigate, onBack }: RouteDetailsProps) {
 
       {/* Map View */}
       <div className="h-64 border-b-2 border-black">
-        <MapView showUserLocation showHazards showRoute />
+        <MapView 
+          showUserLocation 
+          showHazards 
+          showRoute 
+          routeGeometry={route.geometry}
+        />
       </div>
 
       {/* Route Stats Card */}
@@ -61,19 +116,19 @@ export function RouteDetails({ onNavigate, onBack }: RouteDetailsProps) {
             <p className="text-xs opacity-80 mb-1">SAFETY SCORE</p>
             <div className="flex items-center justify-center gap-1">
               <TrendingUp size={16} />
-              <span className="text-xl">8.5</span>
+              <span className="text-xl">{safetyScore}/10</span>
             </div>
           </div>
           <div>
             <p className="text-xs opacity-80 mb-1">ETA</p>
             <div className="flex items-center justify-center gap-1">
               <Clock size={16} />
-              <span className="text-xl">12 min</span>
+              <span className="text-xl">{estimatedTime} min</span>
             </div>
           </div>
           <div>
             <p className="text-xs opacity-80 mb-1">DISTANCE</p>
-            <span className="text-xl">1.1 km</span>
+            <span className="text-xl">{totalDistanceKm} km</span>
           </div>
         </div>
       </div>
@@ -94,15 +149,15 @@ export function RouteDetails({ onNavigate, onBack }: RouteDetailsProps) {
             animate={{ opacity: 1 }}
             className="divide-y-2 divide-black"
           >
-            {routeSteps.map((step, index) => (
-              <div key={step.id} className="p-4 flex gap-3">
+            {route.directions.map((step: any, index: number) => (
+              <div key={step.step} className="p-4 flex gap-3">
                 <div className="border-2 border-black w-8 h-8 flex items-center justify-center shrink-0 bg-[#FDF8F0]">
                   {index + 1}
                 </div>
                 <div className="flex-1">
                   <p className="text-sm mb-1">{step.instruction}</p>
                   <div className="flex items-center gap-3 text-xs opacity-70">
-                    <span>{step.distance}</span>
+                    <span>{step.distance_m}m</span>
                     <span 
                       className="border border-black px-2 py-0.5"
                       style={{ 
@@ -110,7 +165,7 @@ export function RouteDetails({ onNavigate, onBack }: RouteDetailsProps) {
                                        step.risk === "medium" ? "#19647E" : "#AE1E2A" 
                       }}
                     >
-                      {step.risk.toUpperCase()} RISK
+                      {step.risk?.toUpperCase() || "LOW"} RISK
                     </span>
                   </div>
                 </div>
@@ -124,7 +179,7 @@ export function RouteDetails({ onNavigate, onBack }: RouteDetailsProps) {
           <div className="p-4 border-b-2 border-black">
             <div className="border-2 border-black p-3 bg-[#E8E3D8]">
               <p className="text-xs">
-                <strong>Route Summary:</strong> This route avoids 2 reported hazards and 
+                <strong>Route Summary:</strong> This route avoids reported hazards and 
                 prioritizes main roads with good visibility. Tap to see full directions.
               </p>
             </div>

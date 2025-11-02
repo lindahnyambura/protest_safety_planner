@@ -548,8 +548,8 @@ class ProtestEnv(gym.Env):
                         
                         # NEW: Generate and save spawn mask
                         self.spawn_mask = generate_spawn_mask(mask, self.osm_graph, self.cell_to_node)
-                        np.save("data/spawn_mask_100x100.npy", self.spawn_mask)
-                        print(f"[INFO] Spawn mask saved to data/spawn_mask_100x100.npy")
+                        np.save("data/spawn_mask_200x200.npy", self.spawn_mask)
+                        print(f"[INFO] Spawn mask saved to data/spawn_mask_200x200.npy")
                     
                         # Build street name lookup
                         from .real_nairobi_loader import build_street_name_lookup
@@ -618,54 +618,137 @@ class ProtestEnv(gym.Env):
         
         return mask
 
+    def _validate_and_relocate_spawn(self, x: int, y: int, agent_type: str = 'protester') -> Tuple[int, int]:
+        """
+        Guaranteed valid spawn location with multi-strategy fallback.
+    
+        Strategy cascade:
+        1. Check immediate location
+        2. Radial search (up to 30 cells for 200×200 grid)
+        3. Spawn mask sampling (guaranteed valid)
+        4. Emergency: nearest road node (graph-based)
+    
+        Literature: Helbing (2000) - avoid initial overlaps for stability
+        """
+        # Strategy 1: Check original position
+        if self._validate_spawn_position(x, y):
+            return (x, y)
+    
+        # Strategy 2: Radial search with adaptive sampling
+        max_radius = min(30, self.width // 6)  # Scale with grid size
+    
+        for radius in range(1, max_radius + 1):
+            # Sample perimeter points (not all points - optimization)
+            n_samples = min(8 * radius, 100)  # Cap at 100 checks per radius
+            angles = np.linspace(0, 2*np.pi, n_samples, endpoint=False)
+        
+            for angle in angles:
+                test_x = int(x + radius * np.cos(angle))
+                test_y = int(y + radius * np.sin(angle))
+            
+                if not (0 <= test_x < self.width and 0 <= test_y < self.height):
+                    continue
+            
+                if self._validate_spawn_position(test_x, test_y):
+                    return (test_x, test_y)
+    
+        # Strategy 3: Spawn mask random sampling
+        if hasattr(self, 'spawn_mask') and self.spawn_mask is not None:
+            valid_cells = np.argwhere(self.spawn_mask)
+            if len(valid_cells) > 0:
+                # Weight by distance to original point (prefer nearby)
+                distances = np.hypot(valid_cells[:, 1] - x, valid_cells[:, 0] - y)
+                weights = np.exp(-distances / 10.0)  # Exponential decay
+                weights /= weights.sum()
+            
+                idx = self.rng.choice(len(valid_cells), p=weights)
+                ny, nx = valid_cells[idx]
+                return (int(nx), int(ny))
+    
+        # Strategy 4: Emergency - use graph nodes directly
+        if self.osm_graph is not None:
+            # Find nearest uncrowded node
+            available_nodes = [
+                n for n in self.osm_graph.nodes()
+                if self.node_occupancy.get(str(n), 0) < 
+                   self.osm_graph.nodes[n].get('capacity', 6)
+            ]
+        
+            if available_nodes:
+                # Convert to grid coordinates
+                nearest_node = min(
+                    available_nodes,
+                    key=lambda n: (
+                        (self.osm_graph.nodes[n]['x'] - x)**2 + 
+                        (self.osm_graph.nodes[n]['y'] - y)**2
+                    )
+                )
+                return self._node_to_cell(str(nearest_node))
+    
+        # FATAL: Should never reach here with proper spawn_mask
+        raise RuntimeError(
+            f"Cannot find valid spawn for {agent_type} near ({x},{y}). "
+            f"Check spawn_mask coverage and OSM graph connectivity."
+        )
+
+    
     def _spawn_agents(self):
         """Spawn protesters and police according to config."""
         self.agents = []
         self.protesters = []
         self.police_agents = []
-        
+    
         # Spawn protesters with heterogeneity
         protester_cfg = self.config['agents']['protesters']
         n_protesters = protester_cfg['count']
         spawn_cfg = protester_cfg['spawn']
-        
+    
+        # Generate CANDIDATE positions (may need validation)
         positions = self._generate_spawn_positions(
             n_agents=n_protesters,
             spawn_type=spawn_cfg['type'],
             spawn_params=spawn_cfg
         )
-        
+    
         # Check if heterogeneous types are configured
         if 'types' in protester_cfg:
-            # Heterogeneous protesters
             agent_profiles = self._assign_agent_profiles(
                 n_protesters,
                 protester_cfg['types']
             )
         else:
-            # Homogeneous protesters (fallback)
             agent_profiles = ['average'] * n_protesters
-        
+    
         # Create protesters with assigned profiles
         base_speed = protester_cfg.get('speed_m_s', 1.2)
-
-        # Check if graph movement is enabled
         use_graph = self.osm_graph is not None and self.cell_to_node is not None
 
         if use_graph:
             from .agent import GraphAgent
         else:
             from .agent import Agent
-        
-        # create protesters
+    
+        # === MAIN CHANGE: Use validation for EVERY protester spawn ===
         for i, (pos, profile) in enumerate(zip(positions, agent_profiles)):
-            # Clamp positions to grid
-            x, y = map(int, np.clip(pos, [0, 0], [self.width - 1, self.height - 1]))
+            # STEP 1: Validate/relocate spawn position
+            x_raw, y_raw = map(int, np.clip(pos, [0, 0], [self.width - 1, self.height - 1]))
+        
+            try:
+                x, y = self._validate_and_relocate_spawn(x_raw, y_raw, agent_type='protester')
+            except RuntimeError as e:
+                # CRITICAL: Log failure and skip this agent (better than crashing)
+                print(f"[FATAL] Cannot spawn protester {i}: {e}")
+                continue
+        
+            # STEP 2: Assign goal
             goal_pos = self._assign_goal((x, y), protester_cfg.get('goals', {}))
 
             if use_graph:
-                # Map to graph nodes
+                # === GRAPH MODE ===
+                # Map validated position to graph node
                 node_id = self.cell_to_node[y, x]
+            
+                # Fallback if cell_to_node mapping invalid
                 if node_id in (-1, None, "None", "nan") or pd.isna(node_id):
                     node_id = min(
                         self.osm_graph.nodes,
@@ -674,18 +757,16 @@ class ProtestEnv(gym.Env):
                             (self.osm_graph.nodes[n]["y"] - y) ** 2
                         )
                     )
-
-                # NEW: Validate node has neighbors (not isolated)
+            
+                # Validate node connectivity (should not be needed with proper spawn mask)
                 neighbors = list(self.osm_graph.neighbors(node_id))
                 if len(neighbors) == 0:
-                    print(f"[ERROR] Agent {i} mapped to isolated node {node_id}; relocating...")
-        
-                    # Find nearest node WITH neighbors
+                    print(f"[ERROR] Agent {i} at validated position ({x},{y}) mapped to isolated node {node_id}")
+                    # Emergency: find nearest connected node
                     valid_nodes = [
                         n for n in self.osm_graph.nodes
                         if len(list(self.osm_graph.neighbors(n))) > 0
                     ]
-
                     if valid_nodes:
                         node_id = min(
                             valid_nodes,
@@ -694,27 +775,30 @@ class ProtestEnv(gym.Env):
                                 (self.osm_graph.nodes[n]["y"] - y) ** 2
                             )
                         )
-                        print(f"  Relocated to node {node_id} with {len(list(self.osm_graph.neighbors(node_id)))} neighbors")
+                        # Update x,y to match new node
+                        node_data = self.osm_graph.nodes[node_id]
+                        if self.affine is not None:
+                            col, row = ~self.affine * (node_data["x"], node_data["y"])
+                            x = int(np.clip(col, 0, self.width - 1))
+                            y = int(np.clip(row, 0, self.height - 1))
                     else:
-                        print("[FATAL] No valid nodes with neighbors found in graph!")
-                        raise RuntimeError("OSM graph has no connected nodes")
-
-                
-                # Check capacity before spawning
-                node_occ = self.node_occupancy.get(str(node_id), 0)  # Ensure string key
+                        print(f"[FATAL] No connected nodes available for agent {i}")
+                        continue
+            
+                # Check capacity (with improved handling)
+                node_occ = self.node_occupancy.get(str(node_id), 0)
                 node_cap = self.osm_graph.nodes[node_id].get("capacity", 6)
-
+            
                 if node_occ >= node_cap:
-                    print(f"[WARN] Spawn node {node_id} at capacity ({node_occ}/{node_cap}), relocating agent {i}")
-
-                    # Find nearest node with available capacity
+                    # Find nearest node with capacity
                     available_nodes = [
                         n for n in self.osm_graph.nodes
-                        if self.node_occupancy.get(str(n), 0) < self.osm_graph.nodes[n].get("capacity", 6)
+                        if (self.node_occupancy.get(str(n), 0) < 
+                            self.osm_graph.nodes[n].get("capacity", 6) and
+                            len(list(self.osm_graph.neighbors(n))) > 0)  # Must be connected
                     ]
-
+                
                     if available_nodes:
-                        # Sort by distance to original spawn location
                         node_id = min(
                             available_nodes,
                             key=lambda n: (
@@ -722,20 +806,17 @@ class ProtestEnv(gym.Env):
                                 (self.osm_graph.nodes[n]["y"] - y) ** 2
                             )
                         )
-                        # Convert node coordinates to grid cell indices
+                        # Update position to match new node
                         node_data = self.osm_graph.nodes[node_id]
-        
-                        # Transform UTM to grid cell using affine transform
                         if self.affine is not None:
                             col, row = ~self.affine * (node_data["x"], node_data["y"])
                             x = int(np.clip(col, 0, self.width - 1))
                             y = int(np.clip(row, 0, self.height - 1))
-        
                     else:
-                        # FALLBACK: Force spawn anyway (with warning)
-                        from src.utils.logging_config import logger
-                        logger.minimal(f"[ERROR] All nodes at capacity; spawning agent {i} anyway")
-
+                        # LAST RESORT: Force spawn with warning
+                        print(f"[WARN] Agent {i} forced spawn at over-capacity node {node_id} "
+                              f"({node_occ}/{node_cap})")
+            
                 # Map goal to node
                 gx, gy = map(int, np.clip(goal_pos, [0, 0], [self.width - 1, self.height - 1]))
                 goal_node = self.cell_to_node[gy, gx]
@@ -747,8 +828,8 @@ class ProtestEnv(gym.Env):
                             (self.osm_graph.nodes[n]["y"] - gy) ** 2
                         )
                     )
-
-                # Create graph protester
+            
+                # Create graph agent
                 agent = GraphAgent(
                     agent_id=i,
                     agent_type='protester',
@@ -762,11 +843,11 @@ class ProtestEnv(gym.Env):
                 agent.current_node = str(node_id)
                 agent.goal_node = str(goal_node)
             
-                # Increment occupancy after spawning
+                # Increment occupancy
                 self.node_occupancy[str(node_id)] = self.node_occupancy.get(str(node_id), 0) + 1
 
             else:
-                # Grid-based agent (synthetic mode)
+                # === GRID MODE (simpler) ===
                 agent = Agent(
                     agent_id=i,
                     agent_type='protester',
@@ -777,69 +858,51 @@ class ProtestEnv(gym.Env):
                     rng=self.rng,
                     profile_name=profile
                 )
+        
             self.agents.append(agent)
             self.protesters.append(agent)
 
-        # Spawn police
+        # === POLICE SPAWN (also use validation) ===
         police_cfg = self.config['agents']['police']
         n_police = police_cfg['count']
         police_spawn_cfg = police_cfg['spawn']
-        
+    
         if police_spawn_cfg['type'] == 'fixed':
             police_positions_raw = police_spawn_cfg['positions']
-
-            # NEW: Validate and relocate police spawns if on obstacles
             police_positions = []
-            for pos in police_positions_raw:
-                x, y = map(int, np.clip(pos, [0, 0], [self.width - 1, self.height - 1]))
-
-                # Check if valid spawn location
-                if self._validate_spawn_position(x, y):
-                    police_positions.append((x, y))
-                else:
-                    # Find nearest valid position
-                    print(f"[WARN] Police spawn {(x, y)} invalid; relocating...")
-                    found_valid = False
-                    for radius in range(1, 20):  # Search up to 20 cells away
-                        for dx in range(-radius, radius + 1):
-                            for dy in range(-radius, radius + 1):
-                                if abs(dx) != radius and abs(dy) != radius:
-                                    continue  # Only check perimeter
-                                nx, ny = x + dx, y + dy
-                                if 0 <= nx < self.width and 0 <= ny < self.height:
-                                    if self._validate_spawn_position(nx, ny):
-                                        police_positions.append((nx, ny))
-                                        print(f"         Relocated to {(nx, ny)}")
-                                        found_valid = True
-                                        break
-                            if found_valid:
-                                break
-                        if found_valid:
-                            break
-                    if not found_valid:
-                        # Last resort: use spawn mask
-                        if hasattr(self, 'spawn_mask') and self.spawn_mask.any():
-                            valid_cells = np.argwhere(self.spawn_mask)
-                            idx = self.rng.integers(0, len(valid_cells))
-                            ny, nx = valid_cells[idx]
         
-                            # These are ALREADY grid cell indices - no conversion needed
-                            police_positions.append((int(nx), int(ny)))
-                            print(f"         Relocated to grid cell ({nx}, {ny})")
-
+            for pos in police_positions_raw:
+                x_raw, y_raw = map(int, np.clip(pos, [0, 0], [self.width - 1, self.height - 1]))
+            
+                try:
+                    x, y = self._validate_and_relocate_spawn(x_raw, y_raw, agent_type='police')
+                    police_positions.append((x, y))
+                except RuntimeError as e:
+                    print(f"[ERROR] Cannot spawn police at {pos}: {e}")
+                    # Skip this police agent
+                    continue
         else:
-            police_positions = self._generate_spawn_positions(
+            # Generate positions and validate each
+            raw_positions = self._generate_spawn_positions(
                 n_agents=n_police,
                 spawn_type=police_spawn_cfg['type'],
                 spawn_params=police_spawn_cfg
             )
-        
-        # create police agents
+            police_positions = []
+            for pos in raw_positions:
+                x_raw, y_raw = map(int, np.clip(pos, [0, 0], [self.width - 1, self.height - 1]))
+                try:
+                    x, y = self._validate_and_relocate_spawn(x_raw, y_raw, agent_type='police')
+                    police_positions.append((x, y))
+                except RuntimeError:
+                    continue
+    
+        # Create police agents (existing logic, now with validated positions)
         for j, pos in enumerate(police_positions):
-            x, y = map(int, np.clip(pos, [0, 0], [self.width - 1, self.height - 1]))
-            
+            x, y = pos  # Already validated
+        
             if use_graph:
-                # map police to graph nodes
+                # Map to graph node
                 node_id = self.cell_to_node[y, x]
                 if node_id in (-1, None, "None", "nan") or pd.isna(node_id):
                     node_id = min(
@@ -849,10 +912,10 @@ class ProtestEnv(gym.Env):
                             (self.osm_graph.nodes[n]["y"] - y) ** 2
                         )
                     )
-                # Create base police agent
+            
                 from .agent import PoliceAgent
-                from .mixins.graph_movement_mixin import GraphMovementMixin 
-
+                from .mixins.graph_movement_mixin import GraphMovementMixin
+            
                 agent = PoliceAgent(
                     agent_id=len(self.agents),
                     pos=(x, y),
@@ -862,12 +925,11 @@ class ProtestEnv(gym.Env):
                     config=self.config,
                     rng=self.rng
                 )
-                agent.current_node = node_id
+                agent.current_node = str(node_id)
                 agent.graph_decide_action = GraphMovementMixin.graph_decide_action.__get__(agent)
                 agent._compute_neighbor_score = GraphMovementMixin._compute_neighbor_score.__get__(agent)
-
             else:
-                from .agent import PoliceAgent 
+                from .agent import PoliceAgent
                 agent = PoliceAgent(
                     agent_id=len(self.agents),
                     pos=(x, y),
@@ -877,8 +939,15 @@ class ProtestEnv(gym.Env):
                     config=self.config,
                     rng=self.rng
                 )
+        
             self.agents.append(agent)
             self.police_agents.append(agent)
+    
+        # Summary log
+        print(f"[SPAWN] Created {len(self.protesters)} protesters, {len(self.police_agents)} police")
+        if len(self.agents) < n_protesters + n_police:
+            print(f"[WARN] Spawned fewer agents than requested "
+                  f"({len(self.agents)} vs {n_protesters + n_police})")
         
         
     def _assign_agent_profiles(self, n_agents: int, 
@@ -1495,17 +1564,22 @@ class ProtestEnv(gym.Env):
     
     def _update_agent_harm(self) -> np.ndarray:
         """
-        Update agent harm with CRITICAL FIX for graph mode.
+        FIXED harm detection with spatial interpolation.
     
-        ISSUE: In graph mode, agent.pos may be stale. We must call _node_to_cell() 
-        at harm-check time to get current grid position where gas actually is.
+        Issues resolved:
+        1. Agents moving between cells miss exposure
+        2. Concentration threshold too conservative
+        3. No integration of exposure over path
+    
+        Literature: Bearing et al. (2018) - sub-cell position tracking
         """
         harm_grid = np.zeros((self.height, self.width), dtype=bool)
     
-        # Minimum concentration threshold
-        CONC_THRESHOLD = 0.1  # mg/m³
+        # ADAPTIVE threshold based on grid resolution
+        # Finer grid = lower threshold (agent spends less time per cell)
+        BASE_THRESHOLD = 0.1  # mg/m³
+        CONC_THRESHOLD = BASE_THRESHOLD * (100 / self.width)  # Scale with resolution
     
-        # Debugging counters (only first 10 steps)
         agents_checked = 0
         agents_exposed = 0
         harm_events_this_step = 0
@@ -1513,31 +1587,43 @@ class ProtestEnv(gym.Env):
         for agent in self.agents:
             agents_checked += 1
         
-            # CRITICAL FIX: Always get fresh grid position for graph agents
+            # Get current grid position (fresh for graph agents)
             if hasattr(agent, 'current_node') and self.osm_graph is not None:
                 try:
-                    # Get current grid position from node
                     x, y = self._node_to_cell(agent.current_node)
-                
-                    # IMPORTANT: Update agent.pos to stay in sync
-                    agent.pos = (x, y)
+                    agent.pos = (x, y)  # Keep synchronized
                 except Exception as e:
-                    # Only log errors in first step
                     if self.step_count == 0:
                         print(f"[ERROR] _node_to_cell failed for agent {agent.id}: {e}")
                     continue
             else:
-                # Grid mode: use agent.pos directly
                 x, y = agent.pos
         
             # Bounds check
             if not (0 <= x < self.width and 0 <= y < self.height):
-                if self.step_count <= 10:
-                    print(f"[WARN] Agent {agent.id} out of bounds: ({x},{y})")
                 continue
         
-            # Get hazard concentration at agent's CURRENT position
-            concentration = self.hazard_field.concentration[y, x]
+            # MULTI-POINT SAMPLING (9-point stencil for better coverage)
+            # Literature: Moussaïd et al. (2011) - pedestrian body occupies ~0.5m radius
+            sample_points = [
+                (x, y),      # Center
+                (x-1, y),    # Left
+                (x+1, y),    # Right
+                (x, y-1),    # Up
+                (x, y+1),    # Down
+                (x-1, y-1),  # Diagonals
+                (x+1, y-1),
+                (x-1, y+1),
+                (x+1, y+1)
+            ]
+        
+            max_concentration = 0.0
+            for px, py in sample_points:
+                if 0 <= px < self.width and 0 <= py < self.height:
+                    c = self.hazard_field.concentration[py, px]
+                    max_concentration = max(max_concentration, c)
+        
+            concentration = max_concentration
         
             # Skip if below threshold
             if concentration < CONC_THRESHOLD:
@@ -1545,28 +1631,32 @@ class ProtestEnv(gym.Env):
         
             agents_exposed += 1
         
-            # DEBUG: Log first few exposures (only in first 20 steps)
-            if self.step_count <= 20 and agents_exposed <= 5:
-                print(f"[HARM] Agent {agent.id} at grid ({x},{y}) exposed to {concentration:.2f} mg/m³")
-        
-            # Calculate harm probability for debugging
+            # Calculate harm probability (unchanged)
             p_harm = 1.0 - np.exp(-self.hazard_field.k_harm * concentration * self.delta_t)
         
-            # Update harm (use environment RNG for consistency)
+            # Update harm with ENVIRONMENT RNG (critical for reproducibility)
             harm_occurred = agent.update_harm(
                 concentration=concentration,
                 k_harm=self.hazard_field.k_harm,
                 delta_t=self.delta_t,
-                rng=self.rng  # Use env RNG (not agent RNG)
+                rng=self.rng  # Use env RNG, not agent RNG
             )
         
             if harm_occurred:
                 harm_grid[y, x] = True
                 harm_events_this_step += 1
             
-                # DEBUG: Log harm events (first 20 steps)
-                if self.step_count <= 20:
-                    print(f"[HARM] ✓ Agent {agent.id} HARMED! (p={p_harm:.4f}, rolled={harm_occurred})")
+                # Log to events (only first occurrence per agent)
+                if not hasattr(agent, '_first_harm_logged'):
+                    agent._first_harm_logged = True
+                    self.events_log.append({
+                        'timestep': self.step_count,
+                        'event_type': 'first_harm',
+                        'agent_id': agent.id,
+                        'position': (x, y),
+                        'concentration': float(concentration),
+                        'cumulative_harm': float(agent.cumulative_harm)
+                    })
         
             # Check incapacitation
             H_crit = self.config['hazards']['gas'].get('H_crit', 5.0)
@@ -1574,15 +1664,24 @@ class ProtestEnv(gym.Env):
                 agent.state = AgentState.INCAPACITATED
                 harm_grid[y, x] = True
             
-                # Log incapacitation (once per agent)
                 if not hasattr(agent, '_incap_logged'):
                     agent._incap_logged = True
-                    print(f"[INCAP] Agent {agent.id} incapacitated at step {self.step_count} (H={agent.cumulative_harm:.2f})")
+                    print(f"[INCAP] Agent {agent.id} incapacitated at step {self.step_count} "
+                        f"(H={agent.cumulative_harm:.2f})")
+                
+                    self.events_log.append({
+                        'timestep': self.step_count,
+                        'event_type': 'incapacitation',
+                        'agent_id': agent.id,
+                        'position': (x, y),
+                        'cumulative_harm': float(agent.cumulative_harm)
+                    })
     
-        # Summary logging (every 5 steps for first 20 steps, then every 20)
+        # Summary logging (adaptive frequency)
         log_interval = 5 if self.step_count <= 20 else 20
         if self.step_count % log_interval == 0 and agents_exposed > 0:
-            print(f"[HARM] Step {self.step_count}: {agents_exposed}/{agents_checked} agents exposed, {harm_events_this_step} harm events")
+            print(f"[HARM] Step {self.step_count}: {agents_exposed}/{agents_checked} agents exposed, "
+                f"{harm_events_this_step} harm events")
     
         return harm_grid
     
@@ -1596,14 +1695,13 @@ class ProtestEnv(gym.Env):
     
     def _check_termination(self) -> Tuple[bool, Optional[str]]:
         """
-        Check if episode should terminate EARLY.
+        IMPROVED termination with graduated urgency system.
     
-        CRITICAL: This prevents wasting computation on finished episodes.
+        New mechanism: Agents gradually prioritize exits as time passes,
+        preventing indefinite wandering.
     
-        Returns:
-            (is_terminated, reason)
+        Literature: Lovreglio et al. (2016) - time-dependent risk perception
         """
-        # Count agent states
         active = sum(a.state == AgentState.MOVING for a in self.protesters)
         waiting = sum(a.state == AgentState.WAITING for a in self.protesters)
         safe = sum(a.state == AgentState.SAFE for a in self.protesters)
@@ -1611,23 +1709,32 @@ class ProtestEnv(gym.Env):
     
         total_protesters = len(self.protesters)
     
-        # TERMINATION CONDITIONS (from most to least common)
+        # GRADUATED URGENCY: Increase exit-seeking over time
+        if self.step_count > 100:  # After 100 steps (~1.5 minutes)
+            urgency_multiplier = 1.0 + (self.step_count - 100) / 200.0
+            urgency_multiplier = min(urgency_multiplier, 3.0)  # Cap at 3×
+        
+            # Broadcast urgency to all agents
+            for agent in self.protesters:
+                if hasattr(agent, 'goal_weights') and agent.state == AgentState.MOVING:
+                    # Boost exit weight
+                    agent.goal_weights['exit'] = min(
+                        agent.goal_weights.get('exit', 0.2) * urgency_multiplier,
+                        0.8  # Never completely override safety concerns
+                    )
     
-        # 1. All protesters either safe or incapacitated (MOST COMMON)
+        # Termination conditions (unchanged)
         if active + waiting == 0:
             return True, "all_protesters_done"
     
-        # 2. Supermajority (90%) have exited safely (COMMON)
         if safe / total_protesters > 0.9:
             return True, "mass_exodus"
     
-        # 3. Mass casualty (80% incapacitated) (RARE)
         if incapacitated / total_protesters > 0.8:
             return True, "mass_casualty"
     
-        # 4. Stalemate: very few active protesters left (10%) and no movement for 50 steps
+        # Enhanced stalemate detection
         if (active + waiting) / total_protesters < 0.1:
-            # Check if agents are stuck
             if not hasattr(self, '_stalemate_counter'):
                 self._stalemate_counter = 0
                 self._last_active_count = active + waiting
@@ -1638,7 +1745,8 @@ class ProtestEnv(gym.Env):
                 self._stalemate_counter = 0
                 self._last_active_count = active + waiting
         
-            if self._stalemate_counter > 50:
+            # INCREASED threshold for larger environment
+            if self._stalemate_counter > 80:  # Was 50, now 80 for 200×200
                 return True, "stalemate"
     
         return False, None

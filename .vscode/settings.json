@@ -2,5 +2,6 @@
     "python.analysis.extraPaths": [
         "./src/utils",
         "./src/env"
-    ]
+    ],
+    "git.ignoreLimitWarning": true
 }

@@ -20,7 +20,7 @@ class RealNairobiLoader:
 
     def __init__(self, grid_size=100):
         self.grid_size = grid_size
-        self.grid_path = Path("data/real_nairobi_cbd_100x100.npy")
+        self.grid_path = Path("data/real_nairobi_cbd_200x200.npy")
         self.metadata_path = Path("data/real_nairobi_cbd_metadata.json")
         self.paths = {
             "buildings": Path("data/nairobi_buildings.geojson"),

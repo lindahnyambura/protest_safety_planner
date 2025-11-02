@@ -3,8 +3,8 @@
 
 # Grid configuration
 grid:
-  width: 100                    # Back to tested size
-  height: 100
+  width: 200                    # Back to tested size
+  height: 200
   cell_size_m: 5.0              # 500m × 500m coverage
   obstacle_source: "nairobi"   # OSM data loader
   origin: "top_left"
@@ -12,40 +12,41 @@ grid:
 # Time configuration
 time:
   delta_t: 1.0
-  max_steps: 500
+  max_steps: 300
 
 # Agent configuration
 agents:
   protesters:
-    count: 100
+    count: 400   # Scale with area (4× grid = 4× agents)
+    # Maintains 0.0004 people/m² (still sparse but computationally feasible)
     
     spawn:
       type: "clusters"
       centers: "auto"   # Auto-generate from road intersections
-      radius: 8
+      radius: 12
     
     # Heterogeneous agent types (3 profiles)
     types:
       cautious:
-        ratio: 0.25             # 30% cautious
+        ratio: 0.20             # 20% cautious
         speed_m_s: 1.0          # Slower
         risk_tolerance: 0.1     # Very risk-averse
         panic_threshold: 0.3
         clustering_affinity: 0.8
       average:
-        ratio: 0.5              # 50% average
+        ratio: 0.55              # 55% average
         speed_m_s: 1.2          # Normal speed
         risk_tolerance: 0.35     # Moderate risk
         panic_threshold: 0.5
         clustering_affinity: 0.5
       bold:
-        ratio: 0.15              # 15% bold
+        ratio: 0.20              # 20% bold
         speed_m_s: 1.5          # Faster
         risk_tolerance: 0.65     # Risk-taking
         panic_threshold: 0.7
         clustering_affinity: 0.2
       vulnerable:
-        ratio: 0.1               # 10% vulnerable
+        ratio: 0.05               # 5% vulnerable
         speed_m_s: 0.7           # Slower
         risk_tolerance: 0.05      # Risk-averse
         panic_threshold: 0.2
@@ -57,40 +58,63 @@ agents:
       #exit_nodes: "auto"  # Populated by env.reset()
   
   police:
-    count: 10
+    count: 25  # Scale police (1:16 ratio)
     spawn:
-      type: "fixed"
+      type: "strategic_grid"  # NEW: Cover area systematically
+      # Grid patrol points covering 1km²
       positions:
-        - [40, 60]  # Northwest cluster intercept
-        - [50, 60]  # Center intercept
-        - [60, 60]  # Northeast intercept
-        - [35, 45]  # West flank
-        - [65, 45]  # East flank
-        - [40, 30]  # South coverage
-        - [50, 30]
-        - [60, 30]
-        - [45, 50]  # Central reserves
-        - [55, 50]
-    speed_m_s: 1.5
-    deploy_prob: 0.05    # INCREASED from 0.01 (5% vs 1%)
-    deploy_cooldown: 30
+        # Western corridor (Uhuru Highway intercept)
+        - [20, 50]
+        - [20, 100]
+        - [20, 150]
+        # Central CBD spine
+        - [60, 40]
+        - [60, 100]
+        - [60, 160]
+        # Eastern boundary
+        - [100, 50]
+        - [100, 100]
+        - [100, 150]
+        # Southern intercepts
+        - [40, 180]
+        - [80, 180]
+        - [120, 180]
+        # Northern intercepts
+        - [40, 20]
+        - [80, 20]
+        - [120, 20]
+        # Mobile reserves (central)
+        - [100, 100]
+        - [110, 100]
+        - [90, 100]
+        # Parliament/Harambee Ave cluster
+        - [70, 70]
+        - [80, 70]
+        - [90, 70]
+        # KICC area control
+        - [100, 80]
+        - [110, 80]
+        - [120, 80]
+    speed_m_s: 2.0
+    deploy_prob: 0.03    # INCREASED from 0.01 (5% vs 1%)
+    deploy_cooldown: 40
 
 # Hazards configuration
 hazards:
   gas:
     # Physical diffusion (m^2/s)
-    diffusion_coeff: 0.3        # Urban turbulent dispersion
+    diffusion_coeff: 0.4        # Urban turbulent dispersion
     # Decay parameters
-    decay_rate: 0.01             # per second or per time-step (1%)
+    decay_rate: 0.015             # per second or per time-step (1%)
     # Emission parameters
-    inj_intensity: 50.0          # mg/m^3 at source (peak)
-    emission_duration: 30       # Seconds per canister
+    inj_intensity: 60.0          # mg/m^3 at source (peak)
+    emission_duration: 40       # Seconds per canister
     # Wind parameters
     wind_direction: [0, 1]     # South wind (normalized later)
-    wind_speed_m_s: 2.0        # 2 m/s (light breeze)
+    wind_speed_m_s: 3.0        # 2 m/s (light breeze)
     # Harm model: H(c,t) = k * c * delta_t
-    k_harm: 0.0083               # (mg*s/m^3)^-1 -> yields H = 5.0 after 60s at 10 mg/m^3; will try k_harm: 0.15
-    H_crit: 5.0                 # dimensionless threshold for incapacitation 
+    k_harm: 0.012               # (mg*s/m^3)^-1 -> yields H = 5.0 after 60s at 10 mg/m^3; will try k_harm: 0.15
+    H_crit: 4.0                 # dimensionless threshold for incapacitation 
     # Concentration clipping (for numerical stability)
     concentration_min: 0.0
     concentration_max: 100.0
