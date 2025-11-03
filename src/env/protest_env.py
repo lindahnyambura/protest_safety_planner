@@ -53,7 +53,7 @@ class ProtestEnv(gym.Env):
     
     metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 4}
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict, verbose: bool = False):
         """
         Initialize environment from configuration.
         
@@ -61,6 +61,8 @@ class ProtestEnv(gym.Env):
             config: Dictionary with keys: grid, time, agents, hazards, simulation
         """
         super().__init__()
+        
+        self.verbose = verbose
         
         self.config = config
         
@@ -440,7 +442,7 @@ class ProtestEnv(gym.Env):
             e.get('queued', 0) for e in congestion_events
         ])) if congestion_events else 0.0
 
-        # ========== CONSOLIDATED PERIODIC LOGGING ==========
+        # CONSOLIDATED PERIODIC LOGGING
         if self.step_count % 20 == 0:
             moving = sum(1 for a in self.protesters if a.state == AgentState.MOVING)
             waiting = sum(1 for a in self.protesters if a.state == AgentState.WAITING)
@@ -503,11 +505,23 @@ class ProtestEnv(gym.Env):
             obstacle_mask: Boolean array (True = impassable)
         """
         obstacle_source = self.config['grid'].get('obstacle_source', 'generate')
-
+        
         if obstacle_source == 'nairobi':
             try:
                 from .real_nairobi_loader import load_real_nairobi_cbd_map, generate_spawn_mask
-                result = load_real_nairobi_cbd_map(self.config)
+                
+                # CRITICAL FIX: Read-only mode for parallel execution
+                # Check if we're in a parallel worker by looking for joblib markers
+
+                import os
+                is_parallel_worker = 'JOBLIB_MULTIPROCESSING' in os.environ or \
+                                    hasattr(os, '_is_joblib_worker')
+                
+                # If parallel worker, only READ existing data (never write)
+                if is_parallel_worker:
+                    result = load_real_nairobi_cbd_map(self.config, read_only=True)
+                else:
+                    result = load_real_nairobi_cbd_map(self.config)
 
                 if result and result.get('is_real_osm'):
                     mask = result['obstacle_mask']
@@ -529,11 +543,29 @@ class ProtestEnv(gym.Env):
 
                     print(f" Using REAL Nairobi CBD map ({coverage:.1f}% coverage).")
 
-                    # Load cell-to-node mapping
+                    # CRITICAL FIX: Safe cell_to_node loading
                     cell_to_node_path = self.osm_metadata.get("cell_to_node_path", "data/cell_to_node.npy")
+                    
                     if Path(cell_to_node_path).exists():
-                        self.cell_to_node = np.load(cell_to_node_path, allow_pickle=True)
-                        print(f"[INFO] Loaded cell→node lookup ({self.cell_to_node.shape}).")
+                        try:
+                            # Add retry logic for corrupted reads
+                            max_retries = 3
+                            for attempt in range(max_retries):
+                                try:
+                                    self.cell_to_node = np.load(cell_to_node_path, allow_pickle=True)
+                                    print(f"[INFO] Loaded cell→node lookup ({self.cell_to_node.shape}).")
+                                    break
+                                except (EOFError, ValueError) as e:
+                                    if attempt < max_retries - 1:
+                                        import time
+                                        time.sleep(0.1 * (attempt + 1))  # Exponential backoff
+                                        continue
+                                    else:
+                                        raise Exception(f"Failed to load cell_to_node after {max_retries} attempts: {e}")
+                        except Exception as e:
+                            print(f"[ERROR] cell_to_node loading failed: {e}")
+                            print("[WARN] Falling back to synthetic mode")
+                            return self._generate_synthetic_obstacles()
                     else:
                         print("[WARN] Missing cell→node lookup; graph movement disabled.")
                         self.cell_to_node = None
@@ -544,41 +576,61 @@ class ProtestEnv(gym.Env):
                             str(nid): (d["x"], d["y"]) 
                             for nid, d in self.osm_graph.nodes(data=True)
                         }
-                        print(f"[DEBUG] node_to_xy populated with {len(self.node_to_xy)} entries")
-                        
-                        # NEW: Generate and save spawn mask
-                        self.spawn_mask = generate_spawn_mask(mask, self.osm_graph, self.cell_to_node)
-                        np.save("data/spawn_mask_200x200.npy", self.spawn_mask)
-                        print(f"[INFO] Spawn mask saved to data/spawn_mask_200x200.npy")
                     
-                        # Build street name lookup
-                        from .real_nairobi_loader import build_street_name_lookup
-                        self. street_names= build_street_name_lookup(self.osm_graph)
-
-                        # Save to JSON for reproducibility
-                        with open("data/street_names.json", "w") as f:
-                            json.dump(self.street_names, f, indent=2)
-                        print(f"[INFO] Street name lookup saved ({len(self.street_names)} nodes)")
+                        # === CRITICAL FIX: Load spawn mask (don't regenerate) ===
+                        spawn_mask_path = Path("data/spawn_mask_200x200.npy")
+                        if spawn_mask_path.exists() and not is_parallel_worker:
+                            try:
+                                self.spawn_mask = np.load(spawn_mask_path)
+                                print(f"[INFO] Loaded spawn mask: {self.spawn_mask.sum()} valid cells")
+                            except Exception as e:
+                                print(f"[WARN] Failed to load spawn mask, regenerating: {e}")
+                                self.spawn_mask = generate_spawn_mask(mask, self.osm_graph, self.cell_to_node)
+                                np.save(spawn_mask_path, self.spawn_mask)
+                        elif spawn_mask_path.exists() and is_parallel_worker:
+                            # Parallel workers: read-only
+                            self.spawn_mask = np.load(spawn_mask_path)
+                        else:
+                            # First time: generate and save
+                            self.spawn_mask = generate_spawn_mask(mask, self.osm_graph, self.cell_to_node)
+                            if not is_parallel_worker:
+                                np.save(spawn_mask_path, self.spawn_mask)
+                    
+                        # Build street name lookup (cached)
+                        street_names_path = Path("data/street_names.json")
+                        if street_names_path.exists():
+                            import json
+                            with open(street_names_path, 'r') as f:
+                                self.street_names = json.load(f)
+                            print(f"[INFO] Loaded street names ({len(self.street_names)} nodes)")
+                        elif not is_parallel_worker:
+                            from .real_nairobi_loader import build_street_name_lookup
+                            self.street_names = build_street_name_lookup(self.osm_graph)
+                            with open(street_names_path, 'w') as f:
+                                json.dump(self.street_names, f, indent=2)
+                            print(f"[INFO] Built and saved street names ({len(self.street_names)} nodes)")
+                        else:
+                            # Parallel worker without cached data: use empty dict
+                            self.street_names = {}
 
                     return mask
 
-            except UnicodeEncodeError as e:
-                print(f"[ERROR] Unicode encoding error (Windows console issue): {e}")
-                print("[INFO] Falling back to synthetic obstacles")
-                # Force fallback
-                result = None
-            
             except Exception as e:
                 print(f"[ERROR] Failed to load real Nairobi CBD map: {e}")
                 import traceback
                 traceback.print_exc()
-                # CRITICAL: Clear partial state to force clean fallback
+                # CRITICAL: Clear partial state
                 self.osm_metadata = None
                 self.cell_to_node = None
                 self.osm_graph = None
                 self.spawn_mask = None
 
         # Fallback: Synthetic obstacles
+        return self._generate_synthetic_obstacles()
+
+
+    def _generate_synthetic_obstacles(self) -> np.ndarray:
+        """Helper method for synthetic obstacle generation."""
         print(" Generating synthetic obstacles...")
         mask = np.zeros((self.height, self.width), dtype=bool)
 
@@ -588,8 +640,8 @@ class ProtestEnv(gym.Env):
         mask[:, 0] = True
         mask[:, -1] = True
 
-        # Add internal obstacles (buildings) - scaled for grid size
-        scale_factor = self.width / 100  # Scale from original 100×100
+        # Add internal obstacles (scaled for grid size)
+        scale_factor = self.width / 100
 
         # Building 1 (northwest)
         mask[int(20*scale_factor):int(30*scale_factor),
@@ -603,7 +655,7 @@ class ProtestEnv(gym.Env):
         mask[int(40*scale_factor):int(50*scale_factor),
             int(70*scale_factor):int(80*scale_factor)] = True
 
-        # Additional building 4 (southwest)
+        # Building 4 (southwest)
         mask[int(65*scale_factor):int(78*scale_factor),
             int(15*scale_factor):int(28*scale_factor)] = True
 
@@ -612,10 +664,11 @@ class ProtestEnv(gym.Env):
             int(45*scale_factor):int(55*scale_factor)] = True
 
         print(f"   Generated {mask.sum()} obstacle cells ({100*mask.sum()/mask.size:.1f}%) [synthetic]")
-        # CRITICAL: Generate spawn mask for synthetic obstacles too
-        self.spawn_mask = ~mask  # Simple inversion for synthetic
+    
+        # Generate synthetic spawn mask
+        self.spawn_mask = ~mask
         print(f"[INFO] Synthetic spawn mask generated: {self.spawn_mask.sum()} valid cells")
-        
+    
         return mask
 
     def _validate_and_relocate_spawn(self, x: int, y: int, agent_type: str = 'protester') -> Tuple[int, int]:
@@ -728,7 +781,7 @@ class ProtestEnv(gym.Env):
         else:
             from .agent import Agent
     
-        # === MAIN CHANGE: Use validation for EVERY protester spawn ===
+        # MAIN CHANGE: Use validation for EVERY protester spawn
         for i, (pos, profile) in enumerate(zip(positions, agent_profiles)):
             # STEP 1: Validate/relocate spawn position
             x_raw, y_raw = map(int, np.clip(pos, [0, 0], [self.width - 1, self.height - 1]))
@@ -744,7 +797,7 @@ class ProtestEnv(gym.Env):
             goal_pos = self._assign_goal((x, y), protester_cfg.get('goals', {}))
 
             if use_graph:
-                # === GRAPH MODE ===
+                # GRAPH MODE
                 # Map validated position to graph node
                 node_id = self.cell_to_node[y, x]
             
@@ -847,7 +900,7 @@ class ProtestEnv(gym.Env):
                 self.node_occupancy[str(node_id)] = self.node_occupancy.get(str(node_id), 0) + 1
 
             else:
-                # === GRID MODE (simpler) ===
+                # GRID MODE (simpler)
                 agent = Agent(
                     agent_id=i,
                     agent_type='protester',
@@ -862,7 +915,7 @@ class ProtestEnv(gym.Env):
             self.agents.append(agent)
             self.protesters.append(agent)
 
-        # === POLICE SPAWN (also use validation) ===
+        # POLICE SPAWN (also use validation)
         police_cfg = self.config['agents']['police']
         n_police = police_cfg['count']
         police_spawn_cfg = police_cfg['spawn']

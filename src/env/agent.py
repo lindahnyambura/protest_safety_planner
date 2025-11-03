@@ -1,8 +1,8 @@
 """
-agent.py - Agent classes for protesters and police
+agent.py - Base agent class for protesters & police
 
-Version 1: Basic agent movement with fractional speed, homogeneous protesters
-Version 2: Add agent heterogeneity (4 types)
+Supports heterogeneous agent types with different risk tolerances and speeds.
+
 """
 
 import numpy as np
@@ -174,8 +174,6 @@ class Agent:
         self.w_occupancy: float = 0.5
         self.w_inertia: float = 0.2
         self.beta: float = 5.0  # Boltzmann temperature model - controls randomness in movement choice
-        # self.cumulative_harm: np.float32 = np.float32(0.0)
-        # self.harm_events: int = 0
 
         # Wait timer
         self.wait_timer: int = wait_timer
@@ -247,9 +245,6 @@ class Agent:
             if local_hazard < self.panic_threshold * 0.1 and nearby_hazard < self.panic_threshold * 0.2:
                 self.behavioral_state = 'CALM'
                 self._update_goal_weights('CALM')
-            #     self.time_in_safe_zone += 1
-            # else:
-            #     self.time_in_safe_zone = 0
 
         # Log state changes
         if hasattr(self, '_prev_behavioral_state'):
@@ -265,6 +260,7 @@ class Agent:
                     pass
     
         self._prev_behavioral_state = self.behavioral_state
+    
     def _update_goal_weights(self, state: str):
         """Update goal weights based on behavioral state."""
         if state == 'CALM':
@@ -272,28 +268,28 @@ class Agent:
                 'flee': 0.05,
                 'safety': 0.35,
                 'disperse': 0.35,
-                'exit': 0.15
+                'exit': 0.20
             }
         elif state == 'ALERT':
             base_weights = {
                 'flee': 0.4,
                 'safety': 0.3,
                 'disperse': 0.15,
-                'exit': 0.15
+                'exit': 0.20
             }
         elif state == 'PANIC':
             base_weights = {
                 'flee': 0.6,
                 'safety': 0.15,
                 'disperse': 0.05,
-                'exit': 0.15
+                'exit': 0.20
             }
         elif state == 'FLEEING':
             base_weights = {
                 'flee': 0.70,
                 'safety': 0.05,
                 'disperse': 0.00,
-                'exit': 0.15
+                'exit': 0.20
             }
 
         else:
@@ -650,7 +646,7 @@ class Agent:
             if should_switch:
                 self.goal = chosen_exit
         
-        # --- Step 5: sync to graph goal if applicable ---
+        # Step 5: sync to graph goal if applicable
         # Keep grid goal for visualization; update goal_node only if in graph mode
         if hasattr(self, "goal_node") and hasattr(env, "cell_to_node"):
             gx, gy = map(int, np.clip(chosen_exit, [0, 0], [env.width - 1, env.height - 1]))

@@ -302,7 +302,7 @@ class RealNairobiLoader:
 
         print("[INFO] Precomputing cell → nearest node lookup...")
 
-        # --- Setup affine transform ---
+        # Setup affine transform
         affine_vals = metadata.get("affine_transform")
         if not affine_vals:
             raise ValueError("Metadata missing 'affine_transform'")
@@ -310,7 +310,7 @@ class RealNairobiLoader:
 
         h, w = mask.shape
 
-        # --- Build spatial index of graph nodes ---
+        # Build spatial index of graph nodes
         nodes = list(G.nodes(data=True))
         node_points = [Point(d["x"], d["y"]) for _, d in nodes]
         node_ids = [n for n, _ in nodes]
@@ -319,7 +319,7 @@ class RealNairobiLoader:
         nearest_node_map = np.full((h, w), -1, dtype=object)
         valid_count = 0
 
-        # --- Iterate over grid cells ---
+        # Iterate over grid cells
         for i in range(h):
             if i % 10 == 0:
                 print(f"  [DEBUG] processed {i}/{h} rows...")
@@ -752,28 +752,104 @@ def build_street_name_lookup(osm_graph: nx.Graph) -> Dict[str, str]:
     return node_to_street
 
 # Convenience entrypoint for external code
-def load_real_nairobi_cbd_map(config: Dict) -> Optional[Dict]:
+def load_real_nairobi_cbd_map(config: Dict, read_only: bool = False) -> Optional[Dict]:
     """
-    Load the real Nairobi CBD map and ensure the graph uses hashable node IDs.
-    Returns a dict containing obstacle mask, metadata, buildings_gdf, graph, etc.
+    Load the real Nairobi CBD map with support for read-only mode.
+
+    Args:
+        config (Dict): Environment configuration.
+        read_only (bool): If True, only read existing cached data and graph; 
+                          do not regenerate or write files.
+
+    Returns:
+        Optional[Dict]: Dictionary containing obstacle mask, metadata, graph, etc.
     """
     try:
+        # Check for cached files
+        cached_data_path = Path("data/real_nairobi_cbd_200x200.npy")
+        cached_roads_path = Path("data/real_nairobi_cbd_roads_200x200.npy")
+        cached_meta_path = Path("data/real_nairobi_cbd_metadata.json")
+        graph_path = Path("data/nairobi_walk.graphml")
+
+        all_cached = (
+            cached_data_path.exists()
+            and cached_roads_path.exists()
+            and cached_meta_path.exists()
+        )
+
+        # Attempt to load cached data if available
+        if all_cached:
+            try:
+                obstacle_mask = np.load(cached_data_path)
+                roads_raster = np.load(cached_roads_path)
+
+                with open(cached_meta_path, "r") as f:
+                    metadata = json.load(f)
+
+                if graph_path.exists():
+                    G = ox.load_graphml(graph_path)
+                else:
+                    if read_only:
+                        print("[ERROR] Graph file missing in read-only mode.")
+                        return None
+                    else:
+                        print("[WARN] Graph not found — regenerating.")
+                        loader = RealNairobiLoader(grid_size=config["grid"]["width"])
+                        result = loader.load_all(build_graph=True)
+                        G = result.get("graph")
+
+                # Sanitize node IDs
+                bad_nodes = [n for n in G.nodes if isinstance(n, (list, dict, set, tuple))]
+                if bad_nodes:
+                    print(f"[WARN] Found {len(bad_nodes)} unhashable node IDs; relabeling…")
+                    mapping = {}
+                    for n in G.nodes:
+                        try:
+                            hash(n)
+                            mapping[n] = n
+                        except TypeError:
+                            mapping[n] = str(n)
+                    nx.relabel_nodes(G, mapping, copy=False)
+                    print("[INFO] Node relabeling complete. All IDs are now strings.")
+
+                return {
+                    "obstacle_mask": obstacle_mask,
+                    "roads_raster": roads_raster,
+                    "metadata": metadata,
+                    "graph": G,
+                    "affine": Affine(*metadata["affine_transform"]),
+                    "is_real_osm": True,
+                }
+
+            except Exception as e:
+                if read_only:
+                    print(f"[ERROR] Failed to load cached data in read-only mode: {e}")
+                    return None
+                else:
+                    print(f"[WARN] Cached data corrupted, regenerating: {e}")
+                    # Continue to regeneration
+
+        elif read_only:
+            print("[ERROR] No cached OSM data found in read-only mode.")
+            return None
+
+        # Generate from scratch (non-read-only mode)
+        print("[INFO] Generating real Nairobi map data (non-read-only mode)...")
         loader = RealNairobiLoader(grid_size=config["grid"]["width"])
         result = loader.load_all(build_graph=True)
 
         if result and "graph" in result and result["graph"] is not None:
             G = result["graph"]
 
-            # Sanitize node IDs: ensure all are hashable strings
+            # Sanitize node IDs
             bad_nodes = [n for n in G.nodes if isinstance(n, (list, dict, set, tuple))]
             if bad_nodes:
                 print(f"[WARN] Found {len(bad_nodes)} unhashable node IDs; relabeling…")
                 mapping = {}
                 for n in G.nodes:
-                    # Convert any unhashable or non-string ID to a safe string
                     try:
                         hash(n)
-                        mapping[n] = n  # already hashable
+                        mapping[n] = n
                     except TypeError:
                         mapping[n] = str(n)
                 nx.relabel_nodes(G, mapping, copy=False)

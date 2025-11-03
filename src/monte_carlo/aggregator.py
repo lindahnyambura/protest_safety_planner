@@ -56,11 +56,39 @@ class MonteCarloAggregator:
         self.I_rollouts = None
         self.rollout_metadata = []  # NEW: Store detailed metrics per rollout
     
+        # Pre-initialize and cache OSM graph
+        self._cached_osm_data = None
+        self._warmup_env()
+
+    def _warmup_env(self):
+        """Pre-load OSM data to avoid repeated disk I/O."""
+        print(f"\n[INIT] Pre-loading OSM data...")
+        warmup_env = self.env_class(self.config)
+        warmup_env.reset(seed=0)
+        
+        # Cache expensive-to-load data
+        if hasattr(warmup_env, 'osm_graph'):
+            self._cached_osm_data = {
+                'osm_graph': warmup_env.osm_graph,
+                'osm_metadata': warmup_env.osm_metadata,
+                'buildings_gdf': warmup_env.buildings_gdf,
+                'affine': warmup_env.affine,
+                'cell_to_node': warmup_env.cell_to_node,
+                'node_to_xy': warmup_env.node_to_xy,
+                'obstacle_mask': warmup_env.obstacle_mask,
+                'spawn_mask': warmup_env.spawn_mask,
+                'street_names': getattr(warmup_env, 'street_names', {})
+            }
+        del warmup_env
+        print(f"[INIT] OSM data cached in memory")
+
     def run_monte_carlo(self, base_seed: Optional[int] = None, 
                        verbose: bool = True,
                        convergence_check: bool = True) -> Dict:
         """
-        Run Monte Carlo with enhanced diagnostics.
+        Run Monte Carlo with enhanced diagnostics and pre-initialized OSM cache.
+
+        FIXED: Pre-initialize environment to cache OSM data before parallel execution.
         
         Args:
             base_seed: RNG seed
@@ -82,12 +110,26 @@ class MonteCarloAggregator:
             print(f"  Parallel jobs: {self.n_jobs}")
             print(f"  Bootstrap samples: {self.n_bootstrap}")
         
+        # FIX 3: Pre-initialize environment to cache OSM data
+        if verbose:
+            print(f"\n Pre-initializing environment (creating OSM cache)...")
+    
+        try:
+            warmup_env = self.env_class(self.config)
+            warmup_env.reset(seed=base_seed)
+            del warmup_env  # cleanup
+            if verbose:
+                print(f" OSM data cached successfully")
+        except Exception as e:
+            print(f"  Warmup failed (non-fatal): {e}")
+
+        # Start timing actual Monte Carlo phase
         start_time = time.time()
         rollout_seeds = [base_seed + i for i in range(self.n_rollouts)]
         
         # Run rollouts with progress tracking
         if verbose:
-            print(f"\n  Running rollouts...")
+            print(f"\n  Running {self.n_rollouts} rollouts (parallel jobs: {self.n_jobs})...")
         
         if self.n_jobs > 1:
             results = Parallel(n_jobs=self.n_jobs, verbose=5 if verbose else 0)(
@@ -117,6 +159,7 @@ class MonteCarloAggregator:
         
         rollout_time = time.time() - start_time
         
+        # Post-simulation analysis
         if verbose:
             print(f"\n Rollouts complete: {rollout_time:.1f}s")
             print(f"    Average: {rollout_time/self.n_rollouts:.2f}s/rollout")
@@ -176,7 +219,13 @@ class MonteCarloAggregator:
     
     def _run_single_rollout(self, seed: int, rollout_idx: int) -> Dict:
         """Run single rollout with detailed tracking."""
-        env = self.env_class(self.config)
+        env = self.env_class(self.config, verbose=False)
+        
+        # Inject cached OSM data (skip expensive re-loading)
+        if self._cached_osm_data:
+            for key, value in self._cached_osm_data.items():
+                setattr(env, key, value)
+        
         obs, info = env.reset(seed=seed)
         
         # Initialize tracking
