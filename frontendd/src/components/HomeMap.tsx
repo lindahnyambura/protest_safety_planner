@@ -1,3 +1,4 @@
+import MapboxMap from './MapboxMap';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -19,8 +20,13 @@ export default function HomeMap({
   onAlerts,
   onSettings 
 }: HomeMapProps) {
+  // Map related states
+  const [map, setMap] = useState<mapboxgl.Map | null>(null);
+  const [userCoords, setUserCoords] = useState<[number, number]>([36.8225, -1.2875]);
+
+  // UI related states
   const [activeLayers, setActiveLayers] = useState<string[]>(['risk', 'crowd']);
-  const [showLayers, setShowLayers] = useState(false);
+  const [showLayers, setShowLayers] = useState(true);
 
   const toggleLayer = (layer: string) => {
     setActiveLayers(prev =>
@@ -38,102 +44,13 @@ export default function HomeMap({
   ];
 
   return (
-    <div className="h-full relative bg-neutral-100">
-      {/* Mock Map */}
-      <div className="absolute inset-0 bg-gradient-to-br from-neutral-100 to-neutral-200">
-        {/* Grid pattern for map effect */}
-        <div className="absolute inset-0 opacity-10">
-          {[...Array(20)].map((_, i) => (
-            <div key={`h-${i}`} className="absolute w-full h-px bg-neutral-400" style={{ top: `${i * 5}%` }} />
-          ))}
-          {[...Array(20)].map((_, i) => (
-            <div key={`v-${i}`} className="absolute h-full w-px bg-neutral-400" style={{ left: `${i * 5}%` }} />
-          ))}
-        </div>
-
-        {/* Incident markers with gradient effect */}
-        {incidents.map((incident, idx) => (
-          <motion.div
-            key={idx}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2"
-            style={{ left: `${incident.x}%`, top: `${incident.y}%` }}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: idx * 0.1, type: 'spring', stiffness: 200 }}
-          >
-            {/* Gradient background */}
-            <motion.div
-              className={`absolute inset-0 rounded-full blur-2xl ${
-                incident.type === 'peaceful' || incident.type === 'safe'
-                  ? 'bg-green-400'
-                  : incident.type === 'police'
-                  ? 'bg-blue-400'
-                  : 'bg-amber-400'
-              }`}
-              style={{
-                width: incident.size === 'large' ? '120px' : incident.size === 'medium' ? '80px' : '50px',
-                height: incident.size === 'large' ? '120px' : incident.size === 'medium' ? '80px' : '50px',
-                opacity: incident.intensity * 0.3,
-              }}
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [incident.intensity * 0.3, incident.intensity * 0.2, incident.intensity * 0.3],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            />
-            
-            {/* Icon marker */}
-            <div
-              className={`relative z-10 rounded-full border-3 bg-white shadow-lg flex items-center justify-center ${
-                incident.type === 'peaceful' || incident.type === 'safe'
-                  ? 'border-green-500'
-                  : incident.type === 'police'
-                  ? 'border-blue-500'
-                  : 'border-amber-500'
-              } ${
-                incident.size === 'large'
-                  ? 'w-12 h-12'
-                  : incident.size === 'medium'
-                  ? 'w-8 h-8'
-                  : 'w-6 h-6'
-              }`}
-            >
-              <MapPin 
-                className={`${
-                  incident.size === 'large' ? 'w-6 h-6' : incident.size === 'medium' ? 'w-4 h-4' : 'w-3 h-3'
-                } text-neutral-900`}
-                strokeWidth={2}
-              />
-            </div>
-          </motion.div>
-        ))}
-
-        {/* User location marker */}
-        <div
-          className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20"
-          style={{ left: '50%', top: '50%' }}
-        >
-          <div className="relative">
-            <div className="w-4 h-4 bg-neutral-900 rounded-full border-2 border-white shadow-lg" />
-            <motion.div 
-              className="absolute inset-0 w-4 h-4 bg-neutral-900 rounded-full"
-              animate={{
-                scale: [1, 2.5, 1],
-                opacity: [0.6, 0, 0.6],
-              }}
-              transition={{
-                duration: 2.5,
-                repeat: Infinity,
-                ease: 'easeOut',
-              }}
-            />
-          </div>
-        </div>
-      </div>
+    <div className="h-full relative">
+      {/* Mapbox Map */}
+      <MapboxMap
+        onMapLoad={setMap}
+        userLocation={userCoords}
+        showRiskLayer={activeLayers.includes('risk')}
+      />
 
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 p-4">

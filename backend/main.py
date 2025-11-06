@@ -11,6 +11,7 @@ import yaml
 import numpy as np
 import networkx as nx
 import json
+import pyproj
 from affine import Affine
 import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +25,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.planner.route_planner import RiskAwareRoutePlanner
 
 
+# 0. Coordinate conversion
+UTM_CRS = "EPSG:32737"  # UTM Zone 37S
+WGS84_CRS = "EPSG:4326"
+transformer = pyproj.Transformer.from_crs(UTM_CRS, WGS84_CRS, always_xy=True)
+
+def utm_to_latlng(x_utm: float, y_utm: float) -> tuple[float, float]:
+    """Convert UTM coordinates to lat/lng for Mapbox"""
+    lng, lat = transformer.transform(x_utm, y_utm)
+    return lat, lng
+
+def convert_route_geometry(geometry_utm: list) -> list:
+    """Convert route geometry from UTM to [lng, lat] for GeoJSON"""
+    return [[lng, lat] for x, y in geometry_utm 
+            for lng, lat in [transformer.transform(x, y)]]
 
 # 1. Initialize FastAPI app
 app = FastAPI(
@@ -340,13 +355,31 @@ def get_config():
 def get_route(
     start: str = Query(..., description="Start node ID"),
     goal: str = Query(..., description="Goal node ID"),
-    algorithm: str = Query("astar", description="Routing algorithm (astar or dijkstra)")
+    algorithm: str = Query("astar", description="astar or dijkstra")
 ):
-    """Compute a risk-aware route."""
+    """Compute a risk-aware route with Mapbox-compatible coordinates"""
     if planner is None:
         return JSONResponse({"error": "Planner not initialized"}, status_code=503)
 
     result = planner.plan_route(start, goal, algorithm)
+    
+    # Convert UTM geometry to lat/lng for Mapbox
+    if "geometry" in result:
+        result["geometry_latlng"] = convert_route_geometry(result["geometry"])
+    
+    # Convert directions coordinates
+    if "directions" in result:
+        for step in result["directions"]:
+            if "node" in step:
+                node_id = step["node"]
+                if node_id in planner.osm_graph.nodes:
+                    x_utm = planner.osm_graph.nodes[node_id].get('x')
+                    y_utm = planner.osm_graph.nodes[node_id].get('y')
+                    if x_utm and y_utm:
+                        lat, lng = utm_to_latlng(float(x_utm), float(y_utm))
+                        step["lat"] = lat
+                        step["lng"] = lng
+    
     return result
 
 
