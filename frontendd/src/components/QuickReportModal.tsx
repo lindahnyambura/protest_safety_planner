@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { X, CheckCircle, Users, Shield, AlertTriangle, Wind, Info } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface QuickReportModalProps {

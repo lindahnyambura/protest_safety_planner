@@ -16,7 +16,11 @@ import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-# Import your planner
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import planner
 from src.planner.route_planner import RiskAwareRoutePlanner
 
 
@@ -41,7 +45,7 @@ app.add_middleware(
 BASE_DIR = Path(__file__).resolve().parents[1]
 CONFIG_PATH = BASE_DIR / "planner_config.yaml"
 DATA_DIR = BASE_DIR / "data"
-ARTIFACTS_DIR = BASE_DIR / "artifacts" / "rollouts" / "production_run"
+ARTIFACTS_DIR = BASE_DIR / "artifacts" / "rollouts_test" / "test_run"
 
 planner = None
 planner_config = None
@@ -121,10 +125,10 @@ def _grid_to_lat_lng_fallback(i: int, j: int) -> tuple[float, float]:
             metadata = json.load(f)
         
         # Get grid dimensions
-        height, width = metadata.get("grid_size", [100, 100])
+        height, width = metadata.get("grid_size", [200, 200])
         
         # Get UTM bounds
-        xmin, ymin, xmax, ymax = metadata.get("bounds", [257024.35880730546, 9857598.638626937, 257486.7266486904, 9858116.289497813])
+        xmin, ymin, xmax, ymax = metadata.get("bounds", [257178.29204338358, 9857069.74174053, 258178.29204338358, 9858069.74174053])
         
         # Convert current cell to UTM
         cell_width = (xmax - xmin) / width
@@ -133,17 +137,16 @@ def _grid_to_lat_lng_fallback(i: int, j: int) -> tuple[float, float]:
         x_utm = xmin + (j + 0.5) * cell_width
         y_utm = ymax - (i + 0.5) * cell_height  # Note: y decreases as i increases
         
-        # Approximate conversion (rough but works for demo)
         # UTM to lat/lng approximate conversion for Nairobi area
-        lat = -1.2833 + (y_utm - 9857857.0) / 111000  # Rough conversion
-        lng = 36.8172 + (x_utm - 257255.0) / (111000 * 0.8)  # Account for longitude compression
+        lat = -1.295 + (y_utm - ymin) / (ymax - ymin) * ( -1.280 + 1.295 )  # more dynamic mapping
+        lng = 36.810 + (x_utm - xmin) / (xmax - xmin) * ( 36.835 - 36.810 )  # Account for longitude compression
         
         return lat, lng
         
     except Exception as e:
         print(f"Fallback conversion also failed: {e}")
         # Final fallback - centered on Nairobi CBD
-        return -1.2833, 36.8172
+        return -1.2875, 36.8225
 
 @app.on_event("startup")
 def load_planner():
@@ -190,7 +193,7 @@ def load_planner():
 
 @app.get("/riskmap")
 async def get_risk_map():
-    """Serve risk data for map overlay - optimized for 100x100 grid"""
+    """Serve risk data for map overlay - optimized for 200x200 grid"""
     try:
         # Load your Monte Carlo output
         p_sim_path = ARTIFACTS_DIR / "p_sim.npy"
@@ -271,7 +274,7 @@ async def get_risk_map_raster():
             
             bounds_latlng = [sw_lng, sw_lat, ne_lng, ne_lat]
         else:
-            bounds_latlng = [36.805, -1.292, 36.830, -1.275]  # Fallback
+            bounds_latlng = [36.810, -1.295, 36.835, -1.280]  # Fallback
         
         return {
             "type": "raster",
@@ -287,11 +290,11 @@ async def get_risk_map_raster():
 # Add this temporary route to test coordinates
 @app.get("/test-coords")
 async def test_coordinates():
-    """Test coordinate conversion for a few points"""
+    """Test coordinate conversion for a few points in a 200x200 grid"""
     test_points = [
         (0, 0),    # Top-left
-        (50, 50),  # Center
-        (99, 99),  # Bottom-right
+        (100, 100),  # Center
+        (199, 199),  # Bottom-right
     ]
     
     results = []
