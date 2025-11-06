@@ -1,18 +1,18 @@
 {
-  "timestamp": "2025-10-31T09:39:06.403753",
-  "n_routes": 3,
+  "timestamp": "2025-11-06T06:55:41.114313",
+  "n_routes": 5,
   "safety": {
     "mean": 1.0,
     "median": 1.0,
     "std": 0.0
   },
   "distance_m": {
-    "mean": 592.0577259940857,
-    "median": 597.6383363830041,
-    "std": 110.17089291445163
+    "mean": 1117.6286441180805,
+    "median": 1067.417416731402,
+    "std": 313.1885303437105
   },
   "comparisons": {
-    "mean_distance_increase_pct": 0.21467350768327917,
+    "mean_distance_increase_pct": -47.98314498280247,
     "mean_safety_improvement": 0.0
   }
 }

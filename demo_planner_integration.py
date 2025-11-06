@@ -10,6 +10,8 @@ Demonstrates full integration:
 6. Export results
 
 Usage:
+    python demo_planner_integration.py (to run with p_sim.npy from default config)
+    alternatively:
     python demo_planner_integration.py --n-rollouts 50 --start-node 123 --goal-node 456
 """
 
@@ -77,7 +79,7 @@ def load_or_run_monte_carlo(env, config, n_rollouts=100, use_cached=True):
     from pathlib import Path
     import numpy as np
 
-    run_dir = Path("artifacts/rollouts/production_run")
+    run_dir = Path("artifacts/rollouts_test/test_run")  # temporarily running with 200x200 n=4 rollouts
     p_sim_path = run_dir / "p_sim.npy"
 
     if use_cached and p_sim_path.exists():
