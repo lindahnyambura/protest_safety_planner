@@ -12,10 +12,19 @@ import numpy as np
 import networkx as nx
 import json
 import pyproj
+import time
+import requests
+from typing import Optional
 from affine import Affine
-import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+from PIL import Image
+import io
+from fastapi.responses import StreamingResponse
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+
 
 import sys
 import os
@@ -61,6 +70,9 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 CONFIG_PATH = BASE_DIR / "planner_config.yaml"
 DATA_DIR = BASE_DIR / "data"
 ARTIFACTS_DIR = BASE_DIR / "artifacts" / "rollouts_test" / "test_run"
+# Global cache for street names
+STREET_NAME_CACHE = {}
+CACHE_FILE = BASE_DIR / "backend" / "street_names_cache.json"
 
 planner = None
 planner_config = None
@@ -85,6 +97,134 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+def load_street_name_cache():
+    """Load cached street names on startup"""
+    global STREET_NAME_CACHE
+    if CACHE_FILE.exists():
+        with open(CACHE_FILE, 'r') as f:
+            STREET_NAME_CACHE = json.load(f)
+        print(f"[Backend] Loaded {len(STREET_NAME_CACHE)} cached street names")
+    else:
+        STREET_NAME_CACHE = {}
+        print("[Backend] No street name cache found, will build on demand")
+
+def save_street_name_cache():
+    """Save cache to disk"""
+    CACHE_FILE.parent.mkdir(exist_ok=True)
+    with open(CACHE_FILE, 'w') as f:
+        json.dump(STREET_NAME_CACHE, f, indent=2)
+
+def is_placeholder_name(name: str) -> bool:
+    """Check if name is a placeholder like 'unnamed_1115308925'"""
+    if not name:
+        return True
+    name_lower = name.lower().strip()
+    return (
+        name_lower == '' or
+        name_lower.startswith('unnamed') or
+        name_lower == 'road' or
+        name_lower == 'street' or
+        name_lower == 'none'
+    )
+
+def query_nominatim_for_street(lat: float, lng: float) -> Optional[str]:
+    """
+    Query OSM Nominatim API for street name at coordinates
+    Returns None if failed or rate limited
+    """
+    try:
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {
+            'lat': lat,
+            'lon': lng,
+            'format': 'json',
+            'zoom': 18,
+            'addressdetails': 1
+        }
+        headers = {
+            'User-Agent': 'ProtestSafetyPlanner/1.0 (Academic Research)'
+        }
+        
+        response = requests.get(url, params=params, headers=headers, timeout=3)
+        
+        if response.status_code == 200:
+            data = response.json()
+            address = data.get('address', {})
+            
+            # Try multiple address fields in priority order
+            for field in ['road', 'pedestrian', 'footway', 'path', 'cycleway']:
+                street = address.get(field)
+                if street and not is_placeholder_name(street):
+                    return street
+            
+            # Try suburb/neighbourhood as fallback
+            suburb = address.get('suburb') or address.get('neighbourhood')
+            if suburb:
+                return f"{suburb} Area"
+        
+        return None
+        
+    except Exception as e:
+        print(f"Nominatim query failed: {e}")
+        return None
+    
+def get_coordinate_based_name(lat: float, lng: float) -> str:
+    """
+    Generate street name based on known Nairobi CBD landmarks
+    This is the ultimate fallback
+    """
+    # Nairobi CBD grid with major streets
+    # Based on typical CBD layout
+    
+    # North-South division (latitude)
+    if -1.284 <= lat <= -1.282:
+        area_ns = "Upper CBD"
+    elif -1.286 <= lat <= -1.284:
+        area_ns = "Central CBD"
+    elif -1.288 <= lat <= -1.286:
+        area_ns = "Mid CBD"
+    elif -1.290 <= lat <= -1.288:
+        area_ns = "Lower CBD"
+    else:
+        area_ns = "CBD"
+    
+    # East-West division (longitude)
+    if 36.819 <= lng <= 36.822:
+        area_ew = "West"
+    elif 36.822 <= lng <= 36.826:
+        area_ew = "Central"
+    elif 36.826 <= lng <= 36.830:
+        area_ew = "East"
+    elif 36.830 <= lng <= 36.835:
+        area_ew = "Far East"
+    else:
+        area_ew = ""
+    
+    # Known major streets by approximate coordinates
+    major_streets = {
+        (-1.287, 36.825): "Kenyatta Avenue",
+        (-1.286, 36.824): "Moi Avenue", 
+        (-1.285, 36.823): "Tom Mboya Street",
+        (-1.288, 36.822): "Haile Selassie Avenue",
+        (-1.287, 36.826): "University Way",
+        (-1.284, 36.825): "Uhuru Highway",
+    }
+    
+    # Find closest major street
+    min_dist = float('inf')
+    closest_street = None
+    for (st_lat, st_lng), name in major_streets.items():
+        dist = ((lat - st_lat)**2 + (lng - st_lng)**2)**0.5
+        if dist < min_dist and dist < 0.003:  # Within ~300m
+            min_dist = dist
+            closest_street = name
+    
+    if closest_street:
+        return closest_street
+    
+    # Final fallback: area-based naming
+    return f"{area_ns} {area_ew}".strip()
 
 def grid_to_lat_lng(i: int, j: int) -> tuple[float, float]:
     """
@@ -131,6 +271,159 @@ def grid_to_lat_lng(i: int, j: int) -> tuple[float, float]:
         print(f"Coordinate conversion error at ({i}, {j}): {e}")
         # Fallback: use bounds for approximate conversion
         return _grid_to_lat_lng_fallback(i, j)
+
+def get_street_name_from_edge(graph: nx.Graph, node1: str, node2: str) -> str:
+    """
+    Foolproof street name extraction with multiple fallbacks:
+    1. Check cache
+    2. Extract from OSM edge data
+    3. Query Nominatim API (with rate limiting)
+    4. Use coordinate-based naming
+    
+    This WILL NOT FAIL.
+    """
+    cache_key = f"{node1}-{node2}"
+    
+    try:
+        # STEP 1: Check cache first
+        if cache_key in STREET_NAME_CACHE:
+            cached_name = STREET_NAME_CACHE[cache_key]
+            if not is_placeholder_name(cached_name):
+                return cached_name
+        
+        # STEP 2: Try to get from OSM edge data
+        if not graph.has_edge(node1, node2):
+            return get_coordinate_based_name_for_node(graph, node1)
+        
+        # Handle MultiGraph
+        if isinstance(graph, nx.MultiGraph) or isinstance(graph, nx.MultiDiGraph):
+            edges = graph[node1][node2]
+            edge_data = edges[0] if isinstance(edges, dict) else list(edges.values())[0]
+        else:
+            edge_data = graph[node1][node2]
+        
+        # Check if OSM has a real name
+        osm_name = edge_data.get('name', '')
+        if osm_name and not is_placeholder_name(osm_name):
+            STREET_NAME_CACHE[cache_key] = osm_name
+            return osm_name
+        
+        # STEP 3: Calculate coordinates for API query
+        node1_data = graph.nodes[node1]
+        node2_data = graph.nodes[node2]
+        
+        x1, y1 = float(node1_data['x']), float(node1_data['y'])
+        x2, y2 = float(node2_data['x']), float(node2_data['y'])
+        
+        # Use midpoint of edge
+        x_mid = (x1 + x2) / 2
+        y_mid = (y1 + y2) / 2
+        
+        lat, lng = utm_to_latlng(x_mid, y_mid)
+        
+        # STEP 4: Try Nominatim (with rate limiting)
+        nominatim_name = query_nominatim_for_street(lat, lng)
+        if nominatim_name and not is_placeholder_name(nominatim_name):
+            STREET_NAME_CACHE[cache_key] = nominatim_name
+            save_street_name_cache()  # Save after each successful query
+            time.sleep(1.1)  # Respect Nominatim rate limit
+            return nominatim_name
+        
+        # STEP 5: Use coordinate-based naming (CANNOT FAIL)
+        fallback_name = get_coordinate_based_name(lat, lng)
+        STREET_NAME_CACHE[cache_key] = fallback_name
+        
+        return fallback_name
+        
+    except Exception as e:
+        print(f"Street name extraction error for {node1}-{node2}: {e}")
+        # ABSOLUTE FALLBACK: return something based on node position
+        try:
+            return get_coordinate_based_name_for_node(graph, node1)
+        except:
+            return "CBD Road"
+
+def get_coordinate_based_name_for_node(graph: nx.Graph, node: str) -> str:
+    """Emergency fallback using single node"""
+    try:
+        node_data = graph.nodes[node]
+        x, y = float(node_data['x']), float(node_data['y'])
+        lat, lng = utm_to_latlng(x, y)
+        return get_coordinate_based_name(lat, lng)
+    except:
+        return "CBD Road"
+
+def generate_turn_by_turn_directions(
+    graph: nx.Graph,
+    path: list,
+    geometry: list
+) -> list[dict]:
+    """
+    Generate human-readable turn-by-turn directions with street names
+    Uses foolproof street name extraction
+    """
+    directions = []
+    current_street = None
+    
+    for i, node in enumerate(path):
+        if i == 0:
+            # Start instruction
+            if len(path) > 1:
+                current_street = get_street_name_from_edge(graph, path[0], path[1])
+            else:
+                current_street = "your location"
+            
+            directions.append({
+                "step": i,
+                "instruction": f"Start on {current_street}",
+                "node": node,
+                "distance_m": 0.0,
+                "street_name": current_street
+            })
+            
+        elif i == len(path) - 1:
+            # End instruction
+            directions.append({
+                "step": i,
+                "instruction": "Arrive at destination",
+                "node": node,
+                "distance_m": 0.0,
+                "street_name": None
+            })
+            
+        else:
+            # Intermediate steps
+            prev_node = path[i-1]
+            next_node = path[i+1]
+            
+            # Get street name for upcoming segment
+            next_street = get_street_name_from_edge(graph, node, next_node)
+            
+            # Calculate distance to next waypoint
+            if i < len(geometry) - 1:
+                x1, y1 = geometry[i]
+                x2, y2 = geometry[i+1]
+                distance = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+            else:
+                distance = 0.0
+            
+            # Determine instruction based on street change
+            if current_street and next_street != current_street:
+                instruction = f"Turn onto {next_street}"
+            else:
+                instruction = f"Continue on {next_street}"
+            
+            directions.append({
+                "step": i,
+                "instruction": instruction,
+                "node": node,
+                "distance_m": round(distance, 1),
+                "street_name": next_street
+            })
+            
+            current_street = next_street
+    
+    return directions
 
 def _grid_to_lat_lng_fallback(i: int, j: int) -> tuple[float, float]:
     """Fallback conversion using bounds from metadata"""
@@ -201,10 +494,112 @@ def load_planner():
         cell_to_node=cell_to_node
     )
 
+    # Load street name cache
+    load_street_name_cache()
+
     print("[Backend] Planner initialized successfully.")
 
+def generate_risk_heatmap_png(p_sim: np.ndarray) -> io.BytesIO:
+    """
+    Convert risk probability grid to PNG image with color mapping
+    
+    Args:
+        p_sim: 2D numpy array of risk probabilities (0-1)
+    
+    Returns:
+        BytesIO buffer containing PNG image
+    """
+    # Normalize to 0-255 range
+    # Apply colormap: low risk = green/transparent, high risk = red/orange
+    
+    # Create a custom colormap: transparent -> yellow -> orange -> red
+    fig, ax = plt.subplots(figsize=(10, 10), dpi=100)
+    ax.axis('off')
+    
+    # Apply colormap
+    cmap = cm.get_cmap('YlOrRd')  # Yellow-Orange-Red
+    norm = plt.Normalize(vmin=0, vmax=p_sim.max())
+    
+    # Create RGBA image
+    rgba = cmap(norm(p_sim))
+    
+    # Make low-risk areas more transparent
+    # Alpha channel: 0 for p=0, increasing to 0.8 for high risk
+    alpha = np.clip(p_sim * 3, 0, 0.8)  # Scale alpha with risk
+    rgba[:, :, 3] = alpha
+    
+    # Convert to PIL Image
+    rgba_uint8 = (rgba * 255).astype(np.uint8)
+    img = Image.fromarray(rgba_uint8, mode='RGBA')
+    
+    # Save to buffer
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG', optimize=True)
+    buffer.seek(0)
+    
+    return buffer
 
 # 3. API Endpoints
+
+@app.get("/riskmap-image")
+async def get_risk_heatmap_image():
+    """
+    Serve risk heatmap as PNG overlay image
+    Returns: PNG image with transparent low-risk areas
+    """
+    try:
+        p_sim_path = ARTIFACTS_DIR / "p_sim.npy"
+        p_sim = np.load(p_sim_path)
+        
+        png_buffer = generate_risk_heatmap_png(p_sim)
+        
+        return StreamingResponse(
+            png_buffer,
+            media_type="image/png",
+            headers={
+                "Cache-Control": "public, max-age=60",  # Cache for 1 minute
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+        
+    except Exception as e:
+        print(f"Risk heatmap image error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/riskmap-bounds")
+async def get_risk_heatmap_bounds():
+    """
+    Return geographic bounds for risk heatmap overlay
+    Format: [west, south, east, north] in WGS84
+    """
+    try:
+        metadata_path = DATA_DIR / "real_nairobi_cbd_metadata.json"
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+        
+        # Get UTM bounds
+        bounds_utm = metadata.get("bounds_m")
+        if not bounds_utm:
+            # Fallback to your config values
+            return {
+                "bounds": [36.81, -1.295, 36.835, -1.28],  # [west, south, east, north]
+                "source": "config"
+            }
+        
+        xmin, ymin, xmax, ymax = bounds_utm
+        
+        # Convert corners to lat/lng
+        sw_lng, sw_lat = transformer.transform(xmin, ymin)
+        ne_lng, ne_lat = transformer.transform(xmax, ymax)
+        
+        return {
+            "bounds": [sw_lng, sw_lat, ne_lng, ne_lat],
+            "source": "metadata"
+        }
+        
+    except Exception as e:
+        print(f"Bounds error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/riskmap")
 async def get_risk_map():
@@ -302,6 +697,34 @@ async def get_risk_map_raster():
         print(f"Raster risk map error: {e}")
         return JSONResponse({"error": f"Failed to load raster risk map: {str(e)}"}, status_code=500)
 
+@app.post("/admin/build-street-cache")
+async def build_street_name_cache_endpoint(max_edges: int = 100):
+    """
+    Admin endpoint to pre-build street name cache
+    Call this once after deployment
+    """
+    if planner is None:
+        return {"error": "Planner not initialized"}
+    
+    edges_processed = 0
+    edges_found = 0
+    
+    # Process most common edges in your routes
+    for u, v in list(planner.osm_graph.edges())[:max_edges]:
+        name = get_street_name_from_edge(planner.osm_graph, str(u), str(v))
+        edges_processed += 1
+        
+        if not is_placeholder_name(name):
+            edges_found += 1
+    
+    save_street_name_cache()
+    
+    return {
+        "edges_processed": edges_processed,
+        "names_found": edges_found,
+        "cache_size": len(STREET_NAME_CACHE)
+    }
+
 # Add this temporary route to test coordinates
 @app.get("/test-coords")
 async def test_coordinates():
@@ -357,31 +780,63 @@ def get_route(
     goal: str = Query(..., description="Goal node ID"),
     algorithm: str = Query("astar", description="astar or dijkstra")
 ):
-    """Compute a risk-aware route with Mapbox-compatible coordinates"""
+    """Compute a risk-aware route with street names"""
     if planner is None:
         return JSONResponse({"error": "Planner not initialized"}, status_code=503)
 
     result = planner.plan_route(start, goal, algorithm)
     
-    # Convert UTM geometry to lat/lng for Mapbox
+    # Convert UTM geometry to lat/lng
     if "geometry" in result:
         result["geometry_latlng"] = convert_route_geometry(result["geometry"])
     
-    # Convert directions coordinates
-    if "directions" in result:
+    # Generate better directions with street names
+    if "path" in result and "geometry" in result:
+        result["directions"] = generate_turn_by_turn_directions(
+            planner.osm_graph,
+            result["path"],
+            result["geometry"]
+        )
+        
+        # Add lat/lng to each direction step
         for step in result["directions"]:
-            if "node" in step:
-                node_id = step["node"]
-                if node_id in planner.osm_graph.nodes:
-                    x_utm = planner.osm_graph.nodes[node_id].get('x')
-                    y_utm = planner.osm_graph.nodes[node_id].get('y')
-                    if x_utm and y_utm:
-                        lat, lng = utm_to_latlng(float(x_utm), float(y_utm))
-                        step["lat"] = lat
-                        step["lng"] = lng
+            node_id = step["node"]
+            if node_id in planner.osm_graph.nodes:
+                x_utm = planner.osm_graph.nodes[node_id].get('x')
+                y_utm = planner.osm_graph.nodes[node_id].get('y')
+                if x_utm and y_utm:
+                    lat, lng = utm_to_latlng(float(x_utm), float(y_utm))
+                    step["lat"] = lat
+                    step["lng"] = lng
     
     return result
 
+
+@app.get("/debug/edge-data")
+def debug_edge_data(node1: str = Query(...), node2: str = Query(...)):
+    """Debug endpoint to see what's in an OSM edge"""
+    if planner is None:
+        return {"error": "Planner not initialized"}
+    
+    if not planner.osm_graph.has_edge(node1, node2):
+        return {"error": f"No edge between {node1} and {node2}"}
+    
+    edge_data = dict(planner.osm_graph[node1][node2])
+    
+    # Also check if there are multiple edges (MultiGraph)
+    all_edges = []
+    if isinstance(planner.osm_graph, nx.MultiGraph):
+        for key in planner.osm_graph[node1][node2]:
+            all_edges.append({
+                "key": key,
+                "data": dict(planner.osm_graph[node1][node2][key])
+            })
+    
+    return {
+        "edge_data": edge_data,
+        "all_edges": all_edges if all_edges else None,
+        "graph_type": type(planner.osm_graph).__name__
+    }
 
 @app.get("/compare")
 def compare_routes(

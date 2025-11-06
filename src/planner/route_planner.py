@@ -380,7 +380,13 @@ class RiskAwareRoutePlanner:
         except Exception as e:
             print(f"[Planner] Failed to export debug visualization: {e}")
 
-
+    @property
+    def osm_graph(self) -> nx.Graph:
+        """
+        Backward-compatible alias for self.graph.
+        Used by API routes that reference planner.osm_graph.
+        """
+        return self.graph
     def save_results(self, route: Dict, output_path: str):
         """Save route to JSON file."""
         output_path = Path(output_path)

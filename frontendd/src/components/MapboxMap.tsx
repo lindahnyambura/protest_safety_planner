@@ -70,19 +70,22 @@ export default function MapboxMap({
 
     const loadRiskLayer = async () => {
       try {
-        const response = await fetch('http://localhost:8000/riskmap-raster');
-        const data = await response.json();
-        
-        if (data.type === 'raster' && map.current) {
-          // Add heatmap layer
+        // Fetch bounds first
+        const boundsRes = await fetch('http://localhost:8000/riskmap-bounds');
+        const boundsData = await boundsRes.json();
+
+        const [west, south, east, north] = boundsData.bounds;
+
+        // Add risk heatmap as image source
+        if (map.current) {
           map.current.addSource('risk-heatmap', {
             type: 'image',
-            url: '/api/risk-heatmap-image', // You'll need to convert numpy to image
+            url: 'http://localhost:8000/riskmap-image',
             coordinates: [
-              [data.bounds[0], data.bounds[3]], // top-left
-              [data.bounds[2], data.bounds[3]], // top-right
-              [data.bounds[2], data.bounds[1]], // bottom-right
-              [data.bounds[0], data.bounds[1]]  // bottom-left
+              [west, north],  // top-left
+              [east, north],  // top-right
+              [east, south],  // bottom-right
+              [west, south]   // bottom-left
             ]
           });
 
@@ -91,16 +94,27 @@ export default function MapboxMap({
             type: 'raster',
             source: 'risk-heatmap',
             paint: {
-              'raster-opacity': 0.5
+              'raster-opacity': 0.65,
+              'raster-fade-duration': 0
             }
           });
         }
       } catch (error) {
-        console.error('Failed to load risk map:', error);
+        console.error('Failed to load risk heatmap:', error);
       }
     };
 
     loadRiskLayer();
+
+    // Cleanup
+    return () => {
+      if (map.current?.getLayer('risk-heatmap-layer')) {
+        map.current.removeLayer('risk-heatmap-layer');
+      }
+      if (map.current?.getSource('risk-heatmap')) {
+        map.current.removeSource('risk-heatmap');
+      }
+    };
   }, [loaded, showRiskLayer]);
 
   return (
