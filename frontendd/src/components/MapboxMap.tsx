@@ -34,7 +34,7 @@ export default function MapboxMap({
     // Initialize map
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'mapbox://styles/nyambural/cmhnsrbkz001o01s4dvswcypq',
       center: [36.8225, -1.2875], // Center of CBD
       zoom: 14,
       maxBounds: NAIROBI_BOUNDS
