@@ -1,22 +1,150 @@
 {
-  "n_rollouts": 3,
+  "n_rollouts": 4,
   "base_seed": 42,
   "summary": {
-    "mean_episode_length": 500.0,
+    "mean_episode_length": 200.0,
     "std_episode_length": 0.0,
-    "mean_agents_harmed": 12.666666666666666,
-    "std_agents_harmed": 5.436502143433364,
-    "mean_agents_incapacitated": 5.0,
-    "incapacitation_rate": 0.05,
-    "min_episode_length": 500,
-    "max_episode_length": 500
+    "min_episode_length": 200,
+    "max_episode_length": 200,
+    "mean_agents_harmed": 232.0,
+    "std_agents_harmed": 65.47900426854397,
+    "harm_rate": 0.58,
+    "mean_agents_incapacitated": 209.5,
+    "std_agents_incapacitated": 73.21714280139591,
+    "incapacitation_rate": 0.52375,
+    "mean_agents_exited": 0.0,
+    "std_agents_exited": 0.0,
+    "exit_rate": 0.0
   },
-  "convergence": {},
-  "runtime_seconds": 302.05816984176636,
-  "config_hash": "5711d6a640b772be",
-  "timestamp": "2025-10-31 09:45:43",
+  "convergence": {
+    "checkpoints": [],
+    "is_converged": false
+  },
+  "calibration": {
+    "mean_brier": 0.001571875,
+    "median_brier": 0.0,
+    "ece": 0.0,
+    "reliability_diagram": {
+      "bin_accuracies": [
+        0.0,
+        0.25,
+        0.5,
+        0.75
+      ],
+      "bin_confidences": [
+        0.0,
+        0.25,
+        0.5,
+        0.75
+      ],
+      "bin_counts": [
+        39696,
+        199,
+        94,
+        11
+      ]
+    }
+  },
+  "spatial_analysis": {
+    "n_hotspots": 70,
+    "total_hotspot_cells": 105,
+    "hotspot_fraction": 0.002625,
+    "top_clusters": [
+      {
+        "cluster_id": 36,
+        "n_cells": 6,
+        "mean_p": 0.5,
+        "max_p": 0.5,
+        "centroid": [
+          100,
+          159
+        ]
+      },
+      {
+        "cluster_id": 17,
+        "n_cells": 5,
+        "mean_p": 0.5,
+        "max_p": 0.5,
+        "centroid": [
+          71,
+          77
+        ]
+      },
+      {
+        "cluster_id": 24,
+        "n_cells": 5,
+        "mean_p": 0.5,
+        "max_p": 0.5,
+        "centroid": [
+          87,
+          102
+        ]
+      },
+      {
+        "cluster_id": 39,
+        "n_cells": 5,
+        "mean_p": 0.550000011920929,
+        "max_p": 0.75,
+        "centroid": [
+          105,
+          81
+        ]
+      },
+      {
+        "cluster_id": 8,
+        "n_cells": 4,
+        "mean_p": 0.5,
+        "max_p": 0.5,
+        "centroid": [
+          52,
+          103
+        ]
+      }
+    ]
+  },
+  "runtime_seconds": 3056.448992729187,
+  "config_hash": "7ad045ee260371e1",
+  "timestamp": "2025-11-05 09:19:45",
   "grid_shape": [
-    100,
-    100
+    200,
+    200
+  ],
+  "rollout_metadata": [
+    {
+      "rollout_id": 0,
+      "seed": 42,
+      "episode_length": 200,
+      "n_harmed": 302,
+      "n_incapacitated": 290,
+      "n_exited": 0,
+      "peak_hazard": 87.56640625
+    },
+    {
+      "rollout_id": 1,
+      "seed": 43,
+      "episode_length": 200,
+      "n_harmed": 217,
+      "n_incapacitated": 184,
+      "n_exited": 0,
+      "peak_hazard": 83.75192260742188
+    },
+    {
+      "rollout_id": 2,
+      "seed": 44,
+      "episode_length": 200,
+      "n_harmed": 277,
+      "n_incapacitated": 262,
+      "n_exited": 0,
+      "peak_hazard": 89.58966064453125
+    },
+    {
+      "rollout_id": 3,
+      "seed": 45,
+      "episode_length": 200,
+      "n_harmed": 132,
+      "n_incapacitated": 102,
+      "n_exited": 0,
+      "peak_hazard": 83.72036743164062
+    }
   ]
 }

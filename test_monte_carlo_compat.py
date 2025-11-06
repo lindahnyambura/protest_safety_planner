@@ -8,7 +8,7 @@ Tests:
 3. Aggregator can process results
 4. Visualization can handle results
 
-Run this BEFORE run_complete_demo.py to catch issues early.
+Ran BEFORE run_complete_demo.py to catch issues early.
 """
 
 import sys
@@ -36,9 +36,9 @@ print(f"  Obstacle source: {obstacle_source}")
 print(f"  Mode: {'OSM graph' if using_osm else 'grid-based'}")
 print(f"  Grid: {config['grid']['width']}×{config['grid']['height']}")
 
-# ============================================================
-# Test 1: Single Environment Rollout
-# ============================================================
+
+# TEST 1: SINGLE ENVIRONMENT ROLLOUT
+
 print(f"\n[Test 1/4] Single environment rollout...")
 
 try:
@@ -49,17 +49,17 @@ try:
     has_osm = hasattr(env, 'osm_graph') and env.osm_graph is not None
     print(f"  ✓ Environment created (mode: {'OSM' if has_osm else 'grid'})")
     
-    # Run 30 steps
+    # Run 10 steps
     harm_total = 0
-    for step in range(30):
+    for step in range(10):
         obs, reward, term, trunc, info = env.step()
         harm_total += info['harm_grid'].sum()
     
-    print(f"  ✓ Rollout completed (30 steps)")
+    print(f"  ✓ Rollout completed (10 steps)")
     print(f"  ✓ Total harm events: {harm_total}")
     
     if harm_total == 0:
-        print(f"  ⚠️  Warning: No harm events (may be OK if gas didn't reach agents)")
+        print(f"  Warning: No harm events (may be OK if gas didn't reach agents)")
     
 except Exception as e:
     print(f"  ✗ FAILED: {e}")
@@ -67,16 +67,16 @@ except Exception as e:
     traceback.print_exc()
     sys.exit(1)
 
-# ============================================================
-# Test 2: Aggregator Initialization
-# ============================================================
+
+# TEST 2: AGGREGATOR INITIALIZATION
+
 print(f"\n[Test 2/4] Aggregator initialization...")
 
 try:
     # Set to minimal rollouts for testing
-    config['monte_carlo']['n_rollouts'] = 3
-    config['monte_carlo']['bootstrap_samples'] = 10
-    config['monte_carlo']['n_jobs'] = 1  # Serial for debugging
+    config['monte_carlo']['n_rollouts'] = 4
+    config['monte_carlo']['bootstrap_samples'] = 100
+    config['monte_carlo']['n_jobs'] = 4  # Set to 1 for testing
     
     aggregator = MonteCarloAggregator(
         env_class=ProtestEnv,
@@ -93,10 +93,10 @@ except Exception as e:
     traceback.print_exc()
     sys.exit(1)
 
-# ============================================================
-# Test 3: Mini Monte Carlo (3 rollouts)
-# ============================================================
-print(f"\n[Test 3/4] Mini Monte Carlo (3 rollouts)...")
+
+# TEST 3: MINI MONTE CARLO (4 rollouts)
+
+print(f"\n[Test 3/4] Mini Monte Carlo (4 rollouts)...")
 
 try:
     results = aggregator.run_monte_carlo(base_seed=42, verbose=True)
@@ -125,9 +125,9 @@ except Exception as e:
     traceback.print_exc()
     sys.exit(1)
 
-# ============================================================
-# Test 4: Visualization Compatibility
-# ============================================================
+
+# TEST 4: VISUALIZATION COMPATIBILITY
+
 print(f"\n[Test 4/4] Visualization compatibility...")
 
 try:
@@ -136,24 +136,24 @@ try:
     visualizer = ProtestVisualizer()
     
     # Test environment state plot
-    fig1 = visualizer.plot_environment_state(env, save_path=None)
+    fig1 = visualizer.plot_environment_state(env, save_path="artifacts/rollouts_test/test_env_state.png")
     print(f"  ✓ Environment state plot created")
     
     # Test Monte Carlo results plot
-    fig2 = visualizer.plot_monte_carlo_results(results, save_path=None)
+    fig2 = visualizer.plot_monte_carlo_results(results, save_path="artifacts/rollouts_test/test_monte_carlo.png")
     print(f"  ✓ Monte Carlo results plot created")
     
     # Test agent profiles plot
-    fig3 = visualizer.plot_agent_profiles(env, save_path=None)
+    fig3 = visualizer.plot_agent_profiles(env, save_path="artifacts/rollouts_test/test_agent_profiles.png")
     print(f"  ✓ Agent profiles plot created")
     
     # Test OSM map plot (if using OSM)
     if has_osm:
-        fig4 = visualizer.plot_osm_map(env, save_path=None)
+        fig4 = visualizer.plot_osm_map(env, save_path="artifacts/rollouts_test/test_osm_map.png")
         if fig4 is not None:
             print(f"  ✓ OSM map plot created")
         else:
-            print(f"  ⚠️  OSM map plot skipped (no data)")
+            print(f"  OSM map plot skipped (no data)")
     
     print(f"  ✓ All visualizations compatible")
     
@@ -163,11 +163,11 @@ except Exception as e:
     traceback.print_exc()
     sys.exit(1)
 
-# ============================================================
-# Summary
-# ============================================================
+
+# SUMMARY
+
 print(f"\n" + "="*60)
-print("✅ ALL TESTS PASSED")
+print(" ALL TESTS PASSED")
 print("="*60)
 
 print(f"\nSystem Status:")

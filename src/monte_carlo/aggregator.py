@@ -560,9 +560,19 @@ class MonteCarloAggregator:
             'grid_shape': [self.height, self.width],
             'rollout_metadata': output.get('rollout_metadata', [])[:10]
         }
+
+        # Handle NumPy types safely
+        def safe_convert(o):
+            if isinstance(o, (np.integer, np.int32, np.int64)):
+                return int(o)
+            if isinstance(o, (np.floating, np.float32, np.float64)):
+                return float(o)
+            if isinstance(o, np.ndarray):
+                return o.tolist()
+            return str(o)
         
         with open(run_dir / 'metadata.json', 'w') as f:
-            json.dump(metadata, f, indent=2)
+            json.dump(metadata, f, indent=2, default=safe_convert)
         
         print(f"\n Results saved to {run_dir}/")
     
