@@ -14,15 +14,15 @@ Usage:
     python tests/run_tests.py --test test_deterministic_episode
 """
 
-import sys
-import pytest
-from pathlib import Path
+# import sys
+# import pytest
+# from pathlib import Path
 
-if __name__ == '__main__':
-    # Add project root to path
-    project_root = Path(__file__).parent.parent
-    sys.path.insert(0, str(project_root))
+# if __name__ == '__main__':
+#     # Add project root to path
+#     project_root = Path(__file__).parent.parent
+#     sys.path.insert(0, str(project_root))
     
-    # Run tests
-    args = sys.argv[1:] if len(sys.argv) > 1 else ['-v']
-    pytest.main([str(project_root / 'tests')] + args)
+#     # Run tests
+#     args = sys.argv[1:] if len(sys.argv) > 1 else ['-v']
+#     pytest.main([str(project_root / 'tests')] + args)
