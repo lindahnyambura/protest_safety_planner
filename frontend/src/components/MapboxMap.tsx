@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { m } from 'motion/react';
 
 // Mapbox token
 mapboxgl.accessToken = 'pk.eyJ1IjoibnlhbWJ1cmFsIiwiYSI6ImNtaGV5OGtldDAxNHEyanF2ODZ5eGd0YjYifQ.Tl1_xuqn3wEEzOWh5A9tbA';
 
 interface RouteData {
-  geometry_latlng: [number, number][]; // [lng, lat] pairs
+  geometry_latlng: [number, number][];
   metadata: {
     edge_risks: number[];
     mean_edge_risk: number;
@@ -24,69 +23,74 @@ interface RouteData {
 
 interface MapboxMapProps {
   onMapLoad?: (map: mapboxgl.Map) => void;
-  userLocation?: [number, number]; // [lng, lat]
+  userLocation?: [number, number];
   showRiskLayer?: boolean;
-  // Accept RouteData from the App but allow its properties (like geometry_latlng) to be optional
-  routeData?: Partial<import('../App').RouteData> | null; // NEW: Route to display (partial to allow undefined fields)
-  onWaypointClick?: (step: number) => void; // NEW: Callback for waypoint clicks
+  routeData?: Partial<import('../App').RouteData> | null;
+  onWaypointClick?: (step: number) => void;
 }
 
 export default function MapboxMap({ 
   onMapLoad, 
   userLocation,
   showRiskLayer = true,
-  routeData = null, // NEW: Route to display
-  onWaypointClick // NEW: Callback for waypoint clicks 
+  routeData = null,
+  onWaypointClick
 }: MapboxMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  // Nairobi CBD bounds from your metadata
   const NAIROBI_BOUNDS: [number, number, number, number] = [
-    36.81,  // west
-    -1.295, // south
-    36.835, // east
-    -1.28   // north
+    36.81, -1.295, 36.835, -1.28
   ];
 
+  // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    // Initialize map
+    console.log('[MapboxMap] Initializing map');
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/nyambural/cmhnsrbkz001o01s4dvswcypq',
-      center: [36.8225, -1.2875], // Center of CBD
+      center: [36.8225, -1.2875],
       zoom: 14,
       maxBounds: NAIROBI_BOUNDS
     });
 
     map.current.on('load', () => {
+      console.log('[MapboxMap] Map loaded');
       setLoaded(true);
       if (onMapLoad && map.current) {
         onMapLoad(map.current);
       }
     });
 
-    // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     return () => {
-      map.current?.remove();
+      console.log('[MapboxMap] Cleaning up map');
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
     };
   }, [onMapLoad]);
 
-  // Add user location marker
+  // User location marker
   useEffect(() => {
     if (!map.current || !loaded || !userLocation) return;
 
-    new mapboxgl.Marker({ color: '#000' })
+    const marker = new mapboxgl.Marker({ color: '#000' })
       .setLngLat(userLocation)
       .addTo(map.current);
+
+    return () => {
+      marker.remove();
+    };
   }, [loaded, userLocation]);
 
-  // Load risk heatmap - update risk layer effect in MapboxMap
+  // Risk layer
   useEffect(() => {
     if (!map.current || !loaded) return;
 
@@ -97,7 +101,10 @@ export default function MapboxMap({
       if (!map.current) return;
       
       try {
-        // Remove existing layer/source if present
+        // Check if map still has a style (not destroyed)
+        if (!map.current.getStyle()) return;
+
+        // Remove existing
         if (map.current.getLayer(RISK_LAYER_ID)) {
           map.current.removeLayer(RISK_LAYER_ID);
         }
@@ -105,24 +112,20 @@ export default function MapboxMap({
           map.current.removeSource(RISK_SOURCE_ID);
         }
 
-        // Only add if showRiskLayer is true
         if (!showRiskLayer) return;
 
-        // Fetch bounds
         const boundsRes = await fetch('http://localhost:8000/riskmap-bounds');
         const boundsData = await boundsRes.json();
-      
         const [west, south, east, north] = boundsData.bounds;
       
-        // Add risk heatmap as image source
+        // Check again after async operation
+        if (!map.current || !map.current.getStyle()) return;
+
         map.current.addSource(RISK_SOURCE_ID, {
           type: 'image',
-          url: `http://localhost:8000/riskmap-image?t=${Date.now()}`, // Cache bust
+          url: `http://localhost:8000/riskmap-image?t=${Date.now()}`,
           coordinates: [
-            [west, north],  // top-left
-            [east, north],  // top-right
-            [east, south],  // bottom-right
-            [west, south]   // bottom-left
+            [west, north], [east, north], [east, south], [west, south]
           ]
         });
 
@@ -135,30 +138,33 @@ export default function MapboxMap({
             'raster-fade-duration': 0
           }
         });
-        
-        console.log('[MapboxMap] Risk layer loaded');
       
+        console.log('[MapboxMap] Risk layer loaded');
       } catch (error) {
-        console.error('Failed to load risk heatmap:', error);
+        console.error('Risk layer error:', error);
       }
     };
 
     loadRiskLayer();
 
-    // Cleanup
     return () => {
-      if (map.current?.getLayer(RISK_LAYER_ID)) {
-        map.current.removeLayer(RISK_LAYER_ID);
-      }
-      if (map.current?.getSource(RISK_SOURCE_ID)) {
-        map.current.removeSource(RISK_SOURCE_ID);
+      try {
+        if (map.current && map.current.getStyle()) {
+          if (map.current.getLayer(RISK_LAYER_ID)) {
+            map.current.removeLayer(RISK_LAYER_ID);
+          }
+          if (map.current.getSource(RISK_SOURCE_ID)) {
+            map.current.removeSource(RISK_SOURCE_ID);
+          }
+        }
+      } catch (error) {
+        // Map already destroyed
       }
     };
-  }, [loaded, showRiskLayer]);    // Re-run when showRiskLayer changes
+  }, [loaded, showRiskLayer]);
 
-  // Route visualization effect
+  // Route visualization
   useEffect(() => {
-    // Ensure routeData contains the fields we need before proceeding
     if (
       !map.current ||
       !loaded ||
@@ -167,33 +173,32 @@ export default function MapboxMap({
       !routeData.directions ||
       !routeData.metadata
     ) {
-      // Remove route if no data
-      if (map.current && loaded) {
-        if (map.current.getLayer('route-line')) {
-          map.current.removeLayer('route-line');
+      // Cleanup if no route
+      try {
+        if (map.current && map.current.getStyle()) {
+          if (map.current.getLayer('route-line')) {
+            map.current.removeLayer('route-line');
+          }
+          if (map.current.getSource('route')) {
+            map.current.removeSource('route');
+          }
         }
-        if (map.current.getSource('route')) {
-          map.current.removeSource('route');
-        }
-        // Remove markers
         document.querySelectorAll('.route-marker').forEach(el => el.remove());
+      } catch (error) {
+        // Ignore
       }
       return;
     }
 
-    const addRouteToMap = () => {
-      if (
-        !map.current ||
-        !routeData ||
-        !routeData.geometry_latlng ||
-        !routeData.directions ||
-        !routeData.metadata
-      ) return;
+    const route = routeData as RouteData;
 
-      // Cast to full RouteData now that we've validated required fields
-      const route = routeData as RouteData;
+    try {
+      if (!map.current.getStyle()) return;
 
-      // Remove existing route
+      // Remove existing
+      if (map.current.getLayer('route-line-outline')) {
+        map.current.removeLayer('route-line-outline');
+      }
       if (map.current.getLayer('route-line')) {
         map.current.removeLayer('route-line');
       }
@@ -201,7 +206,6 @@ export default function MapboxMap({
         map.current.removeSource('route');
       }
 
-      // Add route as GeoJSON
       const routeGeoJSON: GeoJSON.Feature<GeoJSON.LineString> = {
         type: 'Feature',
         properties: {
@@ -210,7 +214,7 @@ export default function MapboxMap({
         },
         geometry: {
           type: 'LineString',
-          coordinates: route.geometry_latlng // Already in [lng, lat] format
+          coordinates: route.geometry_latlng
         }
       };
 
@@ -219,31 +223,15 @@ export default function MapboxMap({
         data: routeGeoJSON
       });
 
-      // Determine route color based on risk
       const maxRisk = route.metadata.max_edge_risk;
-      let routeColor: string;
-      let routeWidth: number;
+      const routeColor = maxRisk < 0.1 ? '#16a34a' : maxRisk < 0.3 ? '#f59e0b' : '#dc2626';
+      const routeWidth = maxRisk < 0.1 ? 6 : maxRisk < 0.3 ? 7 : 8;
 
-      if (maxRisk < 0.1) {
-        routeColor = '#16a34a'; // Green - safe
-        routeWidth = 6;
-      } else if (maxRisk < 0.3) {
-        routeColor = '#f59e0b'; // Amber - caution
-        routeWidth = 7;
-      } else {
-        routeColor = '#dc2626'; // Red - high risk
-        routeWidth = 8;
-      }
-
-      // Add route line with outline
       map.current.addLayer({
         id: 'route-line-outline',
         type: 'line',
         source: 'route',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
           'line-color': '#000000',
           'line-width': routeWidth + 2,
@@ -255,10 +243,7 @@ export default function MapboxMap({
         id: 'route-line',
         type: 'line',
         source: 'route',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
           'line-color': routeColor,
           'line-width': routeWidth,
@@ -266,146 +251,97 @@ export default function MapboxMap({
         }
       });
 
-      // Add waypoint markers
+      // Add markers
       addWaypointMarkers(route);
 
-      // Fit map to route bounds
+      // Fit bounds
       const bounds = new mapboxgl.LngLatBounds();
-      route.geometry_latlng.forEach(coord => {
-        bounds.extend(coord as [number, number]);
-      });
+      route.geometry_latlng.forEach(coord => bounds.extend(coord as [number, number]));
       map.current.fitBounds(bounds, {
         padding: { top: 100, bottom: 100, left: 50, right: 50 },
         duration: 1000
       });
 
-      console.log('[MapboxMap] Route added to map');
-    };
+      console.log('[MapboxMap] Route added');
+    } catch (error) {
+      console.error('Route rendering error:', error);
+    }
 
-    addRouteToMap();
-
-    // Cleanup
     return () => {
-      if (map.current) {
-        if (map.current.getLayer('route-line')) {
-          map.current.removeLayer('route-line');
+      try {
+        if (map.current && map.current.getStyle()) {
+          if (map.current.getLayer('route-line-outline')) {
+            map.current.removeLayer('route-line-outline');
+          }
+          if (map.current.getLayer('route-line')) {
+            map.current.removeLayer('route-line');
+          }
+          if (map.current.getSource('route')) {
+            map.current.removeSource('route');
+          }
         }
-        if (map.current.getLayer('route-line-outline')) {
-          map.current.removeLayer('route-line-outline');
-        }
-        if (map.current.getSource('route')) {
-          map.current.removeSource('route');
-        }
+        document.querySelectorAll('.route-marker').forEach(el => el.remove());
+      } catch (error) {
+        // Map destroyed
       }
-      document.querySelectorAll('.route-marker').forEach(el => el.remove());
     };
   }, [loaded, routeData]);
 
-  // NEW: Function to add waypoint markers
   const addWaypointMarkers = (route: RouteData) => {
     if (!map.current) return;
 
-    // Remove old markers
     document.querySelectorAll('.route-marker').forEach(el => el.remove());
 
-    // Add start marker
-    const startDirection = route.directions[0];
-    if (startDirection && map.current) {
-      const startEl = document.createElement('div');
-      startEl.className = 'route-marker';
-      startEl.innerHTML = `
-        <div style="
-          background: #16a34a;
-          border: 3px solid white;
-          border-radius: 50%;
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          cursor: pointer;
-        ">
-          <span style="color: white; font-weight: bold; font-size: 14px;">S</span>
-        </div>
-      `;
-
-      new mapboxgl.Marker({ element: startEl })
-        .setLngLat([startDirection.lng, startDirection.lat])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 25 })
-            .setHTML(`<strong>Start</strong><br/>${startDirection.street_name || 'Your location'}`)
-        )
+    const createMarker = (html: string, lngLat: [number, number], popupHTML: string) => {
+      if (!map.current) return;
+      const el = document.createElement('div');
+      el.className = 'route-marker';
+      el.innerHTML = html;
+      
+      new mapboxgl.Marker({ element: el })
+        .setLngLat(lngLat)
+        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHTML))
         .addTo(map.current);
+    };
+
+    // Start marker
+    const start = route.directions[0];
+    if (start) {
+      createMarker(
+        '<div style="background: #16a34a; border: 3px solid white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><span style="color: white; font-weight: bold; font-size: 14px;">S</span></div>',
+        [start.lng, start.lat],
+        `<strong>Start</strong><br/>${start.street_name || 'Your location'}`
+      );
     }
 
-    // Add end marker
-    const endDirection = route.directions[route.directions.length - 1];
-    if (endDirection && map.current) {
-      const endEl = document.createElement('div');
-      endEl.className = 'route-marker';
-      endEl.innerHTML = `
-        <div style="
-          background: #dc2626;
-          border: 3px solid white;
-          border-radius: 50%;
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          cursor: pointer;
-        ">
-          <span style="color: white; font-weight: bold; font-size: 14px;">E</span>
-        </div>
-      `;
-
-      new mapboxgl.Marker({ element: endEl })
-        .setLngLat([endDirection.lng, endDirection.lat])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 25 })
-            .setHTML(`<strong>Destination</strong>`)
-        )
-        .addTo(map.current);
+    // End marker
+    const end = route.directions[route.directions.length - 1];
+    if (end) {
+      createMarker(
+        '<div style="background: #dc2626; border: 3px solid white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><span style="color: white; font-weight: bold; font-size: 14px;">E</span></div>',
+        [end.lng, end.lat],
+        '<strong>Destination</strong>'
+      );
     }
 
-    // Add intermediate turn markers (only for actual turns)
+    // Turn markers
     route.directions.slice(1, -1).forEach((dir, idx) => {
-      if (dir.instruction.toLowerCase().includes('turn') && map.current) {
-        const turnEl = document.createElement('div');
-        turnEl.className = 'route-marker';
-        turnEl.innerHTML = `
-          <div style="
-            background: white;
-            border: 2px solid #000;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            cursor: pointer;
-          ">
-            <span style="color: #000; font-weight: bold; font-size: 11px;">${idx + 1}</span>
-          </div>
-        `;
-
-        turnEl.addEventListener('click', () => {
-          if (onWaypointClick) {
-            onWaypointClick(dir.step);
-          }
+      if (dir.instruction.toLowerCase().includes('turn')) {
+        const el = document.createElement('div');
+        el.className = 'route-marker';
+        el.innerHTML = `<div style="background: white; border: 2px solid #000; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><span style="color: #000; font-weight: bold; font-size: 11px;">${idx + 1}</span></div>`;
+        
+        el.addEventListener('click', () => {
+          if (onWaypointClick) onWaypointClick(dir.step);
         });
 
-        new mapboxgl.Marker({ element: turnEl })
-          .setLngLat([dir.lng, dir.lat])
-          .setPopup(
-            new mapboxgl.Popup({ offset: 15 })
-              .setHTML(`<strong>Step ${idx + 1}</strong><br/>${dir.instruction}`)
-          )
-          .addTo(map.current);
+        if (map.current) {
+          new mapboxgl.Marker({ element: el })
+            .setLngLat([dir.lng, dir.lat])
+            .setPopup(new mapboxgl.Popup({ offset: 15 }).setHTML(`<strong>Step ${idx + 1}</strong><br/>${dir.instruction}`))
+            .addTo(map.current);
         }
+      }
     });
   };
 
