@@ -9,6 +9,7 @@ interface AlertsFeedProps {
 }
 
 export default function AlertsFeed({ onBack }: AlertsFeedProps) {
+  console.log('[AlertsFeed] Component rendered');
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const alerts = [

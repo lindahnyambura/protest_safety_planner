@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import MapboxMap from './MapboxMap';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
@@ -14,9 +15,12 @@ interface LiveGuidanceProps {
 
 export default function LiveGuidance({ routeData, onReroute, onComplete }: LiveGuidanceProps) {
   const [progress, setProgress] = useState(0);
-  const [currentInstruction, setCurrentInstruction] = useState('Head west on Kenyatta Ave');
-  const [distanceToNext, setDistanceToNext] = useState(120);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [showHazardAlert, setShowHazardAlert] = useState(false);
+
+  // Get current instruction from real route data
+  const currentInstruction = routeData.directions?.[currentStepIndex]?.instruction || 'Follow the route';
+  const distanceToNext = routeData.directions?.[currentStepIndex]?.distance_m || 0;
 
   useEffect(() => {
     // Simulate progress
@@ -27,13 +31,17 @@ export default function LiveGuidance({ routeData, onReroute, onComplete }: LiveG
           setTimeout(() => onComplete(), 1000);
           return 100;
         }
-        return prev + 2;
-      });
+        // Move to next step when reaching milestones
+        const newProgress = prev + 2;
+        const totalSteps = routeData.directions?.length || 1;
+        const stepProgress = Math.floor((newProgress / 100) * totalSteps);
+        setCurrentStepIndex(Math.min(stepProgress, totalSteps - 1));
 
-      setDistanceToNext(prev => Math.max(0, prev - 5));
+        return newProgress;
+      });
     }, 500);
 
-    // Simulate hazard detection after 3 seconds
+    // Simulate hazard detection
     const hazardTimer = setTimeout(() => {
       setShowHazardAlert(true);
     }, 3000);
@@ -47,65 +55,13 @@ export default function LiveGuidance({ routeData, onReroute, onComplete }: LiveG
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Map View */}
-      <div className="relative flex-1 bg-neutral-100">
-        {/* Mock navigation map */}
-        <div className="absolute inset-0 bg-gradient-to-br from-neutral-100 to-neutral-200">
-          {/* Grid */}
-          <div className="absolute inset-0 opacity-10">
-            {[...Array(20)].map((_, i) => (
-              <div key={`h-${i}`} className="absolute w-full h-px bg-neutral-400" style={{ top: `${i * 5}%` }} />
-            ))}
-            {[...Array(20)].map((_, i) => (
-              <div key={`v-${i}`} className="absolute h-full w-px bg-neutral-400" style={{ left: `${i * 5}%` }} />
-            ))}
-          </div>
-
-          {/* Active route with animation */}
-          <svg className="absolute inset-0 w-full h-full">
-            <motion.path
-              d="M 200 500 L 200 300 L 250 300"
-              stroke={routeData.riskLevel === 'low' ? '#16a34a' : '#f59e0b'}
-              strokeWidth="6"
-              fill="none"
-              strokeLinecap="round"
-              opacity="0.8"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 1.5, ease: 'easeInOut' }}
-            />
-          </svg>
-
-          {/* User position */}
-          <motion.div 
-            className="absolute transition-all duration-500"
-            style={{ 
-              left: '200px', 
-              top: `${500 - progress * 2}px`,
-              transform: 'translate(-50%, -50%)'
-            }}
-          >
-            <div className="relative">
-              <div className="w-6 h-6 bg-blue-600 rounded-full border-4 border-white shadow-lg">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Navigation className="w-3 h-3 text-white" strokeWidth={2} />
-                </div>
-              </div>
-              <motion.div 
-                className="absolute inset-0 w-6 h-6 bg-blue-600 rounded-full"
-                animate={{
-                  scale: [1, 2, 1],
-                  opacity: [0.5, 0, 0.5],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: 'easeOut',
-                }}
-              />
-            </div>
-          </motion.div>
-        </div>
-
+      <div className="relative flex-1">
+        <MapboxMap
+          showRiskLayer={true}
+          routeData={routeData}
+          userLocation={routeData.geometry_latlng?.[currentStepIndex]}
+        />
+        
         {/* Hazard Alert Modal */}
         <AnimatePresence>
           {showHazardAlert && (
@@ -156,7 +112,9 @@ export default function LiveGuidance({ routeData, onReroute, onComplete }: LiveG
       <div className="bg-neutral-900 text-white px-6 py-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <p className="text-xs text-neutral-400 mb-1">IN {distanceToNext} M</p>
+            <p className="text-xs text-neutral-400 mb-1">
+              {distanceToNext > 0 ? `IN ${Math.round(distanceToNext)} M` : 'ARRIVING'}
+            </p>
             <h3 className="text-white mb-3">{currentInstruction}</h3>
           </div>
           <Navigation className="w-6 h-6 text-white flex-shrink-0 ml-3" strokeWidth={2} />
@@ -171,11 +129,15 @@ export default function LiveGuidance({ routeData, onReroute, onComplete }: LiveG
           <div className="flex items-center gap-4">
             <div>
               <span className="text-neutral-400">ETA: </span>
-              <span className="text-white">{Math.max(0, routeData.eta - Math.floor(progress / 10))} min</span>
+              <span className="text-white">
+                {Math.max(0, routeData.eta - Math.floor(progress / 10))} min
+              </span>
             </div>
             <div>
               <span className="text-neutral-400">Distance: </span>
-              <span className="text-white">{(routeData.distance * (1 - progress / 100)).toFixed(1)} km</span>
+              <span className="text-white">
+                {((routeData.distance || 0) * (1 - progress / 100)).toFixed(1)} km
+              </span>
             </div>
           </div>
           

@@ -12,6 +12,7 @@ interface RouteDestinationProps {
 }
 
 export default function RouteDestination({ onBack, onComputeRoute }: RouteDestinationProps) {
+  console.log('[RouteDestination] Component mounted');
   const [searchQuery, setSearchQuery] = useState('');
   const [riskPreference, setRiskPreference] = useState([50]);
 
@@ -31,17 +32,14 @@ export default function RouteDestination({ onBack, onComputeRoute }: RouteDestin
     
     const destination = searchQuery;
     
-    // Generate mock route data based on risk preference
+    // Generate UI-level route data (backend will override most values)
     const riskLevel = riskPreference[0] < 35 ? 'low' : riskPreference[0] > 65 ? 'high' : 'medium';
-    const safetyScore = 100 - riskPreference[0];
-    const distance = riskPreference[0] < 50 ? 2.8 : 1.5;
-    const eta = riskPreference[0] < 50 ? 15 : 8;
 
     onComputeRoute({
       destination,
-      safetyScore,
-      eta,
-      distance,
+      safetyScore: 0,
+      eta: 0,
+      distance: 0,
       riskLevel,
     });
   };

@@ -25,8 +25,8 @@ export default function HomeMap({
   const [userCoords, setUserCoords] = useState<[number, number]>([36.8225, -1.2875]);
 
   // UI related states
-  const [activeLayers, setActiveLayers] = useState<string[]>(['risk', 'crowd']);
-  const [showLayers, setShowLayers] = useState(true);
+  const [activeLayers, setActiveLayers] = useState<string[]>(['risk']);
+  const [showLayers, setShowLayers] = useState(false);
 
   const toggleLayer = (layer: string) => {
     setActiveLayers(prev =>

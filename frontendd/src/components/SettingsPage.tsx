@@ -12,6 +12,7 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ onBack, onEthics, onHelp }: SettingsPageProps) {
+  console.log('[SettingsPage] Component mounted');
   const [settings, setSettings] = useState({
     shareReports: true,
     locationPrecision: true,

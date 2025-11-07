@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import MapboxMap from './MapboxMap';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ArrowLeft, Navigation, Share2, ChevronDown, ChevronUp, TrendingUp, Clock, Route } from 'lucide-react';
@@ -13,14 +14,13 @@ interface RouteDetailsProps {
 
 export default function RouteDetails({ routeData, onBack, onStartGuidance }: RouteDetailsProps) {
   const [showDirections, setShowDirections] = useState(false);
+  const [fullRouteData, setFullRouteData] = useState<any>(null);
 
-  const directions = [
-    { instruction: 'Head west on Kenyatta Ave', distance: '120 m', safety: 'safe' },
-    { instruction: 'Turn right onto Moi Ave', distance: '350 m', safety: 'safe' },
-    { instruction: 'Continue straight through intersection', distance: '200 m', safety: 'caution' },
-    { instruction: 'Turn left onto Uhuru Highway', distance: '450 m', safety: 'safe' },
-    { instruction: 'Arrive at destination', distance: '—', safety: 'safe' },
-  ];
+  // Load full route data when the component mounts
+  useEffect(() => {
+    // If the parent passes full data already, just set it
+    setFullRouteData(routeData);
+  }, [routeData]);
 
   const handleShare = () => {
     // Mock share functionality
@@ -54,41 +54,17 @@ export default function RouteDetails({ routeData, onBack, onStartGuidance }: Rou
       </motion.div>
 
       {/* Map Preview */}
-      <div className="relative h-64 bg-neutral-100">
-        {/* Mock map with route */}
-        <div className="absolute inset-0 bg-gradient-to-br from-neutral-100 to-neutral-200">
-          {/* Grid */}
-          <div className="absolute inset-0 opacity-20">
-            {[...Array(8)].map((_, i) => (
-              <div key={`h-${i}`} className="absolute w-full h-px bg-neutral-400" style={{ top: `${i * 12.5}%` }} />
-            ))}
-            {[...Array(8)].map((_, i) => (
-              <div key={`v-${i}`} className="absolute h-full w-px bg-neutral-400" style={{ left: `${i * 12.5}%` }} />
-            ))}
-          </div>
-
-          {/* Route path */}
-          <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
-            <path
-              d="M 30 130 L 100 130 L 100 80 L 200 80 L 200 40"
-              stroke={routeData.riskLevel === 'low' ? '#16a34a' : routeData.riskLevel === 'high' ? '#dc2626' : '#f59e0b'}
-              strokeWidth="4"
-              fill="none"
-              strokeDasharray="8,4"
-              opacity="0.8"
-            />
-          </svg>
-
-          {/* Start marker */}
-          <div className="absolute" style={{ left: '30px', top: '130px', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-3 h-3 bg-blue-600 rounded-full border-2 border-white" />
-          </div>
-
-          {/* End marker */}
-          <div className="absolute" style={{ left: '200px', top: '40px', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-4 h-4 bg-neutral-900 rounded-full border-2 border-white" />
-          </div>
-        </div>
+      <div className="relative h-64">
+        {fullRouteData && (
+          <MapboxMap
+            showRiskLayer={false}
+            routeData={fullRouteData}
+            onWaypointClick={(step) => {
+              console.log('Waypoint clicked:', step);
+              // Optional: scroll to the relevant direction step
+            }}
+          />
+        )}
       </div>
 
       {/* Route Info Card */}
@@ -156,33 +132,42 @@ export default function RouteDetails({ routeData, onBack, onStartGuidance }: Rou
         </motion.button>
 
         <AnimatePresence>
-            {showDirections && (
+          {showDirections && fullRouteData?.directions && (
             <motion.div 
               className="px-6 py-4 space-y-3"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
             >
-            {directions.map((step, idx) => (
-              <div key={idx} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm ${
-                    step.safety === 'safe'
-                      ? 'border-green-400 text-green-600'
-                      : 'border-amber-400 text-amber-600'
-                  }`}>
-                    {idx + 1}
+              {fullRouteData.directions.map((step: any, idx: number) => {
+                // Determine if step is safe based on edge risk
+                const isSafe = fullRouteData.metadata?.edge_risks?.[idx] 
+                  ? fullRouteData.metadata.edge_risks[idx] < 0.1 
+                  : true;
+
+                return (
+                  <div key={idx} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm ${
+                        isSafe
+                          ? 'border-green-400 text-green-600'
+                          : 'border-amber-400 text-amber-600'
+                      }`}>
+                        {idx + 1}
+                      </div>
+                      {idx < fullRouteData.directions.length - 1 && (
+                        <div className="w-px h-8 bg-neutral-200 my-1" />
+                      )}
+                    </div>
+                    <div className="flex-1 pb-4">
+                      <p className="text-neutral-900 mb-1">{step.instruction}</p>
+                      <p className="text-sm text-neutral-500">
+                        {step.distance_m > 0 ? `${step.distance_m}m` : '—'}
+                      </p>
+                    </div>
                   </div>
-                  {idx < directions.length - 1 && (
-                    <div className="w-px h-8 bg-neutral-200 my-1" />
-                  )}
-                </div>
-                <div className="flex-1 pb-4">
-                  <p className="text-neutral-900 mb-1">{step.instruction}</p>
-                  <p className="text-sm text-neutral-500">{step.distance}</p>
-                </div>
-              </div>
-            ))}
+                );
+              })}
             </motion.div>
           )}
         </AnimatePresence>

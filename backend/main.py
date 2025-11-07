@@ -23,7 +23,8 @@ from PIL import Image
 import io
 from fastapi.responses import StreamingResponse
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+from matplotlib import cm, colors
+from scipy.ndimage import gaussian_filter
 
 
 import sys
@@ -456,6 +457,47 @@ def _grid_to_lat_lng_fallback(i: int, j: int) -> tuple[float, float]:
         # Final fallback - centered on Nairobi CBD
         return -1.2875, 36.8225
 
+
+def generate_risk_heatmap_png(p_sim: np.ndarray) -> io.BytesIO:
+    """
+    Convert risk probability grid to a smooth PNG heatmap overlay.
+    - Low risk: fully transparent
+    - Moderate → High risk: green → yellow → red
+    - Smooth circular gradients for realism
+    """
+
+    # --- Clean and normalize input ---
+    p_sim = np.nan_to_num(p_sim, nan=0.0, posinf=1.0, neginf=0.0)
+    p_sim = np.clip(p_sim, 0, 1)
+
+    # --- Smooth spatially (makes gradients circular & neat) ---
+    smooth_p = gaussian_filter(p_sim, sigma=2)
+
+    # --- Colormap: vivid green → yellow → red ---
+    from matplotlib.colors import LinearSegmentedColormap
+    cmap = LinearSegmentedColormap.from_list(
+        "green_yellow_red",
+        ["#3CB371", "#FFD700", "#DC143C"]
+    )
+
+    norm = plt.Normalize(vmin=0, vmax=smooth_p.max())
+    rgba = cmap(norm(smooth_p))
+
+    # --- Transparency: fade out low risk completely ---
+    # 0 risk = 0 alpha (transparent), high risk = up to 0.85 opacity
+    alpha = np.clip((smooth_p / smooth_p.max()) ** 1.5 * 0.85, 0, 0.85)
+    rgba[:, :, 3] = alpha
+
+    # --- Convert to image ---
+    rgba_uint8 = (rgba * 255).astype(np.uint8)
+    img = Image.fromarray(rgba_uint8, mode='RGBA')
+
+    # --- Save to buffer ---
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG', optimize=True)
+    buffer.seek(0)
+    return buffer
+
 @app.on_event("startup")
 def load_planner():
     global planner, planner_config
@@ -499,45 +541,6 @@ def load_planner():
 
     print("[Backend] Planner initialized successfully.")
 
-def generate_risk_heatmap_png(p_sim: np.ndarray) -> io.BytesIO:
-    """
-    Convert risk probability grid to PNG image with color mapping
-    
-    Args:
-        p_sim: 2D numpy array of risk probabilities (0-1)
-    
-    Returns:
-        BytesIO buffer containing PNG image
-    """
-    # Normalize to 0-255 range
-    # Apply colormap: low risk = green/transparent, high risk = red/orange
-    
-    # Create a custom colormap: transparent -> yellow -> orange -> red
-    fig, ax = plt.subplots(figsize=(10, 10), dpi=100)
-    ax.axis('off')
-    
-    # Apply colormap
-    cmap = cm.get_cmap('YlOrRd')  # Yellow-Orange-Red
-    norm = plt.Normalize(vmin=0, vmax=p_sim.max())
-    
-    # Create RGBA image
-    rgba = cmap(norm(p_sim))
-    
-    # Make low-risk areas more transparent
-    # Alpha channel: 0 for p=0, increasing to 0.8 for high risk
-    alpha = np.clip(p_sim * 3, 0, 0.8)  # Scale alpha with risk
-    rgba[:, :, 3] = alpha
-    
-    # Convert to PIL Image
-    rgba_uint8 = (rgba * 255).astype(np.uint8)
-    img = Image.fromarray(rgba_uint8, mode='RGBA')
-    
-    # Save to buffer
-    buffer = io.BytesIO()
-    img.save(buffer, format='PNG', optimize=True)
-    buffer.seek(0)
-    
-    return buffer
 
 # 3. API Endpoints
 
