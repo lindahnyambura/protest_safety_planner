@@ -63,9 +63,9 @@ export default function QuickReportModal({
       };
 
       console.log('[QuickReport] Submitting report:', reportData);
-      console.log('[QuickReport] Request URL:', 'http://localhost:8000/report');
+      console.log('[QuickReport] Request URL:', 'protestsafetyplanner-production.up.railway.app/report');
 
-      const response = await fetch('http://localhost:8000/report', {
+      const response = await fetch('protestsafetyplanner-production.up.railway.app/report', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

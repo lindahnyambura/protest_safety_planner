@@ -38,7 +38,7 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
 
   const fetchReports = async () => {
     try {
-      const response = await fetch('http://localhost:8000/reports/active');
+      const response = await fetch('protestsafetyplanner-production.up.railway.app/reports/active');
       
       if (response.ok) {
         const data = await response.json();

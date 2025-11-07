@@ -139,7 +139,7 @@ export default function MapboxMap({
 
         if (!showRiskLayer) return;
 
-        const boundsRes = await fetch('http://localhost:8000/riskmap-bounds');
+        const boundsRes = await fetch('protestsafetyplanner-production.up.railway.app/riskmap-bounds');
         const boundsData = await boundsRes.json();
         const [west, south, east, north] = boundsData.bounds;
       
@@ -147,7 +147,7 @@ export default function MapboxMap({
 
         map.current.addSource(RISK_SOURCE_ID, {
           type: 'image',
-          url: `http://localhost:8000/riskmap-image?t=${Date.now()}`,
+          url: `protestsafetyplanner-production.up.railway.app/riskmap-image?t=${Date.now()}`,
           coordinates: [
             [west, north], [east, north], [east, south], [west, south]
           ]

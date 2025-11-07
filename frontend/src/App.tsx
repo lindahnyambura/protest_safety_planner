@@ -75,7 +75,7 @@ export default function App() {
     toast.loading('Finding your position...', { id: 'find-node' });
     try {
       const response = await fetch(
-        `http://localhost:8000/nearest-node?lat=${coords.lat}&lng=${coords.lng}`
+        `protestsafetyplanner-production.up.railway.app/nearest-node?lat=${coords.lat}&lng=${coords.lng}`
       );
 
       if (response.ok) {
@@ -135,7 +135,7 @@ export default function App() {
       toast.loading('Computing safe route...', { id: 'route-loading' });
 
       const response = await fetch(
-        `http://localhost:8000/route?start=${startNode}&goal=${goalNode}&algorithm=astar&lambda_risk=${riskPreference}`
+        `protestsafetyplanner-production.up.railway.app/route?start=${startNode}&goal=${goalNode}&algorithm=astar&lambda_risk=${riskPreference}`
       );
 
       if (!response.ok) {

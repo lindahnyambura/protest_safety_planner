@@ -1,0 +1,5 @@
+{
+  "appId": "com.protestplanner.protestsafety",
+  "appName": "SafeNav",
+  "webDir": "./frontend/build"
+}
