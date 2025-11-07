@@ -15,6 +15,7 @@ import pyproj
 import time
 import requests
 from typing import Optional
+from typing import Dict, List, Tuple
 from affine import Affine
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -120,6 +121,54 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+# Global node mapping cache
+NODE_TO_COORDS: Dict[str, Tuple[float, float]] = {}  # node_id -> (lat, lng)
+LANDMARK_TO_NODE: Dict[str, str] = {}  # landmark_name -> node_id
+
+def build_node_coordinate_cache(graph: nx.Graph):
+    """
+    Build a mapping of node IDs to lat/lng coordinates
+    Uses proper UTM to WGS84 transformation
+    """
+    global NODE_TO_COORDS
+    
+    transformer = pyproj.Transformer.from_crs("EPSG:32737", "EPSG:4326", always_xy=True)
+    
+    for node_id, data in graph.nodes(data=True):
+        x_utm = float(data.get('x', 0))
+        y_utm = float(data.get('y', 0))
+        
+        lng, lat = transformer.transform(x_utm, y_utm)
+        NODE_TO_COORDS[node_id] = (lat, lng)
+    
+    print(f"[Backend] Cached coordinates for {len(NODE_TO_COORDS)} nodes")
+
+def load_landmark_mappings():
+    """
+    Load landmark to node mappings from your script output
+    Run your script first and save the output
+    """
+    global LANDMARK_TO_NODE
+    
+    # Results from your script - update these with actual output
+    LANDMARK_TO_NODE = {
+        # "uhuru park": "12343642875",
+        # "jamia mosque": "6580961457",
+        # "city market": "9859577513",
+        "kencom": "12343534285",
+        "bus station": "10873342299",
+        "odeon": "12361156623",
+        # "afya center": "10873342295",
+        "national archives": "12414258058",
+        # "kicc": "13134429074",
+        "gpo": "12361445752",
+        # "teleposta towers": "5555073936",
+        # "times tower": "10701041875",
+    }
+    
+    print(f"[Backend] Loaded {len(LANDMARK_TO_NODE)} landmark mappings")
+
 
 def load_street_name_cache():
     """Load cached street names on startup"""
@@ -558,6 +607,12 @@ def load_planner():
         cell_to_node=cell_to_node
     )
 
+    # Build coordinate cache
+    build_node_coordinate_cache(planner.osm_graph)
+    
+    # Load landmark mappings
+    load_landmark_mappings()
+
     # Build KDTree for nearest node lookup
     build_node_kdtree(planner.osm_graph)
 
@@ -566,6 +621,25 @@ def load_planner():
 
     print("[Backend] Planner initialized successfully.")
 
+@app.on_event("startup")
+async def start_report_expiry_task():
+    import asyncio
+    
+    async def expire_old_reports():
+        while True:
+            await asyncio.sleep(60)  # Check every minute
+            current_time = time.time()
+            
+            for node_id in list(RECENT_REPORTS.keys()):
+                RECENT_REPORTS[node_id] = [
+                    r for r in RECENT_REPORTS[node_id]
+                    if r['expires_at'] > current_time
+                ]
+                
+                if not RECENT_REPORTS[node_id]:
+                    del RECENT_REPORTS[node_id]
+    
+    asyncio.create_task(expire_old_reports())
 
 # 3. API Endpoints
 
@@ -602,6 +676,84 @@ def get_nearest_node(lat: float = Query(...), lng: float = Query(...)):
     except Exception as e:
         print(f"Nearest node error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/debug/harm-at-node")
+def debug_harm_at_node(node: str = Query(...)):
+    """Check harm probability at a specific node"""
+    if planner is None:
+        return {"error": "Planner not initialized"}
+    
+    if node not in planner.osm_graph.nodes:
+        return {"error": f"Node {node} not found"}
+    
+    # Get all edges from this node
+    edges_harm = []
+    for neighbor in planner.osm_graph.neighbors(node):
+        edge_data = planner.osm_graph[node][neighbor]
+        if isinstance(planner.osm_graph, nx.MultiDiGraph):
+            edge_data = edge_data[0]
+        
+        harm = edge_data.get('p_harm', 0.0)
+        edges_harm.append({
+            "to_node": neighbor,
+            "p_harm": float(harm)
+        })
+    
+    return {
+        "node_id": node,
+        "edges": edges_harm,
+        "total_edges": len(edges_harm),
+        "max_harm": max([e['p_harm'] for e in edges_harm]) if edges_harm else 0.0
+    }
+
+@app.get("/landmarks")
+def get_landmarks():
+    """Return all known landmarks with their coordinates"""
+    landmarks = []
+    for name, node_id in LANDMARK_TO_NODE.items():
+        if node_id in NODE_TO_COORDS:
+            lat, lng = NODE_TO_COORDS[node_id]
+            landmarks.append({
+                "name": name.title(),
+                "node_id": node_id,
+                "coordinates": {"lat": lat, "lng": lng}
+            })
+    return {"landmarks": landmarks}
+
+@app.get("/nearest-landmark")
+def get_nearest_landmark(lat: float = Query(...), lng: float = Query(...)):
+    """
+    Find the nearest landmark to given coordinates
+    Uses Haversine distance
+    """
+    def haversine(lat1, lon1, lat2, lon2):
+        from math import radians, sin, cos, sqrt, atan2
+        R = 6371000  # Earth radius in meters
+        dlat = radians(lat2 - lat1)
+        dlon = radians(lon2 - lon1)
+        a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
+        return 2 * R * atan2(sqrt(a), sqrt(1 - a))
+    
+    nearest_landmark = None
+    min_distance = float('inf')
+    
+    for name, node_id in LANDMARK_TO_NODE.items():
+        if node_id in NODE_TO_COORDS:
+            node_lat, node_lng = NODE_TO_COORDS[node_id]
+            distance = haversine(lat, lng, node_lat, node_lng)
+            
+            if distance < min_distance:
+                min_distance = distance
+                nearest_landmark = {
+                    "name": name.title(),
+                    "node_id": node_id,
+                    "distance_m": round(distance),
+                    "coordinates": {"lat": node_lat, "lng": node_lng}
+                }
+    
+    return nearest_landmark if nearest_landmark else {"error": "No landmarks found"}
+
 
 @app.get("/riskmap-image")
 async def get_risk_heatmap_image():
@@ -808,12 +960,108 @@ async def test_coordinates():
     
     return results
 
+# Global report storage (in-memory for demo)
+RECENT_REPORTS: Dict[str, List[dict]] = {}  # cell_id -> list of reports
+REPORT_EXPIRY_SECONDS = 600  # 10 minutes
+
 @app.post("/report")
 async def submit_report(report_data: dict):
-    """Mock report submission for demo"""
-    print(f"Received report: {report_data}")
-    # In real implementation, this would go to your report adapter
-    return {"status": "received", "id": "mock_report_123"}
+    """
+    Submit an anonymous hazard report
+    Updates the risk map in real-time
+    """
+    import time
+    from collections import defaultdict
+    
+    # Validate report
+    required_fields = ['type', 'lat', 'lng', 'confidence']
+    if not all(field in report_data for field in required_fields):
+        return JSONResponse({"error": "Missing required fields"}, status_code=400)
+    
+    # Snap to nearest node
+    try:
+        nearest_response = await get_nearest_node(
+            lat=report_data['lat'],
+            lng=report_data['lng']
+        )
+        node_id = nearest_response['node_id']
+    except:
+        return JSONResponse({"error": "Could not snap to node"}, status_code=400)
+    
+    # Store report
+    timestamp = time.time()
+    report = {
+        "type": report_data['type'],
+        "node_id": node_id,
+        "confidence": report_data['confidence'],
+        "timestamp": timestamp,
+        "expires_at": timestamp + REPORT_EXPIRY_SECONDS
+    }
+    
+    if node_id not in RECENT_REPORTS:
+        RECENT_REPORTS[node_id] = []
+    RECENT_REPORTS[node_id].append(report)
+    
+    # Update edge harm probabilities in graph
+    update_edge_harm_from_reports(node_id, report_data['type'], report_data['confidence'])
+    
+    print(f"[Backend] Report received: {report_data['type']} at node {node_id}")
+    
+    return {
+        "status": "ok",
+        "report_id": f"r_{int(timestamp)}",
+        "node_id": node_id,
+        "expires_in_seconds": REPORT_EXPIRY_SECONDS
+    }
+
+def update_edge_harm_from_reports(node_id: str, report_type: str, confidence: float):
+    """
+    Update edge harm probabilities based on new report
+    """
+    if planner is None:
+        return
+    
+    # Map report types to harm multipliers
+    harm_multipliers = {
+        'safe': 0.5,       # Reduces harm
+        'crowd': 1.2,      # Slight increase
+        'police': 1.5,     # Moderate increase
+        'tear_gas': 2.0,   # High increase
+        'water_cannon': 2.0
+    }
+    
+    multiplier = harm_multipliers.get(report_type, 1.0)
+    
+    # Update all edges connected to this node
+    for neighbor in planner.osm_graph.neighbors(node_id):
+        if isinstance(planner.osm_graph, nx.MultiDiGraph):
+            for key in planner.osm_graph[node_id][neighbor]:
+                edge_data = planner.osm_graph[node_id][neighbor][key]
+                current_harm = edge_data.get('p_harm', 0.0)
+                # Weighted update based on confidence
+                new_harm = min(1.0, current_harm + (multiplier - 1.0) * confidence)
+                edge_data['p_harm'] = new_harm
+        else:
+            edge_data = planner.osm_graph[node_id][neighbor]
+            current_harm = edge_data.get('p_harm', 0.0)
+            new_harm = min(1.0, current_harm + (multiplier - 1.0) * confidence)
+            edge_data['p_harm'] = new_harm
+    
+    print(f"[Backend] Updated harm around node {node_id} with multiplier {multiplier}")
+
+
+@app.post("/user/delete-data")
+async def delete_user_data(session_id: str = Query(...)):
+    """
+    Delete all data associated with a user session
+    """
+    # In production, you'd have session-based storage
+    # For now, just clear all recent reports
+    global RECENT_REPORTS
+    RECENT_REPORTS.clear()
+    
+    return {"status": "deleted", "message": "All data cleared"}
+
 
 @app.get("/alerts")
 async def get_alerts():
@@ -840,13 +1088,21 @@ def get_config():
 def get_route(
     start: str = Query(..., description="Start node ID"),
     goal: str = Query(..., description="Goal node ID"),
-    algorithm: str = Query("astar", description="astar or dijkstra")
+    algorithm: str = Query("astar", description="astar or dijkstra"),
+    lambda_risk: float = Query(10.0, description="Risk weight (1.0=distance, 10.0=safety)")
 ):
     """Compute a risk-aware route with street names"""
     if planner is None:
         return JSONResponse({"error": "Planner not initialized"}, status_code=503)
 
+    # Temporarily override planner config
+    original_lambda = planner.config.get('lambda_risk', 10.0)
+    planner.config['lambda_risk'] = lambda_risk
+    
     result = planner.plan_route(start, goal, algorithm)
+
+    # Restore original config
+    planner.config['lambda_risk'] = original_lambda
     
     # Convert UTM geometry to lat/lng
     if "geometry" in result:

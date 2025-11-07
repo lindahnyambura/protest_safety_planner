@@ -52,10 +52,10 @@ export default function App() {
     setCurrentScreen(screen);
   };
 
-  // Debug
-  useEffect(() => {
-    console.log('[App] Current screen:', currentScreen);
-  }, [currentScreen]);
+  // // Debug
+  // useEffect(() => {
+  //   console.log('[App] Current screen:', currentScreen);
+  // }, [currentScreen]);
 
   const handleLocationGranted = async (location: string, coords: { lat: number; lng: number }) => {
     setUserLocation(location);
@@ -121,11 +121,21 @@ export default function App() {
       const startNode = userNode;
       const goalNode = getNodeIdFromDestination(destinationData.destination);
 
-      console.log(`[App] Computing route from ${startNode} to ${goalNode}`);
+      // Map risk preference to planner parameters
+      // riskPreference comes from slider: 0-100
+      // < 35 = safest (high lambda_risk)
+      // > 65 = shortest (low lambda_risk)
+      const riskPreference = destinationData.riskLevel === 'low' 
+        ? 10.0  // Prioritize safety
+        : destinationData.riskLevel === 'high'
+        ? 1.0   // Prioritize distance
+        : 5.0;  // Balanced
+      
+      console.log(`[App] Computing route: start=${startNode}, goal=${goalNode}, risk_weight=${riskPreference}`);
       toast.loading('Computing safe route...', { id: 'route-loading' });
 
       const response = await fetch(
-        `http://localhost:8000/route?start=${startNode}&goal=${goalNode}&algorithm=astar`
+        `http://localhost:8000/route?start=${startNode}&goal=${goalNode}&algorithm=astar&lambda_risk=${riskPreference}`
       );
 
       if (!response.ok) {

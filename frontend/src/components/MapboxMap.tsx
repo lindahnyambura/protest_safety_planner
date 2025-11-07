@@ -41,7 +41,7 @@ export default function MapboxMap({
   const [loaded, setLoaded] = useState(false);
 
   const NAIROBI_BOUNDS: [number, number, number, number] = [
-    36.81, -1.295, 36.835, -1.28
+    36.80, -1.30, 36.84, -1.27
   ];
 
   // Initialize map
@@ -55,6 +55,8 @@ export default function MapboxMap({
       style: 'mapbox://styles/nyambural/cmhnsrbkz001o01s4dvswcypq',
       center: [36.8225, -1.2875],
       zoom: 14,
+      minZoom: 12,  // minimum zoom
+      maxZoom: 18,  // maximum zoom
       maxBounds: NAIROBI_BOUNDS
     });
 

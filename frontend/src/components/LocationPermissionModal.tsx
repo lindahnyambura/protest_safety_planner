@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { MapPin, Info, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -14,6 +14,17 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
   const [manualLocation, setManualLocation] = useState('');
   const [useManual, setUseManual] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [landmarks, setLandmarks] = useState<any[]>([]);
+
+  // Fetch landmarks for manual selection
+  useEffect(() => {
+    if (useManual) {
+      fetch('http://localhost:8000/landmarks')
+        .then(res => res.json())
+        .then(data => setLandmarks(data.landmarks))
+        .catch(err => console.error('Failed to load landmarks:', err));
+    }
+  }, [useManual]);
 
   const handleGrantPermission = () => {
     setLoading(true);
@@ -66,12 +77,26 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
     );
   };
 
-  const handleManualLocation = () => {
-    if (!manualLocation.trim()) return;
-    
-    // Use a default central CBD location for manual entry
-    // In production, you'd geocode the manual location
-    onLocationGranted(manualLocation, { lat: -1.2875, lng: 36.8225 });
+  const handleManualLocation = async (landmark?: any) => {
+    if (landmark) {
+      // Use exact coordinates from the landmark
+      onLocationGranted(landmark.name, {
+        lat: landmark.coordinates.lat,
+        lng: landmark.coordinates.lng
+      });
+    } else if (manualLocation.trim()) {
+      // Search for typed location
+      try {
+        const response = await fetch(`http://localhost:8000/nearest-landmark?lat=-1.2875&lng=36.8225`);
+        const data = await response.json();
+        onLocationGranted(data.name, {
+          lat: data.coordinates.lat,
+          lng: data.coordinates.lng
+        });
+      } catch {
+        onLocationGranted(manualLocation, { lat: -1.2875, lng: 36.8225 });
+      }
+    }
   };
 
   return (
@@ -121,6 +146,7 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
           </p>
 
           {!useManual ? (
+            // Auto Location Flow
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -177,11 +203,35 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
               </motion.button>
             </motion.div>
           ) : (
+            // Manual Location Flow
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3 }}
             >
+              <p className="text-sm text-neutral-600 mb-3">Select your location:</p>
+
+              {/* Landmark selection grid */}
+              <div className="max-h-64 overflow-y-auto mb-3 space-y-2">
+                {landmarks.map((landmark, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleManualLocation(landmark)}
+                    className="w-full text-left px-4 py-3 bg-white border-2 border-neutral-200 rounded-xl hover:border-neutral-900 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-neutral-900">
+                        {landmark.name}
+                      </span>
+                      <span className="text-xs text-neutral-500">
+                        {landmark.coordinates.lat.toFixed(4)}, {landmark.coordinates.lng.toFixed(4)}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Manual text input fallback */}
               <input
                 type="text"
                 value={manualLocation}
@@ -191,10 +241,10 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
               />
               
               <Button 
-                onClick={handleManualLocation}
+                onClick={() => handleManualLocation()}
                 className="w-full bg-neutral-900 hover:bg-neutral-800 mb-3"
                 size="lg"
-                disabled={!manualLocation.trim()}
+                disabled={!manualLocation.trim() && landmarks.length === 0}
               >
                 Continue
               </Button>
