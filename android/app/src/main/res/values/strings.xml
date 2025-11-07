@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SafeNav</string>
+    <string name="title_activity_main">SafeNav</string>
+    <string name="package_name">com.protestplanner.protestsafety</string>
+    <string name="custom_url_scheme">com.protestplanner.protestsafety</string>
+</resources>

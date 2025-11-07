@@ -23,7 +23,7 @@ print()
 
 try:
     response = requests.post(
-        "http://localhost:8000/report",
+        "protestsafetyplanner-production.up.railway.app/report",
         json=report_data,
         headers={"Content-Type": "application/json"}
     )
