@@ -22,7 +22,7 @@ export default function HomeMap({
 }: HomeMapProps) {
   // Map related states
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
-  const [userCoords, setUserCoords] = useState<[number, number]>([36.8225, -1.2875]);
+  const [userCoords] = useState<[number, number]>([36.8225, -1.2875]);
 
   // UI related states
   const [activeLayers, setActiveLayers] = useState<string[]>(['risk']);
@@ -113,7 +113,7 @@ export default function HomeMap({
             >
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-black" strokeWidth={2} />
-                <span className="text-sm text-neutral-900">Kenyatta Ave</span>
+                <span className="text-sm text-neutral-900">{userLocation || 'Nairobi CBD'}</span>
               </div>
             </motion.div>
           </div>

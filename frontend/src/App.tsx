@@ -44,7 +44,8 @@ export default function App() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<RouteData | null>(null);
   const [userLocation, setUserLocation] = useState<string>('');
-  const [userNode, setUserNode] = useState<string>('3374306578'); // Default for testing
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [userNode, setUserNode] = useState<string | null>(null);
 
   const navigateTo = (screen: Screen) => {
     console.log('[App] Navigating to', screen);
@@ -56,33 +57,71 @@ export default function App() {
     console.log('[App] Current screen:', currentScreen);
   }, [currentScreen]);
 
-  const handleLocationGranted = (location: string) => {
+  const handleLocationGranted = async (location: string, coords: { lat: number; lng: number }) => {
     setUserLocation(location);
+    setUserCoords(coords);
     setShowLocationModal(false);
+
+    // Find nearest OSM node to user's location
+    toast.loading('Finding your position...', { id: 'find-node' });
+    
+    try {
+      const response = await fetch(
+        `http://localhost:8000/nearest-node?lat=${coords.lat}&lng=${coords.lng}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUserNode(data.node_id);
+        toast.success('Location set successfully!', { id: 'find-node' });
+      } else {
+        throw new Error('Could not find nearest node');
+      }
+    } catch (error) {
+      console.error('Failed to find nearest node:', error);
+      toast.error('Location set with limited accuracy', { id: 'find-node' });
+      // Fallback to default node
+      setUserNode('12361156623');  // Odeon
+    }
+    
     navigateTo('home-map');
   };
 
-  // Helper: Convert destination name to node ID
+  // Update destination mapping with real Nairobi landmarks
   const getNodeIdFromDestination = (destination: string): string => {
-    // Map UI destinations to actual OSM node IDs
     const destinationMap: Record<string, string> = {
-      'Uhuru Park': '10873342293',
-      'Railway Station': '8584796200',
-      'Central Park': '30498619',
-      'Medical Center': '569927865',
-      'Kenyatta Ave Exit': '6365147512',
-      'Designated Safe Zone': '6364594184',
-      'City Stadium': '9436234122',
+      // Real Nairobi CBD landmarks with actual OSM nodes
+      'Jamia Mosque': '6580961457',      // Near Tom Mboya Street
+      'National Archives': '12414258058',   // On Moi Avenue
+      'Afya Center': '10873342295',      // Near Tom Mboya
+      'GPO (General Post Office)': '12361445752', // Kenyatta Avenue
+      'Railway Station': '8584796189',   // Near Uhuru Highway
+      'KICC': '13134429074',              // City center landmark
+      
+      // Fallback for old names
+      "Uhuru Park": "12343642875",
+      "City Market": "9859577513",
+      "Kencom": "12343534285",
+      "Bus Station": "10873342299",
+      "Teleposta Towers": "5555073936",
+      "Times Tower": "10701041875",
+      "Odeon": "12361156623",
     };
 
-    return destinationMap[destination] || '10873342293'; // Default to Uhuru Park
+    return destinationMap[destination] || "9859577513";  // city market
   };
 
   const handleComputeRoute = async (destinationData: RouteData) => {
+    if (!userNode) {
+      toast.error('User location not set');
+      return;
+    }
+
     try {
-      const startNode = userNode; // Your current location node
+      const startNode = userNode;
       const goalNode = getNodeIdFromDestination(destinationData.destination);
 
+      console.log(`[App] Computing route from ${startNode} to ${goalNode}`);
       toast.loading('Computing safe route...', { id: 'route-loading' });
 
       const response = await fetch(
@@ -102,7 +141,6 @@ export default function App() {
         directions: backendRoute.directions,
         metadata: backendRoute.metadata,
         path: backendRoute.path,
-        // Update values from backend
         safetyScore: Math.round(backendRoute.safety_score * 100),
         eta: Math.round(backendRoute.metadata.estimated_time_s / 60),
         distance: parseFloat((backendRoute.metadata.total_distance_m / 1000).toFixed(1)),

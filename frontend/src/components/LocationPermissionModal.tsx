@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { MapPin, Info, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 
 interface LocationPermissionModalProps {
-  onLocationGranted: (location: string) => void;
+  onLocationGranted: (location: string, coords: { lat: number; lng: number }) => void;
   onClose: () => void;
 }
 
@@ -12,16 +13,65 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
   const [showWhy, setShowWhy] = useState(false);
   const [manualLocation, setManualLocation] = useState('');
   const [useManual, setUseManual] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleGrantPermission = () => {
-    // Simulate getting user's location
-    onLocationGranted('Nairobi CBD, Kenya');
+    setLoading(true);
+
+    if (!navigator.geolocation) {
+      toast.error('Geolocation not supported by your browser');
+      setLoading(false);
+      setUseManual(true);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        // Verify we're in Nairobi CBD area
+        if (latitude < -1.30 || latitude > -1.27 || longitude < 36.80 || longitude > 36.84) {
+          toast.error('Location outside Nairobi CBD area');
+          setLoading(false);
+          setUseManual(true);
+          return;
+        }
+
+        // Reverse geocode to get location name
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
+          headers: { 'User-Agent': 'ProtestSafetyPlanner/1.0' }
+        })
+          .then(res => res.json())
+          .then(data => {
+            const locationName = data.address?.road || data.address?.neighbourhood || 'Nairobi CBD';
+            onLocationGranted(locationName, { lat: latitude, lng: longitude });
+            setLoading(false);
+          })
+          .catch(() => {
+            onLocationGranted('Nairobi CBD', { lat: latitude, lng: longitude });
+            setLoading(false);
+          });
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        toast.error('Could not get your location');
+        setLoading(false);
+        setUseManual(true);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
   };
 
   const handleManualLocation = () => {
-    if (manualLocation.trim()) {
-      onLocationGranted(manualLocation);
-    }
+    if (!manualLocation.trim()) return;
+    
+    // Use a default central CBD location for manual entry
+    // In production, you'd geocode the manual location
+    onLocationGranted(manualLocation, { lat: -1.2875, lng: 36.8225 });
   };
 
   return (
@@ -80,14 +130,9 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
                 onClick={handleGrantPermission}
                 className="w-full bg-neutral-900 hover:bg-neutral-800 mb-3"
                 size="lg"
-                asChild
+                disabled={loading}
               >
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Allow Location Access
-                </motion.button>
+                {loading ? 'Getting location...' : 'Allow Location Access'}
               </Button>
 
               <motion.button
@@ -141,7 +186,7 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
                 type="text"
                 value={manualLocation}
                 onChange={(e) => setManualLocation(e.target.value)}
-                placeholder="Enter your location"
+                placeholder="Enter your location (e.g., Kenyatta Avenue)"
                 className="w-full px-4 py-3 border-2 border-neutral-300 rounded-xl mb-3 focus:outline-none focus:border-neutral-900 transition-colors"
               />
               
@@ -150,14 +195,8 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
                 className="w-full bg-neutral-900 hover:bg-neutral-800 mb-3"
                 size="lg"
                 disabled={!manualLocation.trim()}
-                asChild
               >
-                <motion.button
-                  whileHover={{ scale: !manualLocation.trim() ? 1 : 1.02 }}
-                  whileTap={{ scale: !manualLocation.trim() ? 1 : 0.98 }}
-                >
-                  Continue
-                </motion.button>
+                Continue
               </Button>
 
               <motion.button

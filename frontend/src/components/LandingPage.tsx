@@ -11,26 +11,26 @@ interface LandingPageProps {
 export default function LandingPage({ onContinue }: LandingPageProps) {
   const pastIncidents = [
     { 
-      title: 'Healthcare Workers Rally', 
+      title: 'End Femicide March', 
       status: 'peaceful', 
-      date: 'Nov 3, 2025', 
-      location: 'Uhuru Park',
-      image: 'https://images.unsplash.com/photo-1610629315052-48f40742d3ae?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoZWFsdGhjYXJlJTIwd29ya2VycyUyMHJhbGx5fGVufDF8fHx8MTc2MjQwMjcwNnww&ixlib=rb-4.1.0&q=80&w=1080'
+      date: 'Jan 27, 2024', 
+      location: 'Jevanjee Gardens - Nairobi CBD',
+      image: 'assets/27-01-24.jpg'
     },
     { 
-      title: 'Student Demonstration', 
+      title: '#RMG - Occupy Parliament', 
       status: 'tense', 
-      date: 'Oct 28, 2025', 
-      location: 'University Way',
-      image: 'https://images.unsplash.com/photo-1759061729194-e1aa695a4861?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwZGVtb25zdHJhdGlvbiUyMHJhbGx5fGVufDF8fHx8MTc2MjQwMjcwNnww&ixlib=rb-4.1.0&q=80&w=1080'
+      date: 'June 25, 2024', 
+      location: 'Countrywide',
+      image: 'assets/ruto-must-go.jpg'
     },
     { 
-      title: 'Climate Action March', 
-      status: 'peaceful', 
-      date: 'Oct 20, 2025', 
-      location: 'CBD',
-      image: 'https://images.unsplash.com/photo-1759078528289-86c242c3734b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjbGltYXRlJTIwYWN0aW9uJTIwbWFyY2h8ZW58MXx8fHwxNzYyNDAyNzA3fDA&ixlib=rb-4.1.0&q=80&w=1080'
-    },
+      title: 'Reject Finance Bill 2024 ', 
+      status: 'tense', 
+      date: 'June 18, 2024', 
+      location: 'Nairobi CBD',
+      image: 'assets/reject.jpg'
+    }
   ];
 
   return (
@@ -49,7 +49,7 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
           
           <h1 className="text-4xl font-bold mb-2">SafeNav</h1>
           <p className="text-neutral-600">
-            Community safety, together.
+            Real-time protest safety navigation. Community-powered.
           </p>
         </motion.div>
 
@@ -69,8 +69,8 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
           >
             <div className="relative h-48 overflow-hidden">
               <ImageWithFallback
-                src="https://images.unsplash.com/photo-1759117708874-029ce6e1eb65?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm90ZXN0JTIwbWFyY2glMjBjcm93ZCUyMHBlYWNlZnVsfGVufDF8fHx8MTc2MjQwMjcwNXww&ixlib=rb-4.1.0&q=80&w=1080"
-                alt="March for Justice"
+                src="assets/07-07-25.jpg"
+                alt="Saba Saba March"
                 className="w-full h-full object-cover"
               />
               <div className="absolute top-3 right-3">
@@ -81,18 +81,18 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
             </div>
             
             <div className="p-5">
-              <h2 className="mb-3 text-neutral-900">March for Justice — Nairobi CBD</h2>
+              <h2 className="mb-3 text-neutral-900">Saba Saba March — Jamuhuri Grounds</h2>
               
               <div className="flex items-center gap-4 mb-3 text-neutral-600 flex-wrap">
-                <span className="text-sm">Nov 6, 2025 • 2:00 PM</span>
+                <span className="text-sm">July 7, 2025 • 10:00 AM</span>
                 <div className="flex items-center gap-1">
                   <MapPin className="w-4 h-4 text-black" strokeWidth={2} />
-                  <span className="text-sm">Kenyatta Ave – CBD</span>
+                  <span className="text-sm">Jamuhuri Grounds</span>
                 </div>
               </div>
               
               <p className="text-neutral-700 mb-4">
-                Peaceful gathering progressing along planned route. Community observers report calm atmosphere with organized coordination.
+                Peaceful gathering progressing along planned route. Community observers report police barricades along Thika Road.
               </p>
               
               <div className="flex items-center justify-between pt-4 border-t border-neutral-200">
@@ -116,14 +116,14 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
           </motion.div>
         </motion.div>
 
-        {/* Recent Activity */}
+        {/* Previous Protests */}
         <motion.div 
           className="mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <h3 className="mb-4 text-neutral-900">Recent Activity</h3>
+          <h3 className="mb-4 text-neutral-900">Previous Protests</h3>
           <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {pastIncidents.map((incident, idx) => (
               <motion.div
@@ -195,7 +195,7 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
           </Button>
           
           <p className="text-xs text-neutral-500 text-center mt-4">
-            Verified by community observers and partners.
+            Join thousands using SafeNav to navigate protests safely
           </p>
         </motion.div>
       </div>

@@ -21,6 +21,12 @@ landmarks = {
     "teleposta towers": (-1.2837, 36.8200),
     "times tower": (-1.2882, 36.8231),
     "railways": (-1.2917, 36.8286),
+    "jamia mosque": (-1.2836, 36.8207),
+    "gpo": (-1.2864, 36.8191),
+    "afya center": (-1.2879, 36.8281),
+    "odeon": (-1.2839, 36.8243),
+    "kencom": (-1.2861, 36.8250),
+    "city market": (-1.2833, 36.8189),
 }
 
 def haversine(lat1, lon1, lat2, lon2):

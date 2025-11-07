@@ -16,11 +16,19 @@ export default function RouteDestination({ onBack, onComputeRoute }: RouteDestin
   const [searchQuery, setSearchQuery] = useState('');
   const [riskPreference, setRiskPreference] = useState([50]);
 
+  // Updated with real Nairobi landmarks
   const presets = [
-    { label: 'Nearest exit', location: 'Kenyatta Ave Exit' },
-    { label: 'Uhuru Park', location: 'Uhuru Park' },
-    { label: 'Safe zone', location: 'Designated Safe Zone' },
-    { label: 'City Stadium', location: 'City Stadium' },
+    { label: 'Jamia Mosque', location: 'Jamia Mosque' },
+    { label: 'National Archives', location: 'National Archives' },
+    { label: 'Afya Center', location: 'Afya Center' },
+    { label: 'GPO', location: 'GPO (General Post Office)' },
+  ];
+
+  // Updated recent searches
+  const recentSearches = [
+    'Railway Station',
+    'KICC',
+    'Jamia Mosque'
   ];
 
   const handlePresetClick = (location: string) => {
@@ -153,14 +161,10 @@ export default function RouteDestination({ onBack, onComputeRoute }: RouteDestin
         </motion.div>
 
         {/* Recent Searches */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
+        <motion.div /* ... */>
           <label className="text-sm text-neutral-600 mb-3 block">Recent searches</label>
           <div className="space-y-2">
-            {['Railway Station', 'Central Park', 'Medical Center'].map((location, idx) => (
+            {recentSearches.map((location, idx) => (
               <motion.button
                 key={idx}
                 onClick={() => setSearchQuery(location)}

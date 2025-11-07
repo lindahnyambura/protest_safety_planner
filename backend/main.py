@@ -18,6 +18,7 @@ from typing import Optional
 from affine import Affine
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from scipy.spatial import KDTree
 
 from PIL import Image
 import io
@@ -49,6 +50,27 @@ def convert_route_geometry(geometry_utm: list) -> list:
     """Convert route geometry from UTM to [lng, lat] for GeoJSON"""
     return [[lng, lat] for x, y in geometry_utm 
             for lng, lat in [transformer.transform(x, y)]]
+
+
+# Cache for KDTree (build once on startup)
+NODE_KDTREE = None
+NODE_IDS = None
+
+def build_node_kdtree(graph: nx.Graph):
+    """Build KDTree for fast nearest node lookup"""
+    global NODE_KDTREE, NODE_IDS
+    
+    coords = []
+    node_ids = []
+    
+    for node_id, data in graph.nodes(data=True):
+        if 'x' in data and 'y' in data:
+            coords.append([float(data['x']), float(data['y'])])
+            node_ids.append(node_id)
+    
+    NODE_KDTREE = KDTree(coords)
+    NODE_IDS = np.array(node_ids)
+    print(f"[Backend] Built KDTree with {len(node_ids)} nodes")
 
 # 1. Initialize FastAPI app
 app = FastAPI(
@@ -536,6 +558,9 @@ def load_planner():
         cell_to_node=cell_to_node
     )
 
+    # Build KDTree for nearest node lookup
+    build_node_kdtree(planner.osm_graph)
+
     # Load street name cache
     load_street_name_cache()
 
@@ -543,6 +568,40 @@ def load_planner():
 
 
 # 3. API Endpoints
+
+@app.get("/nearest-node")
+def get_nearest_node(lat: float = Query(...), lng: float = Query(...)):
+    """Find the nearest OSM node to given lat/lng coordinates"""
+    if planner is None or NODE_KDTREE is None:
+        return JSONResponse({"error": "Planner not initialized"}, status_code=503)
+    
+    try:
+        # Convert lat/lng to UTM
+        import pyproj
+        transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:32737", always_xy=True)
+        x_utm, y_utm = transformer.transform(lng, lat)
+        
+        # Find nearest node
+        distance, index = NODE_KDTREE.query([x_utm, y_utm])
+        nearest_node_id = NODE_IDS[index]
+        
+        # Get node data
+        node_data = planner.osm_graph.nodes[nearest_node_id]
+        
+        return {
+            "node_id": nearest_node_id,
+            "distance_m": float(distance),
+            "coordinates": {
+                "lat": lat,
+                "lng": lng,
+                "x_utm": float(node_data['x']),
+                "y_utm": float(node_data['y'])
+            }
+        }
+        
+    except Exception as e:
+        print(f"Nearest node error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/riskmap-image")
 async def get_risk_heatmap_image():
