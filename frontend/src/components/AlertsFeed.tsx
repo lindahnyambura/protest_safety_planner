@@ -1,104 +1,134 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { ArrowLeft, Wind, Shield, Users, AlertTriangle, MapPin } from 'lucide-react';
+import { ArrowLeft, Wind, Shield, Users, CheckCircle, Droplets, MapPin, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AlertsFeedProps {
   onBack: () => void;
+  onAlertClick?: (lat: number, lng: number) => void; // Navigate to location on map
 }
 
-export default function AlertsFeed({ onBack }: AlertsFeedProps) {
+interface Report {
+  id: string;
+  type: 'safe' | 'crowd' | 'police' | 'tear_gas' | 'water_cannon';
+  lat: number;
+  lng: number;
+  confidence: number;
+  timestamp: number;
+  expires_at: number;
+  node_id: string;
+  location_name?: string;
+}
+
+export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
   console.log('[AlertsFeed] Component rendered');
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const alerts = [
-    {
-      id: 1,
-      type: 'tear-gas',
-      title: 'Tear gas deployed',
-      location: 'Kenyatta Ave, CBD',
-      time: '2 min ago',
-      confidence: 'high',
-      description: 'Multiple reports of tear gas near Kenyatta Ave intersection.',
-      coordinates: { x: 45, y: 35 },
-    },
-    {
-      id: 2,
-      type: 'police',
-      title: 'Police presence',
-      location: 'Moi Ave',
-      time: '5 min ago',
-      confidence: 'medium',
-      description: 'Police units observed setting up blockade.',
-      coordinates: { x: 60, y: 50 },
-    },
-    {
-      id: 3,
-      type: 'crowd',
-      title: 'Large crowd gathering',
-      location: 'Uhuru Park entrance',
-      time: '8 min ago',
-      confidence: 'high',
-      description: 'Peaceful gathering estimated at 1,500+ people.',
-      coordinates: { x: 30, y: 60 },
-    },
-    {
-      id: 4,
-      type: 'crowd',
-      title: 'Crowd dispersing',
-      location: 'Tom Mboya St',
-      time: '12 min ago',
-      confidence: 'medium',
-      description: 'Crowd moving peacefully toward designated area.',
-      coordinates: { x: 55, y: 40 },
-    },
-    {
-      id: 5,
-      type: 'tear-gas',
-      title: 'Tear gas reported',
-      location: 'Haile Selassie Ave',
-      time: '15 min ago',
-      confidence: 'low',
-      description: 'Unconfirmed report, awaiting verification.',
-      coordinates: { x: 70, y: 30 },
-    },
-  ];
+  useEffect(() => {
+    fetchReports();
+    
+    // Refresh every 15 seconds
+    const interval = setInterval(fetchReports, 15000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/reports/active');
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[AlertsFeed] Fetched reports:', data.reports?.length || 0);
+        setReports(data.reports || []);
+      }
+    } catch (error) {
+      console.error('[AlertsFeed] Failed to fetch reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filters = [
-    { id: 'tear-gas', label: 'Tear Gas', icon: Wind },
+    { id: 'tear_gas', label: 'Tear Gas', icon: Wind },
+    { id: 'water_cannon', label: 'Water Cannon', icon: Droplets },
     { id: 'police', label: 'Police', icon: Shield },
     { id: 'crowd', label: 'Crowd', icon: Users },
+    { id: 'safe', label: 'Safe', icon: CheckCircle },
   ];
 
-  const filteredAlerts = activeFilter
-    ? alerts.filter(alert => alert.type === activeFilter)
-    : alerts;
+  const filteredReports = activeFilter
+    ? reports.filter(report => report.type === activeFilter)
+    : reports;
 
-  const getAlertColor = (type: string) => {
+  const getReportColor = (type: string) => {
     switch (type) {
-      case 'tear-gas':
+      case 'tear_gas':
+      case 'water_cannon':
         return 'red';
       case 'police':
         return 'blue';
       case 'crowd':
         return 'amber';
+      case 'safe':
+        return 'green';
       default:
         return 'neutral';
     }
   };
 
-  const getAlertIcon = (type: string) => {
+  const getReportIcon = (type: string) => {
     switch (type) {
-      case 'tear-gas':
+      case 'tear_gas':
         return Wind;
+      case 'water_cannon':
+        return Droplets;
       case 'police':
         return Shield;
       case 'crowd':
         return Users;
+      case 'safe':
+        return CheckCircle;
       default:
-        return AlertTriangle;
+        return MapPin;
     }
+  };
+
+  const getReportTitle = (type: string) => {
+    return type.replace('_', ' ').split(' ').map(w => 
+      w.charAt(0).toUpperCase() + w.slice(1)
+    ).join(' ');
+  };
+
+  const getTimeAgo = (timestamp: number) => {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+  };
+
+  const getExpiresIn = (expiresAt: number) => {
+    const seconds = Math.floor((expiresAt - Date.now()) / 1000);
+    
+    if (seconds <= 0) return 'Expired';
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    return `${Math.floor(seconds / 3600)}h`;
+  };
+
+  const handleReportClick = (report: Report) => {
+    console.log('[AlertsFeed] Report clicked:', report);
+    
+    if (onAlertClick) {
+      onAlertClick(report.lat, report.lng);
+    }
+    
+    onBack(); // Return to map after clicking
   };
 
   return (
@@ -121,7 +151,12 @@ export default function AlertsFeed({ onBack }: AlertsFeedProps) {
               <ArrowLeft className="w-5 h-5" strokeWidth={2} />
             </motion.button>
           </Button>
-          <h2>Alerts & Events</h2>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold">Alerts & Events</h2>
+            <p className="text-sm text-neutral-600">
+              {loading ? 'Loading...' : `${reports.length} active report${reports.length !== 1 ? 's' : ''}`}
+            </p>
+          </div>
         </div>
 
         {/* Filter Chips */}
@@ -135,11 +170,13 @@ export default function AlertsFeed({ onBack }: AlertsFeedProps) {
                   : 'bg-white text-neutral-600 border-neutral-300'
               }`}
             >
-              All
+              All ({reports.length})
             </Badge>
           </motion.div>
           {filters.map((filter) => {
             const Icon = filter.icon;
+            const count = reports.filter(r => r.type === filter.id).length;
+            
             return (
               <motion.div key={filter.id} whileTap={{ scale: 0.95 }}>
                 <Badge
@@ -151,7 +188,7 @@ export default function AlertsFeed({ onBack }: AlertsFeedProps) {
                   }`}
                 >
                   <Icon className="w-3 h-3" strokeWidth={2} />
-                  {filter.label}
+                  {filter.label} ({count})
                 </Badge>
               </motion.div>
             );
@@ -161,61 +198,99 @@ export default function AlertsFeed({ onBack }: AlertsFeedProps) {
 
       {/* Alerts List */}
       <div className="flex-1 overflow-y-auto">
-        {filteredAlerts.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-neutral-200 border-t-neutral-900 rounded-full animate-spin mx-auto mb-3"></div>
+              <p className="text-neutral-500">Loading reports...</p>
+            </div>
+          </div>
+        ) : filteredReports.length === 0 ? (
           <div className="flex items-center justify-center h-full px-6 text-center">
             <div>
-              <AlertTriangle className="w-12 h-12 text-neutral-300 mx-auto mb-3" strokeWidth={1.5} />
-              <p className="text-neutral-500">No alerts in this category</p>
+              <MapPin className="w-12 h-12 text-neutral-300 mx-auto mb-3" strokeWidth={1.5} />
+              <p className="text-neutral-500">
+                {activeFilter ? 'No reports in this category' : 'No active reports'}
+              </p>
+              <p className="text-sm text-neutral-400 mt-2">
+                Reports will appear here as they are submitted
+              </p>
             </div>
           </div>
         ) : (
           <div className="divide-y divide-neutral-200">
-            {filteredAlerts.map((alert, idx) => {
-              const Icon = getAlertIcon(alert.type);
-              const color = getAlertColor(alert.type);
+            {filteredReports.map((report, idx) => {
+              const Icon = getReportIcon(report.type);
+              const color = getReportColor(report.type);
+              const timeAgo = getTimeAgo(report.timestamp);
+              const expiresIn = getExpiresIn(report.expires_at);
+              const isExpiring = (report.expires_at - Date.now()) < 120000; // Less than 2 minutes
               
               return (
-                <motion.div
-                  key={alert.id}
-                  className="px-6 py-4 hover:bg-neutral-50 transition-colors cursor-pointer"
+                <motion.button
+                  key={report.id}
+                  onClick={() => handleReportClick(report)}
+                  className="w-full px-6 py-4 hover:bg-neutral-50 transition-colors text-left"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   whileTap={{ scale: 0.99 }}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center flex-shrink-0 border-${color}-400 bg-${color}-50`}>
-                      <Icon className={`w-5 h-5 text-${color}-600`} strokeWidth={1.5} />
+                    <div className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${
+                      color === 'red' ? 'border-red-400 bg-red-50' :
+                      color === 'blue' ? 'border-blue-400 bg-blue-50' :
+                      color === 'amber' ? 'border-amber-400 bg-amber-50' :
+                      color === 'green' ? 'border-green-400 bg-green-50' :
+                      'border-neutral-400 bg-neutral-50'
+                    }`}>
+                      <Icon className={`w-5 h-5 ${
+                        color === 'red' ? 'text-red-600' :
+                        color === 'blue' ? 'text-blue-600' :
+                        color === 'amber' ? 'text-amber-600' :
+                        color === 'green' ? 'text-green-600' :
+                        'text-neutral-600'
+                      }`} strokeWidth={1.5} />
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <h4 className="text-neutral-900">{alert.title}</h4>
+                        <h4 className="text-neutral-900 font-medium">
+                          {getReportTitle(report.type)}
+                        </h4>
                         <Badge
                           variant="outline"
                           className={`flex-shrink-0 text-xs ${
-                            alert.confidence === 'high'
+                            report.confidence > 0.7
                               ? 'border-green-300 text-green-700'
-                              : alert.confidence === 'medium'
+                              : report.confidence > 0.4
                               ? 'border-amber-300 text-amber-700'
                               : 'border-neutral-300 text-neutral-600'
                           }`}
                         >
-                          {alert.confidence}
+                          {Math.round(report.confidence * 100)}%
                         </Badge>
                       </div>
                       
                       <div className="flex items-center gap-2 text-sm text-neutral-600 mb-2">
                         <MapPin className="w-3 h-3" strokeWidth={1.5} />
-                        <span>{alert.location}</span>
-                        <span>•</span>
-                        <span>{alert.time}</span>
+                        <span className="truncate">
+                          {report.location_name || `${report.lat.toFixed(4)}, ${report.lng.toFixed(4)}`}
+                        </span>
                       </div>
-                      
-                      <p className="text-sm text-neutral-700">{alert.description}</p>
+
+                      <div className="flex items-center gap-3 text-xs text-neutral-500">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {timeAgo}
+                        </span>
+                        <span className={`${isExpiring ? 'text-amber-600 font-medium' : ''}`}>
+                          Expires in {expiresIn}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </motion.div>
+                </motion.button>
               );
             })}
           </div>
@@ -223,11 +298,13 @@ export default function AlertsFeed({ onBack }: AlertsFeedProps) {
       </div>
 
       {/* Info Footer */}
-      <div className="px-6 py-4 bg-neutral-50 border-t border-neutral-200">
-        <p className="text-sm text-neutral-600 text-center">
-          Tap any alert to highlight location on map
-        </p>
-      </div>
+      {!loading && filteredReports.length > 0 && (
+        <div className="px-6 py-4 bg-neutral-50 border-t border-neutral-200">
+          <p className="text-sm text-neutral-600 text-center">
+            Tap any alert to view its location on the map
+          </p>
+        </div>
+      )}
     </div>
   );
 }

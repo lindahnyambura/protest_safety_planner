@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import LocationPermissionModal from './components/LocationPermissionModal';
 import HomeMap from './components/HomeMap';
@@ -31,10 +31,22 @@ export interface RouteData {
   eta: number;
   distance: number;
   riskLevel: 'low' | 'medium' | 'high';
-  // Backend data (merged)
   geometry_latlng?: [number, number][];
-  directions?: any[];
-  metadata?: any;
+  directions?: Array<{
+    step: number;
+    lat: number;
+    lng: number;
+    instruction: string;
+    street_name: string | null;
+    distance_m: number;
+  }>;
+  metadata?: {
+    total_distance_m: number;
+    estimated_time_s: number;
+    mean_edge_risk: number;
+    max_edge_risk: number;
+    edge_risks: number[];
+  };
   path?: string[];
 }
 
@@ -46,30 +58,26 @@ export default function App() {
   const [userLocation, setUserLocation] = useState<string>('');
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [userNode, setUserNode] = useState<string | null>(null);
+  const [mapRefreshTrigger, setMapRefreshTrigger] = useState(0);
+  const homeMapRef = useRef<any>(null);
 
   const navigateTo = (screen: Screen) => {
     console.log('[App] Navigating to', screen);
     setCurrentScreen(screen);
   };
 
-  // // Debug
-  // useEffect(() => {
-  //   console.log('[App] Current screen:', currentScreen);
-  // }, [currentScreen]);
-
+  // When location permission granted
   const handleLocationGranted = async (location: string, coords: { lat: number; lng: number }) => {
     setUserLocation(location);
     setUserCoords(coords);
     setShowLocationModal(false);
 
-    // Find nearest OSM node to user's location
     toast.loading('Finding your position...', { id: 'find-node' });
-    
     try {
       const response = await fetch(
         `http://localhost:8000/nearest-node?lat=${coords.lat}&lng=${coords.lng}`
       );
-      
+
       if (response.ok) {
         const data = await response.json();
         setUserNode(data.node_id);
@@ -80,35 +88,30 @@ export default function App() {
     } catch (error) {
       console.error('Failed to find nearest node:', error);
       toast.error('Location set with limited accuracy', { id: 'find-node' });
-      // Fallback to default node
-      setUserNode('12361156623');  // Odeon
+      setUserNode('12361156623'); // fallback (Odeon)
     }
-    
+
     navigateTo('home-map');
   };
 
-  // Update destination mapping with real Nairobi landmarks
+  // Map of landmark destinations to OSM node IDs
   const getNodeIdFromDestination = (destination: string): string => {
     const destinationMap: Record<string, string> = {
-      // Real Nairobi CBD landmarks with actual OSM nodes
-      'Jamia Mosque': '6580961457',      // Near Tom Mboya Street
-      'National Archives': '12414258058',   // On Moi Avenue
-      'Afya Center': '10873342295',      // Near Tom Mboya
-      'GPO (General Post Office)': '12361445752', // Kenyatta Avenue
-      'Railway Station': '8584796189',   // Near Uhuru Highway
-      'KICC': '13134429074',              // City center landmark
-      
-      // Fallback for old names
-      "Uhuru Park": "12343642875",
-      "City Market": "9859577513",
-      "Kencom": "12343534285",
-      "Bus Station": "10873342299",
-      "Teleposta Towers": "5555073936",
-      "Times Tower": "10701041875",
-      "Odeon": "12361156623",
+      'Jamia Mosque': '6580961457',
+      'National Archives': '12414258058',
+      'Afya Center': '10873342295',
+      'GPO (General Post Office)': '12361445752',
+      'Railway Station': '8584796189',
+      'KICC': '13134429074',
+      'Uhuru Park': '12343642875',
+      'City Market': '9859577513',
+      'Kencom': '12343534285',
+      'Bus Station': '10873342299',
+      'Teleposta Towers': '5555073936',
+      'Times Tower': '10701041875',
+      'Odeon': '12361156623',
     };
-
-    return destinationMap[destination] || "9859577513";  // city market
+    return destinationMap[destination] || '9859577513'; // default fallback
   };
 
   const handleComputeRoute = async (destinationData: RouteData) => {
@@ -121,16 +124,13 @@ export default function App() {
       const startNode = userNode;
       const goalNode = getNodeIdFromDestination(destinationData.destination);
 
-      // Map risk preference to planner parameters
-      // riskPreference comes from slider: 0-100
-      // < 35 = safest (high lambda_risk)
-      // > 65 = shortest (low lambda_risk)
-      const riskPreference = destinationData.riskLevel === 'low' 
-        ? 10.0  // Prioritize safety
-        : destinationData.riskLevel === 'high'
-        ? 1.0   // Prioritize distance
-        : 5.0;  // Balanced
-      
+      const riskPreference =
+        destinationData.riskLevel === 'low'
+          ? 10.0 // safest
+          : destinationData.riskLevel === 'high'
+          ? 1.0 // fastest
+          : 5.0; // balanced
+
       console.log(`[App] Computing route: start=${startNode}, goal=${goalNode}, risk_weight=${riskPreference}`);
       toast.loading('Computing safe route...', { id: 'route-loading' });
 
@@ -144,7 +144,6 @@ export default function App() {
 
       const backendRoute = await response.json();
 
-      // Merge backend data with UI data
       const mergedRoute: RouteData = {
         ...destinationData,
         geometry_latlng: backendRoute.geometry_latlng,
@@ -154,101 +153,160 @@ export default function App() {
         safetyScore: Math.round(backendRoute.safety_score * 100),
         eta: Math.round(backendRoute.metadata.estimated_time_s / 60),
         distance: parseFloat((backendRoute.metadata.total_distance_m / 1000).toFixed(1)),
-        riskLevel: backendRoute.metadata.max_edge_risk > 0.3 
-          ? 'high' 
-          : backendRoute.metadata.max_edge_risk > 0.1 
-          ? 'medium' 
-          : 'low'
+        riskLevel:
+          backendRoute.metadata.max_edge_risk > 0.3
+            ? 'high'
+            : backendRoute.metadata.max_edge_risk > 0.1
+            ? 'medium'
+            : 'low',
       };
 
       setCurrentRoute(mergedRoute);
       toast.success('Route computed successfully!', { id: 'route-loading' });
-      setCurrentScreen('route-details');
-
+      navigateTo('route-details');
     } catch (error) {
       console.error('Route computation failed:', error);
       toast.error('Failed to compute route. Please try again.', { id: 'route-loading' });
     }
   };
 
+  const handleReportSuccess = () => {
+    console.log('[App] Report submitted successfully, refreshing map');
+    setMapRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handleAlertClick = (lat: number, lng: number) => {
+    console.log('[App] Alert clicked, navigating to:', lat, lng);
+    toast.info('Viewing alert location on map', {
+      description: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+    });
+    navigateTo('home-map');
+  };
+
+  const renderScreen = () => {
+    try {
+      switch (currentScreen) {
+        case 'landing':
+          return <LandingPage onContinue={() => setShowLocationModal(true)} />;
+
+        case 'home-map':
+          return (
+            <HomeMap
+              // ref={homeMapRef}
+              userLocation={userLocation}
+              onReport={() => setShowReportModal(true)}
+              onFindRoute={() => navigateTo('route-destination')}
+              onAlerts={() => navigateTo('alerts')}
+              onSettings={() => navigateTo('settings')}
+              key={mapRefreshTrigger} // trigger refresh
+            />
+          );
+
+        case 'route-destination':
+          return (
+            <RouteDestination
+              onBack={() => navigateTo('home-map')}
+              onComputeRoute={handleComputeRoute}
+            />
+          );
+
+        case 'route-details':
+          if (!currentRoute) {
+            toast.error('No route data available');
+            navigateTo('route-destination');
+            return null;
+          }
+          return (
+            <RouteDetails
+              routeData={currentRoute}
+              onBack={() => navigateTo('route-destination')}
+              onStartGuidance={() => navigateTo('live-guidance')}
+            />
+          );
+
+        case 'live-guidance':
+          if (!currentRoute) {
+            toast.error('No route data available');
+            navigateTo('home-map');
+            return null;
+          }
+          return (
+            <LiveGuidance
+              routeData={currentRoute}
+              onReroute={() => navigateTo('route-destination')}
+              onComplete={() => navigateTo('home-map')}
+            />
+          );
+
+        case 'alerts':
+          return <AlertsFeed onBack={() => navigateTo('home-map')} onAlertClick={handleAlertClick} />;
+
+        case 'settings':
+          return (
+            <SettingsPage
+              onBack={() => navigateTo('home-map')}
+              onEthics={() => navigateTo('ethics')}
+              onHelp={() => navigateTo('help')}
+            />
+          );
+
+        case 'ethics':
+          return <EthicsPage onBack={() => navigateTo('settings')} />;
+
+        case 'help':
+          return <HelpPage onBack={() => navigateTo('settings')} />;
+
+        default:
+          console.error('[App] Unknown screen:', currentScreen);
+          return <div className="p-4">Unknown screen: {currentScreen}</div>;
+      }
+    } catch (error) {
+      console.error('[App] Error rendering screen:', error);
+      return (
+        <div className="flex items-center justify-center h-screen p-4">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
+            <p className="text-neutral-600 mb-4">
+              {error instanceof Error ? error.message : 'Unknown error'}
+            </p>
+            <button
+              onClick={() => navigateTo('home-map')}
+              className="px-4 py-2 bg-neutral-900 text-white rounded-lg"
+            >
+              Return to Home
+            </button>
+          </div>
+        </div>
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       <div className="w-full h-screen bg-white overflow-hidden relative">
-        {/* Add debug info at top */}
-        <div className="absolute top-0 left-0 z-50 bg-black text-white text-xs px-2 py-1">
-          Screen: {currentScreen}
+        <div className="absolute top-0 left-0 z-50 bg-black text-white text-xs px-2 py-1 opacity-75">
+          Screen: {currentScreen} | Reports: {mapRefreshTrigger}
         </div>
 
-        {currentScreen === 'landing' && (
-          <LandingPage onContinue={() => setShowLocationModal(true)} />
-        )}
-        
+        {renderScreen()}
+
         {showLocationModal && (
-          <LocationPermissionModal 
+          <LocationPermissionModal
             onLocationGranted={handleLocationGranted}
             onClose={() => setShowLocationModal(false)}
           />
         )}
-        
-        {currentScreen === 'home-map' && (
-          <HomeMap
-            userLocation={userLocation}
-            onReport={() => setShowReportModal(true)}
-            onFindRoute={() => navigateTo('route-destination')}
-            onAlerts={() => navigateTo('alerts')}
-            onSettings={() => navigateTo('settings')}
-          />
-        )}
-        
-        {currentScreen === 'route-destination' && (
-          <RouteDestination
-            onBack={() => navigateTo('home-map')}
-            onComputeRoute={handleComputeRoute}
-          />
-        )}
-        
-        {currentScreen === 'route-details' && currentRoute && (
-          <RouteDetails
-            routeData={currentRoute}
-            onBack={() => navigateTo('route-destination')}
-            onStartGuidance={() => navigateTo('live-guidance')}
-          />
-        )}
-        
-        {currentScreen === 'live-guidance' && currentRoute && (
-          <LiveGuidance
-            routeData={currentRoute}
-            onReroute={() => navigateTo('route-destination')}
-            onComplete={() => navigateTo('home-map')}
-          />
-        )}
-        
-        {currentScreen === 'alerts' && (
-          <AlertsFeed onBack={() => navigateTo('home-map')} />
-        )}
-        
-        {currentScreen === 'settings' && (
-          <SettingsPage
-            onBack={() => navigateTo('home-map')}
-            onEthics={() => navigateTo('ethics')}
-            onHelp={() => navigateTo('help')}
-          />
-        )}
-        
-        {currentScreen === 'ethics' && (
-          <EthicsPage onBack={() => navigateTo('settings')} />
-        )}
-        
-        {currentScreen === 'help' && (
-          <HelpPage onBack={() => navigateTo('settings')} />
-        )}
 
         {showReportModal && currentScreen === 'home-map' && (
-          <QuickReportModal onClose={() => setShowReportModal(false)} />
+          <QuickReportModal
+            onClose={() => setShowReportModal(false)}
+            userLocation={userCoords ? [userCoords.lat, userCoords.lng] : undefined}
+            onReportSuccess={handleReportSuccess}
+          />
         )}
       </div>
-      
-      <Toaster />
+
+      <Toaster position="top-center" />
     </div>
   );
 }

@@ -20,6 +20,7 @@ from affine import Affine
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from scipy.spatial import KDTree
+from pydantic import BaseModel
 
 from PIL import Image
 import io
@@ -121,6 +122,105 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+
+class ReportSubmission(BaseModel):
+    type: str
+    lat: float
+    lng: float
+    confidence: float
+    notes: Optional[str] = None
+    timestamp: Optional[str] = None
+
+@app.post("/report")
+async def submit_report(report: ReportSubmission):
+    """
+    Submit an anonymous hazard report
+    Updates the risk map in real-time
+    """
+    import time
+    
+    try:
+        # Validate report type
+        valid_types = ['safe', 'crowd', 'police', 'tear_gas', 'water_cannon']
+        if report.type not in valid_types:
+            return JSONResponse(
+                {"error": f"Invalid type. Must be one of: {', '.join(valid_types)}"},
+                status_code=400
+            )
+        
+        # Validate confidence range
+        if not 0 <= report.confidence <= 1:
+            return JSONResponse(
+                {"error": "Confidence must be between 0 and 1"},
+                status_code=400
+            )
+        
+        # Validate coordinates (rough Nairobi bounds)
+        if not (-1.35 <= report.lat <= -1.20 and 36.70 <= report.lng <= 36.95):
+            return JSONResponse(
+                {"error": "Location outside Nairobi area"},
+                status_code=400
+            )
+        
+        print(f"[Backend] Report received: {report.type} at ({report.lat}, {report.lng})")
+        
+        # Find nearest node using KDTree
+        if NODE_KDTREE is None or NODE_IDS is None:
+            return JSONResponse(
+                {"error": "Graph index not initialized"},
+                status_code=503
+            )
+        
+        # Convert lat/lng to UTM for nearest node search
+        import pyproj
+        transformer_to_utm = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:32737", always_xy=True)
+        x_utm, y_utm = transformer_to_utm.transform(report.lng, report.lat)
+        
+        # Find nearest node
+        distance, index = NODE_KDTREE.query([x_utm, y_utm])
+        nearest_node_id = str(NODE_IDS[index])
+        
+        print(f"[Backend] Snapped to node {nearest_node_id} (distance: {distance:.1f}m)")
+        
+        # Create report record
+        timestamp = time.time()
+        report_record = {
+            "type": report.type,
+            "node_id": nearest_node_id,
+            "confidence": report.confidence,
+            "timestamp": timestamp,
+            "expires_at": timestamp + REPORT_EXPIRY_SECONDS,
+            "notes": report.notes
+        }
+        
+        # Store report
+        if nearest_node_id not in RECENT_REPORTS:
+            RECENT_REPORTS[nearest_node_id] = []
+        RECENT_REPORTS[nearest_node_id].append(report_record)
+        
+        # Update edge harm probabilities
+        update_edge_harm_from_reports(nearest_node_id, report.type, report.confidence)
+        
+        print(f"[Backend] Report stored. Total active reports: {sum(len(r) for r in RECENT_REPORTS.values())}")
+        
+        return {
+            "status": "ok",
+            "report_id": f"r_{int(timestamp)}",
+            "node_id": nearest_node_id,
+            "snapped_distance_m": float(distance),
+            "expires_in_seconds": REPORT_EXPIRY_SECONDS
+        }
+        
+    except Exception as e:
+        import traceback
+        print(f"[Backend] Report submission error: {e}")
+        print(traceback.format_exc())
+        return JSONResponse(
+            {"error": f"Internal server error: {str(e)}"},
+            status_code=500
+        )
+
 
 # Global node mapping cache
 NODE_TO_COORDS: Dict[str, Tuple[float, float]] = {}  # node_id -> (lat, lng)
@@ -939,6 +1039,203 @@ async def build_street_name_cache_endpoint(max_edges: int = 100):
         "cache_size": len(STREET_NAME_CACHE)
     }
 
+
+
+@app.get("/reports/active")
+async def get_active_reports():
+    """
+    Return all currently active (non-expired) reports
+    """
+    import time
+    
+    current_time = time.time()
+    active_reports = []
+    
+    for node_id, reports_list in RECENT_REPORTS.items():
+        for report in reports_list:
+            if report['expires_at'] > current_time:
+                # Get node coordinates
+                if node_id in NODE_TO_COORDS:
+                    lat, lng = NODE_TO_COORDS[node_id]
+                    
+                    # Try to get location name
+                    location_name = get_coordinate_based_name(lat, lng)
+                    
+                    active_reports.append({
+                        "id": f"{node_id}_{int(report['timestamp'])}",
+                        "type": report['type'],
+                        "lat": lat,
+                        "lng": lng,
+                        "confidence": report['confidence'],
+                        "timestamp": int(report['timestamp'] * 1000),  # Convert to ms
+                        "expires_at": int(report['expires_at'] * 1000),  # Convert to ms
+                        "node_id": node_id,
+                        "location_name": location_name
+                    })
+    
+    # Sort by timestamp (newest first)
+    active_reports.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    return {
+        "reports": active_reports,
+        "count": len(active_reports),
+        "timestamp": int(current_time * 1000)
+    }
+
+
+@app.get("/reports/by-type")
+async def get_reports_by_type(report_type: str = Query(...)):
+    """
+    Get active reports filtered by type
+    """
+    import time
+    
+    current_time = time.time()
+    filtered_reports = []
+    
+    for node_id, reports_list in RECENT_REPORTS.items():
+        for report in reports_list:
+            if report['expires_at'] > current_time and report['type'] == report_type:
+                if node_id in NODE_TO_COORDS:
+                    lat, lng = NODE_TO_COORDS[node_id]
+                    location_name = get_coordinate_based_name(lat, lng)
+                    
+                    filtered_reports.append({
+                        "id": f"{node_id}_{int(report['timestamp'])}",
+                        "type": report['type'],
+                        "lat": lat,
+                        "lng": lng,
+                        "confidence": report['confidence'],
+                        "timestamp": int(report['timestamp'] * 1000),
+                        "expires_at": int(report['expires_at'] * 1000),
+                        "node_id": node_id,
+                        "location_name": location_name
+                    })
+    
+    filtered_reports.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    return {
+        "reports": filtered_reports,
+        "type": report_type,
+        "count": len(filtered_reports)
+    }
+
+
+@app.get("/reports/stats")
+async def get_report_statistics():
+    """
+    Get statistics about current reports
+    """
+    import time
+    from collections import Counter
+    
+    current_time = time.time()
+    
+    # Count active reports by type
+    type_counts = Counter()
+    total_active = 0
+    
+    for node_id, reports_list in RECENT_REPORTS.items():
+        for report in reports_list:
+            if report['expires_at'] > current_time:
+                type_counts[report['type']] += 1
+                total_active += 1
+    
+    return {
+        "total_active": total_active,
+        "by_type": dict(type_counts),
+        "total_nodes_affected": len([
+            node_id for node_id, reports in RECENT_REPORTS.items()
+            if any(r['expires_at'] > current_time for r in reports)
+        ])
+    }
+
+
+@app.delete("/reports/expired")
+async def cleanup_expired_reports():
+    """
+    Admin endpoint to manually cleanup expired reports
+    """
+    import time
+    
+    current_time = time.time()
+    removed_count = 0
+    
+    for node_id in list(RECENT_REPORTS.keys()):
+        original_count = len(RECENT_REPORTS[node_id])
+        RECENT_REPORTS[node_id] = [
+            r for r in RECENT_REPORTS[node_id]
+            if r['expires_at'] > current_time
+        ]
+        
+        removed_count += original_count - len(RECENT_REPORTS[node_id])
+        
+        # Remove node if no reports left
+        if not RECENT_REPORTS[node_id]:
+            del RECENT_REPORTS[node_id]
+    
+    return {
+        "status": "cleaned",
+        "removed_count": removed_count,
+        "remaining_nodes": len(RECENT_REPORTS)
+    }
+
+
+@app.get("/reports/heatmap")
+async def get_report_heatmap():
+    """
+    Generate a heatmap of report density for visualization
+    """
+    import time
+    from collections import defaultdict
+    
+    current_time = time.time()
+    
+    # Aggregate reports by grid cell
+    grid_reports = defaultdict(lambda: {"count": 0, "max_confidence": 0.0, "types": []})
+    
+    for node_id, reports_list in RECENT_REPORTS.items():
+        for report in reports_list:
+            if report['expires_at'] > current_time and node_id in NODE_TO_COORDS:
+                lat, lng = NODE_TO_COORDS[node_id]
+                
+                # Round to grid (~50m resolution)
+                grid_key = f"{round(lat, 4)}_{round(lng, 4)}"
+                
+                grid_reports[grid_key]["count"] += 1
+                grid_reports[grid_key]["max_confidence"] = max(
+                    grid_reports[grid_key]["max_confidence"],
+                    report['confidence']
+                )
+                if report['type'] not in grid_reports[grid_key]["types"]:
+                    grid_reports[grid_key]["types"].append(report['type'])
+                
+                if "lat" not in grid_reports[grid_key]:
+                    grid_reports[grid_key]["lat"] = lat
+                    grid_reports[grid_key]["lng"] = lng
+    
+    # Convert to GeoJSON
+    features = []
+    for grid_key, data in grid_reports.items():
+        features.append({
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [data["lng"], data["lat"]]
+            },
+            "properties": {
+                "report_count": data["count"],
+                "max_confidence": data["max_confidence"],
+                "types": data["types"],
+                "intensity": "high" if data["count"] > 5 else "medium" if data["count"] > 2 else "low"
+            }
+        })
+    
+    return {
+        "type": "FeatureCollection",
+        "features": features
+    }
+
 # Add this temporary route to test coordinates
 @app.get("/test-coords")
 async def test_coordinates():
@@ -964,55 +1261,6 @@ async def test_coordinates():
 RECENT_REPORTS: Dict[str, List[dict]] = {}  # cell_id -> list of reports
 REPORT_EXPIRY_SECONDS = 600  # 10 minutes
 
-@app.post("/report")
-async def submit_report(report_data: dict):
-    """
-    Submit an anonymous hazard report
-    Updates the risk map in real-time
-    """
-    import time
-    from collections import defaultdict
-    
-    # Validate report
-    required_fields = ['type', 'lat', 'lng', 'confidence']
-    if not all(field in report_data for field in required_fields):
-        return JSONResponse({"error": "Missing required fields"}, status_code=400)
-    
-    # Snap to nearest node
-    try:
-        nearest_response = await get_nearest_node(
-            lat=report_data['lat'],
-            lng=report_data['lng']
-        )
-        node_id = nearest_response['node_id']
-    except:
-        return JSONResponse({"error": "Could not snap to node"}, status_code=400)
-    
-    # Store report
-    timestamp = time.time()
-    report = {
-        "type": report_data['type'],
-        "node_id": node_id,
-        "confidence": report_data['confidence'],
-        "timestamp": timestamp,
-        "expires_at": timestamp + REPORT_EXPIRY_SECONDS
-    }
-    
-    if node_id not in RECENT_REPORTS:
-        RECENT_REPORTS[node_id] = []
-    RECENT_REPORTS[node_id].append(report)
-    
-    # Update edge harm probabilities in graph
-    update_edge_harm_from_reports(node_id, report_data['type'], report_data['confidence'])
-    
-    print(f"[Backend] Report received: {report_data['type']} at node {node_id}")
-    
-    return {
-        "status": "ok",
-        "report_id": f"r_{int(timestamp)}",
-        "node_id": node_id,
-        "expires_in_seconds": REPORT_EXPIRY_SECONDS
-    }
 
 def update_edge_harm_from_reports(node_id: str, report_type: str, confidence: float):
     """
