@@ -94,6 +94,18 @@ export default function HomeMap({
     { id: 'safe', label: 'Safe Zones', color: 'green', reportCount: getLayerReports('safe').length }
   ];
 
+
+  // Fix Mapbox z-index inside component
+  useEffect(() => {
+    const canvas = document.querySelector('.mapboxgl-canvas') as HTMLElement | null;
+    if (canvas) {
+      canvas.style.zIndex = '0';
+      canvas.style.position = 'relative';
+    }
+    const container = document.querySelector('.mapboxgl-canvas-container') as HTMLElement | null;
+    if (container) container.style.zIndex = '0';
+  }, []);
+  
   return (
     <div className="h-full relative">
       {/* Mapbox Map */}
@@ -245,7 +257,7 @@ export default function HomeMap({
       </div>
 
       {/* Bottom Actions */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 z-10 pointer-events-none">
+      <div className="absolute bottom-0 left-0 right-0 p-4 z-[50]">
         <motion.div 
           className="flex gap-3 pointer-events-auto"
           initial={{ y: 20, opacity: 0 }}
