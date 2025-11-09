@@ -16,7 +16,7 @@ rasterio==1.4.3
 # Visualization
 matplotlib==3.10.6
 seaborn==0.13.2
-pillow==10.1.0
+pillow==10.3.0
 
 # Parallel processing
 joblib==1.5.2
