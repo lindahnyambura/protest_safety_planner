@@ -302,7 +302,6 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
 
               {/* Search input */}
               <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                 <input
                   type="text"
                   value={manualLocation}
@@ -312,8 +311,8 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
                       handleManualLocation();
                     }
                   }}
-                  placeholder="Search location in Nairobi CBD..."
-                  className="w-full pl-10 pr-4 py-3 border-2 border-neutral-300 rounded-xl focus:outline-none focus:border-neutral-900 transition-colors"
+                  placeholder="Type a location (e.g., Kenyatta Avenue)..."
+                  className="w-full px-4 py-3 border-2 border-neutral-300 rounded-xl focus:outline-none focus:border-neutral-900 transition-colors"
                   disabled={geocoding}
                 />
               </div>

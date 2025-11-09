@@ -251,24 +251,43 @@ def load_landmark_mappings():
     """
     global LANDMARK_TO_NODE
     
-    # Results from your script - update these with actual output
-    LANDMARK_TO_NODE = {
-        # "uhuru park": "11895806775",
-        # "times tower": "12361123931",
-        "national archives": "12168049898",
-        # "city market": "12364334298",
-        "gpo": "11895806370",
-        # "jamia mosque": "6807551638",
-        "railways": "13134429075",
-        # "bus station": "8555798083",
-        "odeon": "12361156623",
-        "afya center": "10873342299",
-        "kencom": "12343534285",
-        # "koja": "11895812325",
+    # Correct coordinates from Google Maps (lat, lng format)
+    landmarks_with_coords = {
+        "Bus Station": (-1.288275, 36.828192),
+        "National Archives": (-1.2848354, 36.8214961),
+        "Uhuru Park": (-1.2900825, 36.8174183),
+        "KICC": (-1.2882881, 36.820189),
+        "Koja": (-1.2818321, 36.8206052),
+        "Times Tower": (-1.2901877, 36.8214664),
+        "Railway Station": (-1.2908054, 36.8250816),
+        "Jamia Mosque": (-1.2832261, 36.8179915),
+        "GPO": (-1.2860694, 36.8162181),
+        "Afya Center": (-1.2878776, 36.8271596),
+        "Odeon": (-1.282821, 36.824996),
+        "Kencom": (-1.285640, 36.824984),
+        "City Market": (-1.2836408, 36.8168827),
     }
     
+    # Find nearest nodes for each landmark
+    import pyproj
+    transformer_to_utm = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:32737", always_xy=True)
+    
+    for name, (lat, lng) in landmarks_with_coords.items():
+        try:
+            # Convert to UTM
+            x_utm, y_utm = transformer_to_utm.transform(lng, lat)
+            
+            # Find nearest node using KDTree
+            if NODE_KDTREE is not None and NODE_IDS is not None:
+                distance, index = NODE_KDTREE.query([x_utm, y_utm])
+                nearest_node_id = str(NODE_IDS[index])
+                
+                LANDMARK_TO_NODE[name.lower()] = nearest_node_id
+                print(f"[Backend] Mapped '{name}' to node {nearest_node_id} (distance: {distance:.1f}m)")
+        except Exception as e:
+            print(f"[Backend] Failed to map landmark '{name}': {e}")
+    
     print(f"[Backend] Loaded {len(LANDMARK_TO_NODE)} landmark mappings")
-
 
 def load_street_name_cache():
     """Load cached street names on startup"""
@@ -809,16 +828,35 @@ def debug_harm_at_node(node: str = Query(...)):
 
 @app.get("/landmarks")
 def get_landmarks():
-    """Return all known landmarks with their coordinates"""
+    """Return all known landmarks with their CORRECT Google Maps coordinates"""
+    
+    # Correct coordinates from Google Maps
+    landmarks_data = [
+        {"name": "Bus Station", "lat": -1.288275, "lng": 36.828192},
+        {"name": "National Archives", "lat": -1.2848354, "lng": 36.8214961},
+        {"name": "Uhuru Park", "lat": -1.2900825, "lng": 36.8174183},
+        {"name": "KICC", "lat": -1.2882881, "lng": 36.820189},
+        {"name": "Koja", "lat": -1.2818321, "lng": 36.8206052},
+        {"name": "Times Tower", "lat": -1.2901877, "lng": 36.8214664},
+        {"name": "Railway Station", "lat": -1.2908054, "lng": 36.8250816},
+        {"name": "Jamia Mosque", "lat": -1.2832261, "lng": 36.8179915},
+        {"name": "GPO", "lat": -1.2860694, "lng": 36.8162181},
+        {"name": "Afya Center", "lat": -1.2878776, "lng": 36.8271596},
+        {"name": "Odeon", "lat": -1.282821, "lng": 36.824996},
+        {"name": "Kencom", "lat": -1.285640, "lng": 36.824984},
+        {"name": "City Market", "lat": -1.2836408, "lng": 36.8168827},
+    ]
+    
+    # Enrich with node IDs
     landmarks = []
-    for name, node_id in LANDMARK_TO_NODE.items():
-        if node_id in NODE_TO_COORDS:
-            lat, lng = NODE_TO_COORDS[node_id]
-            landmarks.append({
-                "name": name.title(),
-                "node_id": node_id,
-                "coordinates": {"lat": lat, "lng": lng}
-            })
+    for landmark in landmarks_data:
+        node_id = LANDMARK_TO_NODE.get(landmark["name"].lower())
+        landmarks.append({
+            "name": landmark["name"],
+            "node_id": node_id,
+            "coordinates": {"lat": landmark["lat"], "lng": landmark["lng"]}
+        })
+    
     return {"landmarks": landmarks}
 
 @app.get("/nearest-landmark")
