@@ -84,7 +84,7 @@ app = FastAPI(
 # Add CORS middleware after app creation
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["protestsafetyplanner-production.up.railway.app"],  # Vite dev server
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
