@@ -53,7 +53,7 @@ export default function LiveGuidance({ routeData, onReroute, onComplete }: LiveG
   }, [onComplete]);
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col" style={{ backgroundColor: '#e6e6e6' }}>
       {/* Map View */}
       <div className="relative flex-1">
         <MapboxMap

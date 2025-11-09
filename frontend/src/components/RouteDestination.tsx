@@ -55,7 +55,7 @@ export default function RouteDestination({ onBack, onComputeRoute }: RouteDestin
   const canCompute = searchQuery.trim().length > 0;
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col" style={{ backgroundColor: '#e6e6e6' }}>
       {/* Header */}
       <div className="px-6 py-4 border-b border-neutral-200">
         <motion.div 

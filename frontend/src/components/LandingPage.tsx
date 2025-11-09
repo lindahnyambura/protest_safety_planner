@@ -34,7 +34,7 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
   ];
 
   return (
-    <div className="h-full overflow-y-auto bg-white">
+    <div className="h-full overflow-y-auto" style={{ backgroundColor: '#e6e6e6' }}>
       <div className="px-6 pt-12 pb-32">
         {/* Logo and App Name */}
         <motion.div 

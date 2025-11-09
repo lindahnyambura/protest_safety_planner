@@ -133,7 +133,7 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col" style={{ backgroundColor: '#e6e6e6' }}>
       {/* Header */}
       <motion.div 
         className="px-6 py-4 border-b border-neutral-200"
