@@ -66,6 +66,8 @@ export default function App() {
     setCurrentScreen(screen);
   };
 
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
+
   // When location permission granted
   const handleLocationGranted = async (location: string, coords: { lat: number; lng: number }) => {
     setUserLocation(location);
@@ -75,7 +77,7 @@ export default function App() {
     toast.loading('Finding your position...', { id: 'find-node' });
     try {
       const response = await fetch(
-        `protestsafetyplanner-production.up.railway.app/nearest-node?lat=${coords.lat}&lng=${coords.lng}`
+        `${API_BASE_URL}/nearest-node?lat=${coords.lat}&lng=${coords.lng}`
       );
 
       if (response.ok) {
@@ -88,7 +90,7 @@ export default function App() {
     } catch (error) {
       console.error('Failed to find nearest node:', error);
       toast.error('Location set with limited accuracy', { id: 'find-node' });
-      setUserNode('12361156623'); // fallback (Odeon)
+      setUserNode('13134429075'); // fallback (Odeon) // railway
     }
 
     navigateTo('home-map');
@@ -111,7 +113,7 @@ export default function App() {
       'Times Tower': '12361123931',
       'Odeon': '12361156623',
     };
-    return destinationMap[destination] || '9859577513'; // default fallback
+    return destinationMap[destination] || '13134429075'; // default fallback
   };
 
   const handleComputeRoute = async (destinationData: RouteData) => {

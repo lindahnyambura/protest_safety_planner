@@ -26,6 +26,7 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     fetchReports();
@@ -38,7 +39,7 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
 
   const fetchReports = async () => {
     try {
-      const response = await fetch('protestsafetyplanner-production.up.railway.app/reports/active');
+      const response = await fetch(`${API_BASE_URL}/reports/active`);
       
       if (response.ok) {
         const data = await response.json();

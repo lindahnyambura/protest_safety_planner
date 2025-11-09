@@ -44,6 +44,7 @@ export default function HomeMap({
   const [showLayers, setShowLayers] = useState(false);
   const [reports, setReports] = useState<ReportMarker[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   // Fetch reports on mount and periodically
   useEffect(() => {
@@ -58,7 +59,7 @@ export default function HomeMap({
   const fetchReports = async () => {
     try {
       setRefreshing(true);
-      const response = await fetch('protestsafetyplanner-production.up.railway.app/reports/active');
+      const response = await fetch(`${API_BASE_URL}/reports/active`);
       
       if (response.ok) {
         const data = await response.json();
