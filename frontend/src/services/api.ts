@@ -1,4 +1,4 @@
-const API_BASE_URL = 'protestsafetyplanner-production.up.railway.app';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export const apiService = {
   async submitReport(report: any) {
@@ -20,5 +20,5 @@ export const apiService = {
       `${API_BASE_URL}/route?start=${start}&goal=${goal}&algorithm=astar&lambda_risk=${riskPreference}`
     );
     return response.json();
-  }
+  },
 };

@@ -63,9 +63,10 @@ export default function QuickReportModal({
       };
 
       console.log('[QuickReport] Submitting report:', reportData);
-      console.log('[QuickReport] Request URL:', 'protestsafetyplanner-production.up.railway.app/report');
-
-      const response = await fetch('protestsafetyplanner-production.up.railway.app/report', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL;
+      console.log('[QuickReport] Request URL:', `${API_BASE_URL}/report`);
+      
+      const response = await fetch(`${API_BASE_URL}/report`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
