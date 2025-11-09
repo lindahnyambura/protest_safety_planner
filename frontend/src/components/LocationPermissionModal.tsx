@@ -15,11 +15,12 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
   const [useManual, setUseManual] = useState(false);
   const [loading, setLoading] = useState(false);
   const [landmarks, setLandmarks] = useState<any[]>([]);
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   // Fetch landmarks for manual selection
   useEffect(() => {
     if (useManual) {
-      fetch('protestsafetyplanner-production.up.railway.app/landmarks')
+      fetch(`${API_BASE_URL}/landmarks`)
         .then(res => res.json())
         .then(data => setLandmarks(data.landmarks))
         .catch(err => console.error('Failed to load landmarks:', err));
@@ -87,7 +88,8 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
     } else if (manualLocation.trim()) {
       // Search for typed location
       try {
-        const response = await fetch(`protestsafetyplanner-production.up.railway.app/nearest-landmark?lat=-1.2875&lng=36.8225`);
+        const API_BASE_URL = import.meta.env.VITE_API_URL;
+        const response = await fetch(`${API_BASE_URL}/nearest-landmark?lat=-1.2875&lng=36.8225`);
         const data = await response.json();
         onLocationGranted(data.name, {
           lat: data.coordinates.lat,
