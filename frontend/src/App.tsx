@@ -97,18 +97,18 @@ export default function App() {
   // Map of landmark destinations to OSM node IDs
   const getNodeIdFromDestination = (destination: string): string => {
     const destinationMap: Record<string, string> = {
-      'Jamia Mosque': '6580961457',
-      'National Archives': '12414258058',
-      'Afya Center': '10873342295',
-      'GPO (General Post Office)': '12361445752',
-      'Railway Station': '8584796189',
-      'KICC': '13134429074',
-      'Uhuru Park': '12343642875',
-      'City Market': '9859577513',
+      'Jamia Mosque': '6807551638',
+      'National Archives': '12168049898',
+      'Afya Center': '10873342299',
+      'GPO (General Post Office)': '11895806370',
+      'Railway Station': '13134429075',
+      // 'KICC': '13134429074',
+      'Uhuru Park': '11895806775',
+      'City Market': '12364334298',
       'Kencom': '12343534285',
-      'Bus Station': '10873342299',
-      'Teleposta Towers': '5555073936',
-      'Times Tower': '10701041875',
+      'Bus Station': '8555798083',
+      'Koja': '11895812325',
+      'Times Tower': '12361123931',
       'Odeon': '12361156623',
     };
     return destinationMap[destination] || '9859577513'; // default fallback

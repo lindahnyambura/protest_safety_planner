@@ -253,18 +253,18 @@ def load_landmark_mappings():
     
     # Results from your script - update these with actual output
     LANDMARK_TO_NODE = {
-        # "uhuru park": "12343642875",
-        # "jamia mosque": "6580961457",
-        # "city market": "9859577513",
-        "kencom": "12343534285",
-        "bus station": "10873342299",
+        # "uhuru park": "11895806775",
+        # "times tower": "12361123931",
+        "national archives": "12168049898",
+        # "city market": "12364334298",
+        "gpo": "11895806370",
+        # "jamia mosque": "6807551638",
+        "railways": "13134429075",
+        # "bus station": "8555798083",
         "odeon": "12361156623",
-        # "afya center": "10873342295",
-        "national archives": "12414258058",
-        # "kicc": "13134429074",
-        "gpo": "12361445752",
-        # "teleposta towers": "5555073936",
-        # "times tower": "10701041875",
+        "afya center": "10873342299",
+        "kencom": "12343534285",
+        # "koja": "11895812325",
     }
     
     print(f"[Backend] Loaded {len(LANDMARK_TO_NODE)} landmark mappings")

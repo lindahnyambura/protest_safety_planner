@@ -14,19 +14,19 @@ transformer = Transformer.from_crs("EPSG:32737", "EPSG:4326", always_xy=True)
 
 # === Known landmarks near your bbox ===
 landmarks = {
-    "bus station": (-1.2869, 36.8275),
-    "national archives": (-1.2845, 36.8253),
-    "uhuru park": (-1.2885, 36.8128),
-    "kicc": (-1.2888, 36.8234),
-    "teleposta towers": (-1.2837, 36.8200),
-    "times tower": (-1.2882, 36.8231),
-    "railways": (-1.2917, 36.8286),
-    "jamia mosque": (-1.2836, 36.8207),
-    "gpo": (-1.2864, 36.8191),
-    "afya center": (-1.2879, 36.8281),
-    "odeon": (-1.2839, 36.8243),
-    "kencom": (-1.2861, 36.8250),
-    "city market": (-1.2833, 36.8189),
+    "bus station": (-1.288275, 36.828192),
+    "national archives": (-1.2848354,36.8214961),
+    "uhuru park": (-1.2900825,36.8174183),
+    "kicc": (-1.2882881,36.820189),
+    "koja": (-1.2818321,36.8206052),
+    "times tower": (-1.2901877,36.8214664),
+    "railways": (-1.2908054,36.8250816),
+    "jamia mosque": (-1.2832261,36.8179915),
+    "gpo": (-1.2860694,36.8162181),
+    "afya center": (-1.2878776,36.8271596),
+    "odeon": (-1.282821, 36.824996),
+    "kencom": (-1.285640, 36.824984),
+    "city market": (-1.2836408,36.8168827),
 }
 
 def haversine(lat1, lon1, lat2, lon2):
