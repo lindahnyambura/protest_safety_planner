@@ -1,3 +1,4 @@
+// LocationPermissionModal.tsx
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { MapPin, Info, X, Search } from 'lucide-react';

@@ -1,7 +1,7 @@
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { MapPin, Users, Shield, Heart, Navigation, TrendingUp } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ImageWithFallback } from './assets/ImageWithFallback';
 import { motion } from 'motion/react';
 
 interface LandingPageProps {

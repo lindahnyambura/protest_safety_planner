@@ -1,3 +1,4 @@
+// LiveGuidance.tsx
 import { useState, useEffect } from 'react';
 import MapboxMap from './MapboxMap';
 import { Button } from './ui/button';

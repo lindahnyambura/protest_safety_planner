@@ -1,7 +1,7 @@
 
-  # SafeNav App Design
+  # SafeNav App
 
-  This is a code bundle for SafeNav App Design. The original project is available at https://www.figma.com/design/nV896PhwOPnrTrCLSaMn22/SafeNav-App-Design.
+  This is a code bundle for SafeNav App Design.
 
   ## Running the code
 
