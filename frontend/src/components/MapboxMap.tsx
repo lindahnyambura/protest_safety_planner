@@ -98,15 +98,43 @@ export default function MapboxMap({
     // Add click handler for setting location
     if (onMapClick) {
       map.current.on('click', (e) => {
+        // Check if click originated from a UI element
+        const clickedElement = e.originalEvent.target as HTMLElement;
+        
+        // Don't trigger map click if clicking on buttons, modals, or other UI
+        if (
+          clickedElement.closest('button') ||
+          clickedElement.closest('.mapboxgl-popup') ||
+          clickedElement.closest('.mapboxgl-ctrl') ||
+          clickedElement.closest('[role="dialog"]') ||
+          clickedElement.closest('.leaflet-container') ||
+          clickedElement.closest('.report-marker') ||
+          clickedElement.closest('.medical-marker') ||
+          clickedElement.closest('.route-marker') ||
+          clickedElement.closest('.user-location-marker')
+        ) {
+          console.log('[MapboxMap] Click on UI element, ignoring');
+          return;
+        }
+
         const { lng, lat } = e.lngLat;
         console.log('[MapboxMap] Map clicked:', { lat, lng });
         onMapClick(lat, lng);
       });
 
-      // Change cursor on hover
-      map.current.on('mouseenter', () => {
+      // Change cursor on hover (but not over UI elements)
+      map.current.on('mousemove', (e) => {
+        const hoveredElement = e.originalEvent.target as HTMLElement;
         if (map.current) {
-          map.current.getCanvas().style.cursor = 'crosshair';
+          if (
+            hoveredElement.closest('button') ||
+            hoveredElement.closest('.mapboxgl-popup') ||
+            hoveredElement.closest('.mapboxgl-ctrl')
+          ) {
+            map.current.getCanvas().style.cursor = '';
+          } else {
+            map.current.getCanvas().style.cursor = 'crosshair';
+          }
         }
       });
     }

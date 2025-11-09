@@ -108,8 +108,8 @@ export default function HomeMap({
       />
 
       {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 p-4 z-10 pointer-events-none">
-        <div className="flex items-start justify-between pointer-events-auto">
+      <div className="absolute top-0 left-0 right-0 p-4 z-10">
+        <div className="flex items-start justify-between">
           <motion.div
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}

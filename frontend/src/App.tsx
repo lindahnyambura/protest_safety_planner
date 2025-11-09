@@ -1,4 +1,3 @@
-// App.tsx
 import { useState, useEffect, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import LocationPermissionModal from './components/LocationPermissionModal';
@@ -112,21 +111,9 @@ export default function App() {
 
   // Map of landmark destinations to OSM node IDs
   const getNodeIdFromDestination = (destination: string): string => {
-    const destinationMap: Record<string, string> = {
-      'Jamia Mosque': '6807551638',
-      'National Archives': '12168049898',
-      'Afya Center': '10873342299',
-      'GPO (General Post Office)': '11895806370',
-      'Railway Station': '13134429075',
-      'Uhuru Park': '11895806775',
-      'City Market': '12364334298',
-      'Kencom': '12343534285',
-      'Bus Station': '8555798083',
-      'Koja': '11895812325',
-      'Times Tower': '12361123931',
-      'Odeon': '12361156623',
-    };
-    return destinationMap[destination] || '13134429075';
+    // This will be dynamically fetched from backend based on correct coordinates
+    // For now, we'll query the backend for the nearest node
+    return '13134429075'; // fallback
   };
 
   const handleComputeRoute = async (destinationData: RouteData) => {
@@ -139,7 +126,25 @@ export default function App() {
 
     try {
       const startNode = userNode;
-      const goalNode = getNodeIdFromDestination(destinationData.destination);
+      
+      // For landmarks, we need to get the node ID from the backend
+      // by querying with the landmark coordinates
+      let goalNode = '13134429075'; // default fallback
+      
+      try {
+        const landmarksResponse = await fetch(`${API_BASE_URL}/landmarks`);
+        if (landmarksResponse.ok) {
+          const landmarksData = await landmarksResponse.json();
+          const landmark = landmarksData.landmarks.find(
+            (l: any) => l.name === destinationData.destination
+          );
+          if (landmark && landmark.node_id) {
+            goalNode = landmark.node_id;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch landmark node IDs, using fallback');
+      }
 
       const riskPreference =
         destinationData.riskLevel === 'low'
