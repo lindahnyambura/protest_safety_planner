@@ -1370,50 +1370,315 @@ def get_config():
     return planner_config
 
 
+# backend/main.py - FIXED /route endpoint with dynamic risk weighting
+
 @app.get("/route")
 def get_route(
     start: str = Query(..., description="Start node ID"),
     goal: str = Query(..., description="Goal node ID"),
     algorithm: str = Query("astar", description="astar or dijkstra"),
-    lambda_risk: float = Query(10.0, description="Risk weight (1.0=distance, 10.0=safety)")
+    lambda_risk: float = Query(10.0, description="Risk weight (1.0=distance, 20.0=safety)")
 ):
-    """Compute a risk-aware route with street names"""
+    """
+    Compute a risk-aware route with dynamic risk weighting.
+    
+    Algorithm selection:
+    - astar: Fast heuristic search (recommended for balanced/shortest routes)
+    - dijkstra: Optimal search (recommended for safest routes)
+    
+    Lambda_risk interpretation:
+    - λ = 1.0:  Shortest path (minimal risk penalty)
+    - λ = 10.0: Balanced (default, moderate risk penalty)
+    - λ = 20.0: Safest path (maximum risk aversion)
+    
+    Cost formula: Cost(edge) = λ_distance × distance + λ_risk × (-log(1 - p_harm))
+    """
     if planner is None:
         return JSONResponse({"error": "Planner not initialized"}, status_code=503)
 
-    # Temporarily override planner config
+    # Validate nodes exist in graph
+    if start not in planner.osm_graph.nodes:
+        return JSONResponse(
+            {
+                "error": f"Start node '{start}' not found in road network",
+                "suggestion": "Use /nearest-node endpoint to find valid nodes"
+            },
+            status_code=400
+        )
+    
+    if goal not in planner.osm_graph.nodes:
+        return JSONResponse(
+            {
+                "error": f"Goal node '{goal}' not found in road network",
+                "suggestion": "Use /nearest-node endpoint to find valid nodes"
+            },
+            status_code=400
+        )
+
+    # Validate algorithm choice
+    if algorithm not in ['astar', 'dijkstra']:
+        return JSONResponse(
+            {"error": f"Invalid algorithm '{algorithm}'. Must be 'astar' or 'dijkstra'"},
+            status_code=400
+        )
+
+    # Validate lambda_risk range
+    if lambda_risk < 0.1 or lambda_risk > 100.0:
+        return JSONResponse(
+            {"error": f"lambda_risk must be in range [0.1, 100.0], got {lambda_risk}"},
+            status_code=400
+        )
+
+    print(f"\n{'='*60}")
+    print(f"[Backend] NEW ROUTE REQUEST")
+    print(f"  Start node: {start}")
+    print(f"  Goal node:  {goal}")
+    print(f"  Algorithm:  {algorithm}")
+    print(f"  λ_risk:     {lambda_risk}")
+    print(f"{'='*60}\n")
+
+    # CRITICAL: Temporarily override planner config with user preferences
     original_lambda = planner.config.get('lambda_risk', 10.0)
     planner.config['lambda_risk'] = lambda_risk
     
-    result = planner.plan_route(start, goal, algorithm)
-
-    # Restore original config
-    planner.config['lambda_risk'] = original_lambda
+    # Recreate cost function with new lambda_risk
+    from src.planner.cost_functions import get_cost_function
+    cost_type = planner.config.get('cost_function', 'log_odds')
+    planner.cost_fn = get_cost_function(cost_type, planner.config)
     
-    # Convert UTM geometry to lat/lng
-    if "geometry" in result:
-        result["geometry_latlng"] = convert_route_geometry(result["geometry"])
+    # Update optimizer's cost function reference
+    planner.optimizer.cost_fn = planner.cost_fn
     
-    # Generate better directions with street names
-    if "path" in result and "geometry" in result:
-        result["directions"] = generate_turn_by_turn_directions(
-            planner.osm_graph,
-            result["path"],
-            result["geometry"]
-        )
+    try:
+        # Compute route using selected algorithm
+        result = planner.plan_route(start, goal, algorithm)
         
-        # Add lat/lng to each direction step
-        for step in result["directions"]:
-            node_id = step["node"]
-            if node_id in planner.osm_graph.nodes:
-                x_utm = planner.osm_graph.nodes[node_id].get('x')
-                y_utm = planner.osm_graph.nodes[node_id].get('y')
-                if x_utm and y_utm:
-                    lat, lng = utm_to_latlng(float(x_utm), float(y_utm))
+        # Check for routing errors
+        if "error" in result:
+            print(f"[Backend] Route planning failed: {result['error']}")
+            return JSONResponse(result, status_code=404)
+        
+        # Convert UTM geometry to lat/lng for Mapbox
+        if "geometry" in result and result["geometry"]:
+            result["geometry_latlng"] = convert_route_geometry(result["geometry"])
+            print(f"[Backend] ✓ Converted {len(result['geometry'])} waypoints to lat/lng")
+        
+        # Generate turn-by-turn directions with street names
+        if "path" in result and "geometry" in result:
+            result["directions"] = generate_turn_by_turn_directions(
+                planner.osm_graph,
+                result["path"],
+                result["geometry"]
+            )
+            
+            # Add lat/lng coordinates to each direction step
+            for step in result["directions"]:
+                node_id = step["node"]
+                if node_id in planner.osm_graph.nodes:
+                    node_data = planner.osm_graph.nodes[node_id]
+                    x_utm = float(node_data.get('x', 0))
+                    y_utm = float(node_data.get('y', 0))
+                    lat, lng = utm_to_latlng(x_utm, y_utm)
                     step["lat"] = lat
                     step["lng"] = lng
+            
+            print(f"[Backend] ✓ Generated {len(result['directions'])} turn-by-turn directions")
+        
+        # Add routing metadata for transparency
+        result["routing_params"] = {
+            "algorithm": algorithm,
+            "lambda_risk": lambda_risk,
+            "lambda_distance": planner.config.get('lambda_distance', 1.0),
+            "cost_function": cost_type,
+            "edge_risk_strategy": planner.config.get('edge_risk_strategy', 'max')
+        }
+        
+        # Log success metrics
+        print(f"\n[Backend] ✓ ROUTE COMPUTED SUCCESSFULLY")
+        print(f"  Path nodes:    {len(result.get('path', []))}")
+        print(f"  Distance:      {result.get('metadata', {}).get('total_distance_m', 0):.1f}m")
+        print(f"  Safety score:  {result.get('safety_score', 0):.3f} ({result.get('safety_score', 0)*100:.1f}%)")
+        print(f"  ETA:           {result.get('metadata', {}).get('estimated_time_s', 0)/60:.1f} min")
+        print(f"  Turns:         {result.get('metadata', {}).get('num_turns', 0)}")
+        print(f"  Max edge risk: {result.get('metadata', {}).get('max_edge_risk', 0):.3f}")
+        print(f"  Mean edge risk: {result.get('metadata', {}).get('mean_edge_risk', 0):.3f}")
+        print(f"  Nodes explored: {result.get('metadata', {}).get('nodes_explored', 0)}")
+        print(f"{'='*60}\n")
+        
+        return result
+        
+    except Exception as e:
+        import traceback
+        print(f"\n[Backend] ROUTE COMPUTATION ERROR")
+        print(f"  Error: {str(e)}")
+        print(f"  Traceback:")
+        print(traceback.format_exc())
+        print(f"{'='*60}\n")
+        
+        return JSONResponse(
+            {
+                "error": f"Route computation failed: {str(e)}",
+                "details": "Check server logs for full traceback"
+            },
+            status_code=500
+        )
     
-    return result
+    finally:
+        # CRITICAL: Restore original config after route computation
+        planner.config['lambda_risk'] = original_lambda
+        planner.cost_fn = get_cost_function(cost_type, planner.config)
+        planner.optimizer.cost_fn = planner.cost_fn
+
+
+@app.get("/route/validate")
+def validate_route_params(
+    start: str = Query(...),
+    goal: str = Query(...),
+    lambda_risk: float = Query(10.0)
+):
+    """
+    Validate route parameters before computing.
+    Useful for frontend to pre-check inputs.
+    """
+    if planner is None:
+        return {"valid": False, "error": "Planner not initialized"}
+    
+    errors = []
+    warnings = []
+    
+    # Check start node
+    if start not in planner.osm_graph.nodes:
+        errors.append(f"Start node '{start}' not in road network")
+    
+    # Check goal node
+    if goal not in planner.osm_graph.nodes:
+        errors.append(f"Goal node '{goal}' not in road network")
+    
+    # Check lambda_risk range
+    if lambda_risk < 0.1 or lambda_risk > 100.0:
+        errors.append(f"lambda_risk must be in [0.1, 100.0], got {lambda_risk}")
+    
+    # Check if path exists
+    if not errors:
+        try:
+            # Quick networkx check (ignores risk)
+            path = nx.shortest_path(planner.osm_graph, start, goal)
+            
+            # Estimate distance
+            total_distance = sum(
+                planner.osm_graph[path[i]][path[i+1]].get('length', 0)
+                for i in range(len(path)-1)
+            )
+            
+            # Estimate risk
+            edge_risks = [
+                planner.osm_graph[path[i]][path[i+1]].get('p_harm', 0)
+                for i in range(len(path)-1)
+            ]
+            mean_risk = sum(edge_risks) / len(edge_risks) if edge_risks else 0
+            max_risk = max(edge_risks) if edge_risks else 0
+            
+            # Generate warnings
+            if max_risk > 0.5:
+                warnings.append(f"High risk detected on route (max: {max_risk:.2f})")
+            
+            if total_distance > 5000:
+                warnings.append(f"Long route ({total_distance/1000:.1f} km)")
+            
+            return {
+                "valid": True,
+                "warnings": warnings,
+                "estimate": {
+                    "hops": len(path),
+                    "distance_m": round(total_distance, 1),
+                    "mean_risk": round(mean_risk, 3),
+                    "max_risk": round(max_risk, 3)
+                }
+            }
+            
+        except nx.NetworkXNoPath:
+            errors.append("No path exists between nodes")
+        except Exception as e:
+            errors.append(f"Path validation failed: {str(e)}")
+    
+    return {"valid": False, "errors": errors}
+
+
+@app.get("/route/compare")
+def compare_route_options(
+    start: str = Query(...),
+    goal: str = Query(...)
+):
+    """
+    Compare all three route types side-by-side:
+    1. Safest (λ=20, Dijkstra)
+    2. Balanced (λ=10, A*)
+    3. Shortest (λ=1, A*)
+    
+    Returns summary metrics without full geometry.
+    Useful for showing users their options.
+    """
+    if planner is None:
+        return JSONResponse({"error": "Planner not initialized"}, status_code=503)
+    
+    route_types = {
+        "safest": {"lambda_risk": 20.0, "algorithm": "dijkstra"},
+        "balanced": {"lambda_risk": 10.0, "algorithm": "astar"},
+        "shortest": {"lambda_risk": 1.0, "algorithm": "astar"}
+    }
+    
+    comparisons = {}
+    original_lambda = planner.config.get('lambda_risk')
+    
+    from src.planner.cost_functions import get_cost_function
+    cost_type = planner.config.get('cost_function', 'log_odds')
+    
+    try:
+        for route_type, params in route_types.items():
+            # Set config for this route type
+            planner.config['lambda_risk'] = params['lambda_risk']
+            planner.cost_fn = get_cost_function(cost_type, planner.config)
+            planner.optimizer.cost_fn = planner.cost_fn
+            
+            result = planner.plan_route(start, goal, params['algorithm'])
+            
+            if "error" not in result:
+                comparisons[route_type] = {
+                    "distance_m": round(result['metadata']['total_distance_m'], 1),
+                    "distance_km": round(result['metadata']['total_distance_m'] / 1000, 2),
+                    "eta_min": round(result['metadata']['estimated_time_s'] / 60),
+                    "safety_score": round(result['safety_score'] * 100, 1),
+                    "num_turns": result['metadata']['num_turns'],
+                    "max_edge_risk": round(result['metadata']['max_edge_risk'], 3),
+                    "mean_edge_risk": round(result['metadata']['mean_edge_risk'], 3),
+                    "nodes_explored": result['metadata'].get('nodes_explored', 0)
+                }
+            else:
+                comparisons[route_type] = {"error": result['error']}
+        
+        # Determine recommendation
+        if "safest" in comparisons and "shortest" in comparisons:
+            safest_dist = comparisons["safest"].get("distance_m", float('inf'))
+            shortest_dist = comparisons["shortest"].get("distance_m", float('inf'))
+            
+            # Recommend safest if distance penalty < 50%
+            if safest_dist < shortest_dist * 1.5:
+                recommendation = "safest"
+            else:
+                recommendation = "balanced"
+        else:
+            recommendation = "balanced"
+        
+        return {
+            "routes": comparisons,
+            "recommendation": recommendation
+        }
+        
+    finally:
+        # Restore original config
+        planner.config['lambda_risk'] = original_lambda
+        planner.cost_fn = get_cost_function(cost_type, planner.config)
+        planner.optimizer.cost_fn = planner.cost_fn
 
 
 @app.get("/debug/edge-data")

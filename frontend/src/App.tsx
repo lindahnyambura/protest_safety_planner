@@ -60,13 +60,13 @@ export default function App() {
   const [userNode, setUserNode] = useState<string | null>(null);
   const [mapRefreshTrigger, setMapRefreshTrigger] = useState(0);
   const homeMapRef = useRef<any>(null);
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   const navigateTo = (screen: Screen) => {
     console.log('[App] Navigating to', screen);
     setCurrentScreen(screen);
   };
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   // When location permission granted
   const handleLocationGranted = async (location: string, coords: { lat: number; lng: number }) => {
