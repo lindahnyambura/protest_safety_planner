@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Users, Shield, Wind, Droplets, CheckCircle, Cross } from 'lucide-react';
-import { createRoot } from 'react-dom/client';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibnlhbWJ1cmFsIiwiYSI6ImNtaGV5OGtldDAxNHEyanF2ODZ5eGd0YjYifQ.Tl1_xuqn3wEEzOWh5A9tbA';
 
@@ -42,13 +40,14 @@ interface RouteData {
 
 interface MapboxMapProps {
   onMapLoad?: (map: mapboxgl.Map) => void;
-  userLocation?: [number, number];
+  userLocation?: [number, number]; // [lng, lat]
   showRiskLayer?: boolean;
   routeData?: Partial<import('../App').RouteData> | null;
   onWaypointClick?: (step: number) => void;
   reports?: ReportMarker[];
   activeLayers?: string[];
   medicalStations?: MedicalStation[];
+  onMapClick?: (lat: number, lng: number) => void;
 }
 
 export default function MapboxMap({ 
@@ -59,10 +58,12 @@ export default function MapboxMap({
   onWaypointClick,
   reports = [],
   activeLayers = ['risk'],
-  medicalStations = []
+  medicalStations = [],
+  onMapClick
 }: MapboxMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const userMarker = useRef<mapboxgl.Marker | null>(null);
   const [loaded, setLoaded] = useState(false);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
@@ -94,6 +95,22 @@ export default function MapboxMap({
       }
     });
 
+    // Add click handler for setting location
+    if (onMapClick) {
+      map.current.on('click', (e) => {
+        const { lng, lat } = e.lngLat;
+        console.log('[MapboxMap] Map clicked:', { lat, lng });
+        onMapClick(lat, lng);
+      });
+
+      // Change cursor on hover
+      map.current.on('mouseenter', () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = 'crosshair';
+        }
+      });
+    }
+
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     return () => {
@@ -103,21 +120,67 @@ export default function MapboxMap({
         map.current = null;
       }
     };
-  }, [onMapLoad]);
+  }, [onMapLoad, onMapClick]);
 
-  // User location marker
+  // User location marker with centering
   useEffect(() => {
-  if (!map.current || !loaded || !userLocation) return;
+    if (!map.current || !loaded || !userLocation) return;
 
-  const marker = new mapboxgl.Marker({ color: '#000' })
-    .setLngLat(userLocation)
-    .addTo(map.current);
+    console.log('[MapboxMap] Setting user location:', userLocation);
 
-  // Cleanup properly typed
-  return () => {
-    marker.remove();
-  };
-}, [loaded, userLocation]);
+    // Remove old marker
+    if (userMarker.current) {
+      userMarker.current.remove();
+    }
+
+    // Create new marker
+    const el = document.createElement('div');
+    el.className = 'user-location-marker';
+    el.innerHTML = `
+      <div style="
+        background: #000;
+        border: 4px solid white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        position: relative;
+      ">
+        <div style="
+          position: absolute;
+          inset: 0;
+          background: #000;
+          border-radius: 50%;
+          animation: pulse 2s infinite;
+        "></div>
+      </div>
+      <style>
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.5); opacity: 0; }
+        }
+      </style>
+    `;
+
+    userMarker.current = new mapboxgl.Marker({ element: el })
+      .setLngLat(userLocation)
+      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML('<strong>Your Location</strong>'))
+      .addTo(map.current);
+
+    // Center map on user location
+    map.current.flyTo({
+      center: userLocation,
+      zoom: 15,
+      duration: 1000
+    });
+
+    return () => {
+      if (userMarker.current) {
+        userMarker.current.remove();
+        userMarker.current = null;
+      }
+    };
+  }, [loaded, userLocation]);
 
   // Risk layer
   useEffect(() => {
@@ -196,7 +259,6 @@ export default function MapboxMap({
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    // Helper to create marker icon
     const createMarkerIcon = (type: string, confidence: number) => {
       const el = document.createElement('div');
       el.className = 'report-marker';
@@ -220,7 +282,7 @@ export default function MapboxMap({
       const color = colors[type as keyof typeof colors] || '#737373';
       const icon = icons[type as keyof typeof icons] || '⚠️';
       const size = confidence > 0.7 ? 44 : confidence > 0.4 ? 36 : 28;
-      const opacity = 0.5 + (confidence * 0.5); // 0.5 to 1.0
+      const opacity = 0.5 + (confidence * 0.5);
 
       el.innerHTML = `
         <div style="
@@ -244,7 +306,6 @@ export default function MapboxMap({
       return el;
     };
 
-    // Add report markers based on active layers
     reports.forEach(report => {
       if (!activeLayers.includes(report.type)) return;
 
@@ -304,7 +365,7 @@ export default function MapboxMap({
           font-size: 16px;
           color: white;
         ">
-          <span></span>
+          <span>🏥</span>
           <span style="font-weight: bold; font-size: 12px;">${station.name}</span>
         </div>
       `;
@@ -331,7 +392,7 @@ export default function MapboxMap({
     };
   }, [loaded, activeLayers, medicalStations]);
 
-  // Route visualization (existing code)
+  // Route visualization
   useEffect(() => {
     if (
       !map.current ||

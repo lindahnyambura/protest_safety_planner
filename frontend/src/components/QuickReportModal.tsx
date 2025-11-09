@@ -3,17 +3,16 @@ import { Button } from './ui/button';
 import { X, CheckCircle, Users, Shield, Wind, Droplets } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
-import { apiService } from '../services/api';
 
 interface QuickReportModalProps {
   onClose: () => void;
-  userLocation?: [number, number]; // [lng, lat]
+  userLocation: { lat: number; lng: number }; // Changed from array to object
   onReportSuccess?: () => void;
 }
 
 export default function QuickReportModal({ 
   onClose, 
-  userLocation = [36.8225, -1.2875],
+  userLocation,
   onReportSuccess 
 }: QuickReportModalProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -50,13 +49,11 @@ export default function QuickReportModal({
     setSubmitting(true);
 
     try {
-      const [lng, lat] = userLocation;
-      
       // Prepare report data - exactly matching backend expectations
       const reportData = {
         type: selectedType,
-        lat: lat,  // latitude (y-coordinate)
-        lng: lng,  // longitude (x-coordinate)
+        lat: userLocation.lat,  // Use object properties
+        lng: userLocation.lng,
         confidence: confidenceMap[confidence],
         notes: notes.trim() || undefined,
         timestamp: new Date().toISOString()
@@ -152,7 +149,7 @@ export default function QuickReportModal({
           <div>
             <h3 className="text-xl font-bold">Quick Report</h3>
             <p className="text-sm text-neutral-600 mt-1">
-              Location: {userLocation[1].toFixed(4)}, {userLocation[0].toFixed(4)}
+              Location: {userLocation.lat.toFixed(4)}°, {userLocation.lng.toFixed(4)}°
             </p>
           </div>
           <Button
@@ -293,7 +290,7 @@ export default function QuickReportModal({
         <div className="bg-neutral-50 rounded-xl p-3 border-2 border-neutral-200">
           <p className="text-xs text-neutral-700">
             <strong>Privacy:</strong> Reports are anonymous and expire after 10 minutes. 
-            Your location is quantized to the nearest street intersection (~{userLocation ? '20m' : 'unknown'}).
+            Your location is quantized to the nearest street intersection (~20m).
           </p>
         </div>
       </motion.div>

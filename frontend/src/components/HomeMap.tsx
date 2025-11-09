@@ -6,13 +6,14 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface HomeMapProps {
   userLocation: string;
+  userCoords: { lat: number; lng: number } | null;
   onReport: () => void;
   onFindRoute: () => void;
   onAlerts: () => void;
   onSettings: () => void;
+  onMapClick?: (lat: number, lng: number) => void;
 }
 
-// Define report types with their visual properties
 export interface ReportMarker {
   id: string;
   type: 'safe' | 'crowd' | 'police' | 'tear_gas' | 'water_cannon';
@@ -32,14 +33,15 @@ const MEDICAL_STATIONS = [
 ];
 
 export default function HomeMap({ 
-  userLocation, 
+  userLocation,
+  userCoords,
   onReport, 
   onFindRoute,
   onAlerts,
-  onSettings 
+  onSettings,
+  onMapClick
 }: HomeMapProps) {
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
-  const [userCoords] = useState<[number, number]>([36.8225, -1.2875]);
   const [activeLayers, setActiveLayers] = useState<string[]>(['risk']);
   const [showLayers, setShowLayers] = useState(false);
   const [reports, setReports] = useState<ReportMarker[]>([]);
@@ -49,10 +51,7 @@ export default function HomeMap({
   // Fetch reports on mount and periodically
   useEffect(() => {
     fetchReports();
-    
-    // Refresh every 30 seconds
     const interval = setInterval(fetchReports, 30000);
-    
     return () => clearInterval(interval);
   }, []);
 
@@ -81,7 +80,6 @@ export default function HomeMap({
     );
   };
 
-  // Filter reports by type for each layer
   const getLayerReports = (layerType: string): ReportMarker[] => {
     return reports.filter(r => r.type === layerType);
   };
@@ -101,16 +99,17 @@ export default function HomeMap({
       {/* Mapbox Map */}
       <MapboxMap
         onMapLoad={setMap}
-        userLocation={userCoords}
+        userLocation={userCoords ? [userCoords.lng, userCoords.lat] : undefined}
         showRiskLayer={activeLayers.includes('risk')}
         reports={reports}
         activeLayers={activeLayers}
         medicalStations={MEDICAL_STATIONS}
+        onMapClick={onMapClick}
       />
 
       {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 p-4 z-10">
-        <div className="flex items-start justify-between">
+      <div className="absolute top-0 left-0 right-0 p-4 z-10 pointer-events-none">
+        <div className="flex items-start justify-between pointer-events-auto">
           <motion.div
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -191,8 +190,15 @@ export default function HomeMap({
             >
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-black" strokeWidth={2} />
-                <span className="text-sm text-neutral-900">{userLocation || 'Nairobi CBD'}</span>
+                <span className="text-sm text-neutral-900">
+                  {userLocation || 'Tap map to set location'}
+                </span>
               </div>
+              {userCoords && (
+                <div className="text-xs text-neutral-500 mt-1">
+                  {userCoords.lat.toFixed(4)}°, {userCoords.lng.toFixed(4)}°
+                </div>
+              )}
             </motion.div>
           </div>
         </div>
@@ -239,9 +245,9 @@ export default function HomeMap({
       </div>
 
       {/* Bottom Actions */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+      <div className="absolute bottom-0 left-0 right-0 p-4 z-10 pointer-events-none">
         <motion.div 
-          className="flex gap-3"
+          className="flex gap-3 pointer-events-auto"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
@@ -250,6 +256,7 @@ export default function HomeMap({
             onClick={onReport}
             size="lg"
             className="flex-1 bg-neutral-900 hover:bg-neutral-800 shadow-lg"
+            disabled={!userCoords}
             asChild
           >
             <motion.button whileTap={{ scale: 0.98 }}>
@@ -262,6 +269,7 @@ export default function HomeMap({
             size="lg"
             variant="outline"
             className="flex-1 bg-white/95 backdrop-blur border-2 border-neutral-200 shadow-lg"
+            disabled={!userCoords}
             asChild
           >
             <motion.button whileTap={{ scale: 0.98 }}>
@@ -270,6 +278,17 @@ export default function HomeMap({
             </motion.button>
           </Button>
         </motion.div>
+
+        {!userCoords && (
+          <motion.p 
+            className="text-center text-sm text-neutral-600 mt-2 pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            Tap anywhere on the map to set your location
+          </motion.p>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
-import { MapPin, Info, X } from 'lucide-react';
+import { MapPin, Info, X, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
@@ -9,21 +9,48 @@ interface LocationPermissionModalProps {
   onClose: () => void;
 }
 
+// Nairobi CBD bounds
+const NAIROBI_BOUNDS = {
+  north: -1.280,
+  south: -1.295,
+  east: 36.835,
+  west: 36.810,
+};
+
+const isWithinBounds = (lat: number, lng: number): boolean => {
+  return (
+    lat >= NAIROBI_BOUNDS.south &&
+    lat <= NAIROBI_BOUNDS.north &&
+    lng >= NAIROBI_BOUNDS.west &&
+    lng <= NAIROBI_BOUNDS.east
+  );
+};
+
 export default function LocationPermissionModal({ onLocationGranted, onClose }: LocationPermissionModalProps) {
   const [showWhy, setShowWhy] = useState(false);
   const [manualLocation, setManualLocation] = useState('');
   const [useManual, setUseManual] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [landmarks, setLandmarks] = useState<any[]>([]);
   const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   // Fetch landmarks for manual selection
   useEffect(() => {
     if (useManual) {
+      setLoading(true);
       fetch(`${API_BASE_URL}/landmarks`)
         .then(res => res.json())
-        .then(data => setLandmarks(data.landmarks))
-        .catch(err => console.error('Failed to load landmarks:', err));
+        .then(data => {
+          console.log('[LocationModal] Loaded landmarks:', data.landmarks);
+          setLandmarks(data.landmarks || []);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Failed to load landmarks:', err);
+          toast.error('Failed to load landmarks');
+          setLoading(false);
+        });
     }
   }, [useManual]);
 
@@ -41,9 +68,13 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
       (position) => {
         const { latitude, longitude } = position.coords;
         
-        // Verify we're in Nairobi CBD area
-        if (latitude < -1.30 || latitude > -1.27 || longitude < 36.80 || longitude > 36.84) {
-          toast.error('Location outside Nairobi CBD area');
+        console.log('[LocationModal] GPS location:', { lat: latitude, lng: longitude });
+        
+        // Check if within Nairobi CBD bounds
+        if (!isWithinBounds(latitude, longitude)) {
+          toast.error('Location outside Nairobi CBD area', {
+            description: 'Please use manual location selection'
+          });
           setLoading(false);
           setUseManual(true);
           return;
@@ -56,17 +87,21 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
           .then(res => res.json())
           .then(data => {
             const locationName = data.address?.road || data.address?.neighbourhood || 'Nairobi CBD';
+            console.log('[LocationModal] Location set:', locationName, { lat: latitude, lng: longitude });
             onLocationGranted(locationName, { lat: latitude, lng: longitude });
             setLoading(false);
           })
           .catch(() => {
+            console.log('[LocationModal] Location set (no name):', { lat: latitude, lng: longitude });
             onLocationGranted('Nairobi CBD', { lat: latitude, lng: longitude });
             setLoading(false);
           });
       },
       (error) => {
         console.error('Geolocation error:', error);
-        toast.error('Could not get your location');
+        toast.error('Could not get your location', {
+          description: 'Please use manual location selection'
+        });
         setLoading(false);
         setUseManual(true);
       },
@@ -81,23 +116,75 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
   const handleManualLocation = async (landmark?: any) => {
     if (landmark) {
       // Use exact coordinates from the landmark
+      console.log('[LocationModal] Landmark selected:', landmark.name, landmark.coordinates);
+      
+      // Verify coordinates are within bounds
+      if (!isWithinBounds(landmark.coordinates.lat, landmark.coordinates.lng)) {
+        toast.error('Location outside Nairobi CBD bounds');
+        return;
+      }
+      
       onLocationGranted(landmark.name, {
         lat: landmark.coordinates.lat,
         lng: landmark.coordinates.lng
       });
     } else if (manualLocation.trim()) {
-      // Search for typed location
-      try {
-        const API_BASE_URL = import.meta.env.VITE_API_URL;
-        const response = await fetch(`${API_BASE_URL}/nearest-landmark?lat=-1.2875&lng=36.8225`);
-        const data = await response.json();
-        onLocationGranted(data.name, {
-          lat: data.coordinates.lat,
-          lng: data.coordinates.lng
-        });
-      } catch {
-        onLocationGranted(manualLocation, { lat: -1.2875, lng: 36.8225 });
+      // Geocode the typed location
+      await geocodeLocation(manualLocation.trim());
+    }
+  };
+
+  const geocodeLocation = async (query: string) => {
+    setGeocoding(true);
+    
+    try {
+      // Use Nominatim to geocode the location
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Nairobi CBD, Kenya')}&format=json&limit=1`,
+        {
+          headers: { 'User-Agent': 'ProtestSafetyPlanner/1.0' }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Geocoding failed');
       }
+
+      const data = await response.json();
+      
+      if (data.length === 0) {
+        toast.error('Location not found', {
+          description: 'Try selecting from the landmarks list'
+        });
+        setGeocoding(false);
+        return;
+      }
+
+      const result = data[0];
+      const lat = parseFloat(result.lat);
+      const lng = parseFloat(result.lon);
+
+      console.log('[LocationModal] Geocoded location:', query, { lat, lng });
+
+      // Check if within bounds
+      if (!isWithinBounds(lat, lng)) {
+        toast.error('Location outside Nairobi CBD', {
+          description: `Bounds: ${NAIROBI_BOUNDS.south}°S to ${NAIROBI_BOUNDS.north}°S`
+        });
+        setGeocoding(false);
+        return;
+      }
+
+      const locationName = result.display_name.split(',')[0] || query;
+      onLocationGranted(locationName, { lat, lng });
+      
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      toast.error('Failed to find location', {
+        description: 'Please try selecting from landmarks'
+      });
+    } finally {
+      setGeocoding(false);
     }
   };
 
@@ -125,7 +212,7 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
         exit={{ scale: 0.9, y: 20, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
       >
-        <div className="bg-white rounded-2xl p-8 shadow-2xl border-2 border-neutral-200">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl border-2 border-neutral-200 max-h-[90vh] overflow-y-auto">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 hover:bg-neutral-100 rounded-full transition-colors"
@@ -211,45 +298,82 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <p className="text-sm text-neutral-600 mb-3">Select your location:</p>
+              <p className="text-sm text-neutral-600 mb-3">Select or enter your location:</p>
 
-              {/* Landmark selection grid */}
-              <div className="max-h-64 overflow-y-auto mb-3 space-y-2">
-                {landmarks.map((landmark, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleManualLocation(landmark)}
-                    className="w-full text-left px-4 py-3 bg-white border-2 border-neutral-200 rounded-xl hover:border-neutral-900 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-neutral-900">
-                        {landmark.name}
-                      </span>
-                      <span className="text-xs text-neutral-500">
-                        {landmark.coordinates.lat.toFixed(4)}, {landmark.coordinates.lng.toFixed(4)}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+              {/* Search input */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                <input
+                  type="text"
+                  value={manualLocation}
+                  onChange={(e) => setManualLocation(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && manualLocation.trim()) {
+                      handleManualLocation();
+                    }
+                  }}
+                  placeholder="Search location in Nairobi CBD..."
+                  className="w-full pl-10 pr-4 py-3 border-2 border-neutral-300 rounded-xl focus:outline-none focus:border-neutral-900 transition-colors"
+                  disabled={geocoding}
+                />
               </div>
 
-              {/* Manual text input fallback */}
-              <input
-                type="text"
-                value={manualLocation}
-                onChange={(e) => setManualLocation(e.target.value)}
-                placeholder="Enter your location (e.g., Kenyatta Avenue)"
-                className="w-full px-4 py-3 border-2 border-neutral-300 rounded-xl mb-3 focus:outline-none focus:border-neutral-900 transition-colors"
-              />
-              
-              <Button 
-                onClick={() => handleManualLocation()}
-                className="w-full bg-neutral-900 hover:bg-neutral-800 mb-3"
-                size="lg"
-                disabled={!manualLocation.trim() && landmarks.length === 0}
-              >
-                Continue
-              </Button>
+              {manualLocation.trim() && (
+                <Button 
+                  onClick={() => handleManualLocation()}
+                  className="w-full bg-neutral-900 hover:bg-neutral-800 mb-4"
+                  size="lg"
+                  disabled={geocoding}
+                >
+                  {geocoding ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" />
+                      Find Location
+                    </>
+                  )}
+                </Button>
+              )}
+
+              <div className="relative mb-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-neutral-200"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-white px-2 text-neutral-500">Or choose a landmark</span>
+                </div>
+              </div>
+
+              {/* Landmark selection grid */}
+              {loading ? (
+                <div className="text-center py-8 text-neutral-500">
+                  Loading landmarks...
+                </div>
+              ) : (
+                <div className="max-h-64 overflow-y-auto mb-3 space-y-2">
+                  {landmarks.map((landmark, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleManualLocation(landmark)}
+                      className="w-full text-left px-4 py-3 bg-white border-2 border-neutral-200 rounded-xl hover:border-neutral-900 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-neutral-900">
+                          {landmark.name}
+                        </span>
+                        <MapPin className="w-4 h-4 text-neutral-400" />
+                      </div>
+                      <span className="text-xs text-neutral-500">
+                        {landmark.coordinates.lat.toFixed(4)}°, {landmark.coordinates.lng.toFixed(4)}°
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <motion.button
                 onClick={() => setUseManual(false)}

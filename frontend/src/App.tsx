@@ -1,3 +1,4 @@
+// App.tsx
 import { useState, useEffect, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import LocationPermissionModal from './components/LocationPermissionModal';
@@ -70,27 +71,40 @@ export default function App() {
 
   // When location permission granted
   const handleLocationGranted = async (location: string, coords: { lat: number; lng: number }) => {
+    console.log('[App] Location granted:', location, coords);
+    
     setUserLocation(location);
     setUserCoords(coords);
     setShowLocationModal(false);
 
-    toast.loading('Finding your position...', { id: 'find-node' });
+    toast.loading('Finding your position on the map...', { id: 'find-node' });
+    
     try {
+      // Find nearest node on the road network
       const response = await fetch(
         `${API_BASE_URL}/nearest-node?lat=${coords.lat}&lng=${coords.lng}`
       );
 
       if (response.ok) {
         const data = await response.json();
+        console.log('[App] Nearest node found:', data.node_id);
         setUserNode(data.node_id);
-        toast.success('Location set successfully!', { id: 'find-node' });
+        toast.success(`Location set: ${location}`, { 
+          id: 'find-node',
+          description: `Within ${Math.round(data.distance_m)}m of road network`
+        });
       } else {
-        throw new Error('Could not find nearest node');
+        const error = await response.json();
+        throw new Error(error.error || 'Could not find nearest node');
       }
     } catch (error) {
       console.error('Failed to find nearest node:', error);
-      toast.error('Location set with limited accuracy', { id: 'find-node' });
-      setUserNode('13134429075'); // fallback (Odeon) // railway
+      toast.error('Location set with limited accuracy', { 
+        id: 'find-node',
+        description: 'Using approximate position'
+      });
+      // Fallback to Railway Station as default
+      setUserNode('13134429075');
     }
 
     navigateTo('home-map');
@@ -104,7 +118,6 @@ export default function App() {
       'Afya Center': '10873342299',
       'GPO (General Post Office)': '11895806370',
       'Railway Station': '13134429075',
-      // 'KICC': '13134429074',
       'Uhuru Park': '11895806775',
       'City Market': '12364334298',
       'Kencom': '12343534285',
@@ -113,12 +126,14 @@ export default function App() {
       'Times Tower': '12361123931',
       'Odeon': '12361156623',
     };
-    return destinationMap[destination] || '13134429075'; // default fallback
+    return destinationMap[destination] || '13134429075';
   };
 
   const handleComputeRoute = async (destinationData: RouteData) => {
     if (!userNode) {
-      toast.error('User location not set');
+      toast.error('User location not set', {
+        description: 'Please set your location first'
+      });
       return;
     }
 
@@ -128,20 +143,21 @@ export default function App() {
 
       const riskPreference =
         destinationData.riskLevel === 'low'
-          ? 10.0 // safest
+          ? 10.0
           : destinationData.riskLevel === 'high'
-          ? 1.0 // fastest
-          : 5.0; // balanced
+          ? 1.0
+          : 5.0;
 
       console.log(`[App] Computing route: start=${startNode}, goal=${goalNode}, risk_weight=${riskPreference}`);
       toast.loading('Computing safe route...', { id: 'route-loading' });
 
       const response = await fetch(
-        `protestsafetyplanner-production.up.railway.app/route?start=${startNode}&goal=${goalNode}&algorithm=astar&lambda_risk=${riskPreference}`
+        `${API_BASE_URL}/route?start=${startNode}&goal=${goalNode}&algorithm=astar&lambda_risk=${riskPreference}`
       );
 
       if (!response.ok) {
-        throw new Error(`Backend returned ${response.status}`);
+        const error = await response.json();
+        throw new Error(error.error || `Backend returned ${response.status}`);
       }
 
       const backendRoute = await response.json();
@@ -168,13 +184,17 @@ export default function App() {
       navigateTo('route-details');
     } catch (error) {
       console.error('Route computation failed:', error);
-      toast.error('Failed to compute route. Please try again.', { id: 'route-loading' });
+      toast.error('Failed to compute route', { 
+        id: 'route-loading',
+        description: error instanceof Error ? error.message : 'Please try again'
+      });
     }
   };
 
   const handleReportSuccess = () => {
     console.log('[App] Report submitted successfully, refreshing map');
     setMapRefreshTrigger((prev) => prev + 1);
+    toast.success('Map updated with your report');
   };
 
   const handleAlertClick = (lat: number, lng: number) => {
@@ -183,6 +203,55 @@ export default function App() {
       description: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
     });
     navigateTo('home-map');
+  };
+
+  // Handle interactive map click for setting location
+  const handleMapLocationSelect = async (lat: number, lng: number) => {
+    console.log('[App] Map location selected:', { lat, lng });
+    
+    // Check bounds
+    if (lat < -1.295 || lat > -1.280 || lng < 36.810 || lng > 36.835) {
+      toast.error('Location outside Nairobi CBD bounds');
+      return;
+    }
+
+    toast.loading('Setting location...', { id: 'map-location' });
+
+    try {
+      // Reverse geocode
+      const geoResponse = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+        { headers: { 'User-Agent': 'ProtestSafetyPlanner/1.0' } }
+      );
+      
+      let locationName = 'Nairobi CBD';
+      if (geoResponse.ok) {
+        const geoData = await geoResponse.json();
+        locationName = geoData.address?.road || geoData.address?.neighbourhood || 'Nairobi CBD';
+      }
+
+      // Find nearest node
+      const response = await fetch(
+        `${API_BASE_URL}/nearest-node?lat=${lat}&lng=${lng}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setUserLocation(locationName);
+        setUserCoords({ lat, lng });
+        setUserNode(data.node_id);
+        
+        toast.success(`Location set: ${locationName}`, { 
+          id: 'map-location',
+          description: `Snapped to nearest road (${Math.round(data.distance_m)}m)`
+        });
+      } else {
+        throw new Error('Could not find nearest road');
+      }
+    } catch (error) {
+      console.error('Map location selection failed:', error);
+      toast.error('Failed to set location', { id: 'map-location' });
+    }
   };
 
   const renderScreen = () => {
@@ -194,13 +263,14 @@ export default function App() {
         case 'home-map':
           return (
             <HomeMap
-              // ref={homeMapRef}
               userLocation={userLocation}
+              userCoords={userCoords}
               onReport={() => setShowReportModal(true)}
               onFindRoute={() => navigateTo('route-destination')}
               onAlerts={() => navigateTo('alerts')}
               onSettings={() => navigateTo('settings')}
-              key={mapRefreshTrigger} // trigger refresh
+              onMapClick={handleMapLocationSelect}
+              key={mapRefreshTrigger}
             />
           );
 
@@ -286,8 +356,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       <div className="w-full h-screen bg-white overflow-hidden relative">
+        {/* Debug info */}
         <div className="absolute top-0 left-0 z-50 bg-black text-white text-xs px-2 py-1 opacity-75">
-          Screen: {currentScreen} | Reports: {mapRefreshTrigger}
+          Screen: {currentScreen} | Node: {userNode || 'none'} | 
+          Coords: {userCoords ? `${userCoords.lat.toFixed(3)}, ${userCoords.lng.toFixed(3)}` : 'none'}
         </div>
 
         {renderScreen()}
@@ -299,10 +371,10 @@ export default function App() {
           />
         )}
 
-        {showReportModal && currentScreen === 'home-map' && (
+        {showReportModal && currentScreen === 'home-map' && userCoords && (
           <QuickReportModal
             onClose={() => setShowReportModal(false)}
-            userLocation={userCoords ? [userCoords.lat, userCoords.lng] : undefined}
+            userLocation={userCoords}
             onReportSuccess={handleReportSuccess}
           />
         )}
