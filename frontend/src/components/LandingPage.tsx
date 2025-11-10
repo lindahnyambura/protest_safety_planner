@@ -1,6 +1,6 @@
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { MapPin, Users, Shield, Heart, Navigation, TrendingUp } from 'lucide-react';
+import { MapPin, Users, Shield, Heart, Navigation } from 'lucide-react';
 import { ImageWithFallback } from './assets/ImageWithFallback';
 import { motion } from 'motion/react';
 
@@ -25,7 +25,7 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
       image: 'assets/ruto-must-go.jpg'
     },
     { 
-      title: 'Reject Finance Bill 2024 ', 
+      title: 'Reject Finance Bill 2024', 
       status: 'tense', 
       date: 'June 18, 2024', 
       location: 'Nairobi CBD',
@@ -59,7 +59,9 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <h3 className="mb-4 text-neutral-900">Happening Now</h3>
+          <h3 className="mb-4 text-2xl font-semibold text-neutral-900">
+            Happening Now
+          </h3>
 
           {/* Hero Card with Image */}
           <motion.div 
@@ -74,14 +76,16 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
                 className="w-full h-full object-cover"
               />
               <div className="absolute top-3 right-3">
-                <Badge className="bg-green-500 text-white border-0">
-                  Peaceful
+                <Badge className="bg-red-600 text-white border-0">
+                  Tense
                 </Badge>
               </div>
             </div>
             
             <div className="p-5">
-              <h2 className="mb-3 text-neutral-900">Saba Saba March — Jamuhuri Grounds</h2>
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+                Saba Saba March — Jamuhuri Grounds
+              </h2>
               
               <div className="flex items-center gap-4 mb-3 text-neutral-600 flex-wrap">
                 <span className="text-sm">July 7, 2025 • 10:00 AM</span>
@@ -92,7 +96,8 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
               </div>
               
               <p className="text-neutral-700 mb-4">
-                Peaceful gathering progressing along planned route. Community observers report police barricades along Thika Road.
+                Situation is tense with visible police presence and barricades.
+                Participants advised to remain cautious near Thika Road.
               </p>
               
               <div className="flex items-center justify-between pt-4 border-t border-neutral-200">
@@ -104,7 +109,7 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
                   </div>
                   <div className="flex items-center gap-1">
                     <Shield className="w-4 h-4 text-black" strokeWidth={2} />
-                    <span className="text-sm text-neutral-600">Safe</span>
+                    <span className="text-sm text-red-600 font-medium">Caution</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Heart className="w-4 h-4 text-black" strokeWidth={2} />
@@ -123,7 +128,9 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <h3 className="mb-4 text-neutral-900">Previous Protests</h3>
+          <h3 className="mb-4 text-2xl font-semibold text-neutral-900">
+            Previous Protests
+          </h3>
           <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {pastIncidents.map((incident, idx) => (
               <motion.div
@@ -151,7 +158,7 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
                       className={`border-2 ${
                         incident.status === 'peaceful'
                           ? 'border-green-500 bg-green-50 text-green-700'
-                          : 'border-amber-500 bg-amber-50 text-amber-700'
+                          : 'border-red-500 bg-red-50 text-red-700'
                       }`}
                     >
                       {incident.status === 'peaceful' ? 'Peaceful' : 'Tense'}
@@ -160,7 +167,9 @@ export default function LandingPage({ onContinue }: LandingPageProps) {
                 </div>
                 
                 <div className="p-4">
-                  <h4 className="text-neutral-900 mb-2">{incident.title}</h4>
+                  <h4 className="text-base font-semibold text-neutral-900 mb-2">
+                    {incident.title}
+                  </h4>
                   <p className="text-sm text-neutral-500 mb-1">{incident.date}</p>
                   <p className="text-sm text-neutral-600 flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-black" strokeWidth={2} />
