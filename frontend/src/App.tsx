@@ -406,11 +406,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       <div className="w-full h-screen bg-white overflow-hidden relative">
-        {/* Debug info */}
+        {/* Debug info
         <div className="absolute top-0 left-0 z-50 bg-black text-white text-xs px-2 py-1 opacity-75">
           Screen: {currentScreen} | Node: {userNode || 'none'} | 
           Coords: {userCoords ? `${userCoords.lat.toFixed(3)}, ${userCoords.lng.toFixed(3)}` : 'none'}
-        </div>
+        </div> */}
 
         {renderScreen()}
 
