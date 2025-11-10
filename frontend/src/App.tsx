@@ -127,23 +127,64 @@ export default function App() {
     try {
       const startNode = userNode;
       
-      // For landmarks, we need to get the node ID from the backend
-      // by querying with the landmark coordinates
+      // CRITICAL FIX: Get destination node by finding nearest node to destination coordinates
       let goalNode = '13134429075'; // default fallback
       
+      console.log('[App] Looking up destination node for:', destinationData.destination);
+      
       try {
+        // Method 1: Try to get node_id from landmarks API if it's a known landmark
         const landmarksResponse = await fetch(`${API_BASE_URL}/landmarks`);
         if (landmarksResponse.ok) {
           const landmarksData = await landmarksResponse.json();
           const landmark = landmarksData.landmarks.find(
             (l: any) => l.name === destinationData.destination
           );
+          
           if (landmark && landmark.node_id) {
             goalNode = landmark.node_id;
+            console.log('[App] Found landmark node:', goalNode);
+          } else {
+            // Method 2: Destination is NOT a landmark, need to geocode it
+            console.log('[App] Not a known landmark, geocoding...');
+            
+            // First, geocode the destination name to get coordinates
+            const geocodeResponse = await fetch(
+              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destinationData.destination + ', Nairobi CBD, Kenya')}&format=json&limit=1`,
+              { headers: { 'User-Agent': 'ProtestSafetyPlanner/1.0' } }
+            );
+            
+            if (geocodeResponse.ok) {
+              const geocodeData = await geocodeResponse.json();
+              if (geocodeData.length > 0) {
+                const destLat = parseFloat(geocodeData[0].lat);
+                const destLng = parseFloat(geocodeData[0].lon);
+                
+                console.log('[App] Geocoded destination to:', { lat: destLat, lng: destLng });
+                
+                // Now find nearest node to those coordinates
+                const nodeResponse = await fetch(
+                  `${API_BASE_URL}/nearest-node?lat=${destLat}&lng=${destLng}`
+                );
+                
+                if (nodeResponse.ok) {
+                  const nodeData = await nodeResponse.json();
+                  goalNode = nodeData.node_id;
+                  console.log('[App] Found nearest node:', goalNode, `(${nodeData.distance_m}m away)`);
+                } else {
+                  throw new Error('Could not find nearest node to destination');
+                }
+              } else {
+                throw new Error('Could not geocode destination');
+              }
+            }
           }
         }
       } catch (error) {
-        console.warn('Failed to fetch landmark node IDs, using fallback');
+        console.error('Failed to find destination node:', error);
+        toast.warning('Using approximate destination', {
+          description: 'Could not find exact location'
+        });
       }
 
       // Map risk preference correctly:
@@ -157,7 +198,7 @@ export default function App() {
           ? 1.0   // Shortest: minimal risk penalty
           : 10.0; // Balanced: moderate risk aversion
 
-      console.log(`[App] Computing route: start=${startNode}, goal=${goalNode}, risk_weight=${riskPreference}`);
+      console.log(`[App] Computing route: start=${startNode}, goal=${goalNode}, lambda_risk=${riskPreference}`);
       toast.loading('Computing safe route...', { id: 'route-loading' });
 
       const response = await fetch(
