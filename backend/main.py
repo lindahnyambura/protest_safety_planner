@@ -827,29 +827,38 @@ def debug_harm_at_node(node: str = Query(...)):
     }
 
 @app.get("/landmarks")
-def get_landmarks(limit: int = 4):
-    """Return all known landmarks with their CORRECT Google Maps coordinates"""
+def get_landmarks(limit: int = Query(default=13, ge=1, le=13)):
+    """
+    Return landmarks with their CORRECT Google Maps coordinates
     
-    # Correct coordinates from Google Maps
+    Args:
+        limit: Number of landmarks to return (1-13). Defaults to all 13.
+               Frontend can request fewer for cleaner UI.
+    """
+    
+    # Correct coordinates from Google Maps (ordered by popularity/importance)
     landmarks_data = [
-        {"name": "Bus Station", "lat": -1.288275, "lng": 36.828192},
-        {"name": "National Archives", "lat": -1.2848354, "lng": 36.8214961},
-        {"name": "Uhuru Park", "lat": -1.2900825, "lng": 36.8174183},
         {"name": "KICC", "lat": -1.2882881, "lng": 36.820189},
-        {"name": "Koja", "lat": -1.2818321, "lng": 36.8206052},
-        {"name": "Times Tower", "lat": -1.2901877, "lng": 36.8214664},
         {"name": "Railway Station", "lat": -1.2908054, "lng": 36.8250816},
-        {"name": "Jamia Mosque", "lat": -1.2832261, "lng": 36.8179915},
-        {"name": "GPO", "lat": -1.2860694, "lng": 36.8162181},
+        {"name": "Uhuru Park", "lat": -1.2900825, "lng": 36.8174183},
+        {"name": "National Archives", "lat": -1.2848354, "lng": 36.8214961},
         {"name": "Afya Center", "lat": -1.2878776, "lng": 36.8271596},
-        {"name": "Odeon", "lat": -1.282821, "lng": 36.824996},
+        {"name": "GPO", "lat": -1.2860694, "lng": 36.8162181},
+        {"name": "Jamia Mosque", "lat": -1.2832261, "lng": 36.8179915},
         {"name": "Kencom", "lat": -1.285640, "lng": 36.824984},
+        {"name": "Bus Station", "lat": -1.288275, "lng": 36.828192},
+        {"name": "Times Tower", "lat": -1.2901877, "lng": 36.8214664},
+        {"name": "Odeon", "lat": -1.282821, "lng": 36.824996},
         {"name": "City Market", "lat": -1.2836408, "lng": 36.8168827},
+        {"name": "Koja", "lat": -1.2818321, "lng": 36.8206052},
     ]
+    
+    # Limit the results
+    limited_landmarks = landmarks_data[:limit]
     
     # Enrich with node IDs
     landmarks = []
-    for landmark in landmarks_data:
+    for landmark in limited_landmarks:
         node_id = LANDMARK_TO_NODE.get(landmark["name"].lower())
         landmarks.append({
             "name": landmark["name"],
@@ -857,7 +866,11 @@ def get_landmarks(limit: int = 4):
             "coordinates": {"lat": landmark["lat"], "lng": landmark["lng"]}
         })
     
-    return {"landmarks": landmarks}
+    return {
+        "landmarks": landmarks,
+        "total_available": len(landmarks_data),
+        "returned": len(landmarks)
+    }
 
 @app.get("/nearest-landmark")
 def get_nearest_landmark(lat: float = Query(...), lng: float = Query(...)):
@@ -1274,7 +1287,164 @@ async def get_report_heatmap():
         "features": features
     }
 
-# Add this temporary route to test coordinates
+# endpoints to verify reports are working
+
+@app.get("/debug/reports-impact")
+async def debug_reports_impact(node_id: str = Query(...)):
+    """
+    Debug endpoint to verify that reports are affecting edge harm probabilities
+    
+    Usage: 
+    1. Submit a report at a location
+    2. Call this endpoint with the node_id
+    3. Check that edge p_harm values have been updated
+    """
+    if planner is None:
+        return {"error": "Planner not initialized"}
+    
+    if node_id not in planner.osm_graph.nodes:
+        return {"error": f"Node {node_id} not found"}
+    
+    # Get all edges from this node
+    edges_info = []
+    for neighbor in planner.osm_graph.neighbors(node_id):
+        if isinstance(planner.osm_graph, nx.MultiDiGraph):
+            for key in planner.osm_graph[node_id][neighbor]:
+                edge_data = planner.osm_graph[node_id][neighbor][key]
+                edges_info.append({
+                    "to_node": neighbor,
+                    "edge_key": key,
+                    "p_harm": float(edge_data.get('p_harm', 0.0)),
+                    "length": float(edge_data.get('length', 0.0)),
+                    "cost_at_lambda_10": float(
+                        1.0 * edge_data.get('length', 0.0) + 
+                        10.0 * (-np.log(1 - edge_data.get('p_harm', 0.01)))
+                    )
+                })
+        else:
+            edge_data = planner.osm_graph[node_id][neighbor]
+            edges_info.append({
+                "to_node": neighbor,
+                "p_harm": float(edge_data.get('p_harm', 0.0)),
+                "length": float(edge_data.get('length', 0.0)),
+                "cost_at_lambda_10": float(
+                    1.0 * edge_data.get('length', 0.0) + 
+                    10.0 * (-np.log(1 - edge_data.get('p_harm', 0.01)))
+                )
+            })
+    
+    # Check if there are recent reports at this node
+    node_reports = RECENT_REPORTS.get(node_id, [])
+    active_reports = [
+        r for r in node_reports 
+        if r['expires_at'] > time.time()
+    ]
+    
+    # Calculate statistics
+    harm_values = [e['p_harm'] for e in edges_info]
+    
+    return {
+        "node_id": node_id,
+        "has_active_reports": len(active_reports) > 0,
+        "active_reports": active_reports,
+        "num_edges": len(edges_info),
+        "edges": edges_info,
+        "statistics": {
+            "min_harm": float(min(harm_values)) if harm_values else 0.0,
+            "max_harm": float(max(harm_values)) if harm_values else 0.0,
+            "mean_harm": float(sum(harm_values) / len(harm_values)) if harm_values else 0.0
+        },
+        "interpretation": {
+            "baseline_p_harm": "Original simulation values (before reports)",
+            "current_p_harm": "Updated values (after reports)",
+            "effect": "Higher p_harm → Higher cost → Route avoids this area"
+        }
+    }
+
+
+@app.get("/debug/compare-before-after-report")
+async def compare_routes_before_after_report(
+    start: str = Query(...),
+    goal: str = Query(...),
+    report_node: str = Query(...),
+    report_type: str = Query("tear_gas")
+):
+    """
+    Simulate a report and compare routes before/after
+    
+    This demonstrates that reports DO affect routing!
+    
+    Usage:
+    GET /debug/compare-before-after-report?start=NODE1&goal=NODE2&report_node=NODE3&report_type=tear_gas
+    """
+    if planner is None:
+        return {"error": "Planner not initialized"}
+    
+    # Step 1: Compute route BEFORE simulated report
+    original_lambda = planner.config.get('lambda_risk', 10.0)
+    planner.config['lambda_risk'] = 10.0
+    
+    from src.planner.cost_functions import get_cost_function
+    cost_type = planner.config.get('cost_function', 'log_odds')
+    planner.cost_fn = get_cost_function(cost_type, planner.config)
+    planner.optimizer.cost_fn = planner.cost_fn
+    
+    route_before = planner.plan_route(start, goal, 'astar')
+    
+    # Step 2: Simulate a report at report_node
+    print(f"\n[Debug] Simulating {report_type} report at node {report_node}")
+    update_edge_harm_from_reports(report_node, report_type, confidence=0.9)
+    
+    # Step 3: Compute route AFTER simulated report
+    route_after = planner.plan_route(start, goal, 'astar')
+    
+    # Restore config
+    planner.config['lambda_risk'] = original_lambda
+    
+    return {
+        "experiment": "Report Impact Analysis",
+        "setup": {
+            "start_node": start,
+            "goal_node": goal,
+            "report_at_node": report_node,
+            "report_type": report_type,
+            "confidence": 0.9
+        },
+        "before_report": {
+            "path": route_before.get('path', []),
+            "num_nodes": len(route_before.get('path', [])),
+            "distance_m": route_before.get('metadata', {}).get('total_distance_m', 0),
+            "max_edge_risk": route_before.get('metadata', {}).get('max_edge_risk', 0),
+            "mean_edge_risk": route_before.get('metadata', {}).get('mean_edge_risk', 0),
+            "passes_through_report_node": report_node in route_before.get('path', [])
+        },
+        "after_report": {
+            "path": route_after.get('path', []),
+            "num_nodes": len(route_after.get('path', [])),
+            "distance_m": route_after.get('metadata', {}).get('total_distance_m', 0),
+            "max_edge_risk": route_after.get('metadata', {}).get('max_edge_risk', 0),
+            "mean_edge_risk": route_after.get('metadata', {}).get('mean_edge_risk', 0),
+            "passes_through_report_node": report_node in route_after.get('path', [])
+        },
+        "analysis": {
+            "route_changed": route_before.get('path') != route_after.get('path'),
+            "now_avoids_report": (
+                report_node in route_before.get('path', []) and
+                report_node not in route_after.get('path', [])
+            ),
+            "distance_change_m": (
+                route_after.get('metadata', {}).get('total_distance_m', 0) -
+                route_before.get('metadata', {}).get('total_distance_m', 0)
+            ),
+            "risk_change": (
+                route_after.get('metadata', {}).get('max_edge_risk', 0) -
+                route_before.get('metadata', {}).get('max_edge_risk', 0)
+            )
+        },
+        "conclusion": "If route_changed=true and now_avoids_report=true, reports ARE affecting routing!"
+    }
+
+# temporary route to test coordinates
 @app.get("/test-coords")
 async def test_coordinates():
     """Test coordinate conversion for a few points in a 200x200 grid"""

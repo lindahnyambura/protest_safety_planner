@@ -60,13 +60,13 @@ export default function App() {
   const [userNode, setUserNode] = useState<string | null>(null);
   const [mapRefreshTrigger, setMapRefreshTrigger] = useState(0);
   const homeMapRef = useRef<any>(null);
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   const navigateTo = (screen: Screen) => {
     console.log('[App] Navigating to', screen);
     setCurrentScreen(screen);
   };
 
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   // When location permission granted
   const handleLocationGranted = async (location: string, coords: { lat: number; lng: number }) => {
@@ -146,12 +146,16 @@ export default function App() {
         console.warn('Failed to fetch landmark node IDs, using fallback');
       }
 
+      // Map risk preference correctly:
+      // 'low' risk preference = SAFEST route (high lambda_risk = 20.0)
+      // 'medium' risk preference = BALANCED route (medium lambda_risk = 10.0)
+      // 'high' risk preference = SHORTEST route (low lambda_risk = 1.0)
       const riskPreference =
         destinationData.riskLevel === 'low'
-          ? 10.0
+          ? 20.0  // Safest: maximum risk aversion
           : destinationData.riskLevel === 'high'
-          ? 1.0
-          : 5.0;
+          ? 1.0   // Shortest: minimal risk penalty
+          : 10.0; // Balanced: moderate risk aversion
 
       console.log(`[App] Computing route: start=${startNode}, goal=${goalNode}, risk_weight=${riskPreference}`);
       toast.loading('Computing safe route...', { id: 'route-loading' });
@@ -359,8 +363,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white overflow-hidden" style={{ backgroundColor: '#e6e6e6' }}>
-      <div className="w-full h-screen overflow-hidden relative" style={{ backgroundColor: '#e6e6e6' }}>
+    <div className="min-h-screen bg-white overflow-hidden">
+      <div className="w-full h-screen bg-white overflow-hidden relative">
         {/* Debug info */}
         <div className="absolute top-0 left-0 z-50 bg-black text-white text-xs px-2 py-1 opacity-75">
           Screen: {currentScreen} | Node: {userNode || 'none'} | 
