@@ -827,7 +827,7 @@ def debug_harm_at_node(node: str = Query(...)):
     }
 
 @app.get("/landmarks")
-def get_landmarks():
+def get_landmarks(limit: int = 4):
     """Return all known landmarks with their CORRECT Google Maps coordinates"""
     
     # Correct coordinates from Google Maps
