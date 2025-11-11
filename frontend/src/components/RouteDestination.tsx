@@ -1,9 +1,8 @@
 // RouteDestination.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { Slider } from './ui/slider';
-import { ArrowLeft, Search, MapPin } from 'lucide-react';
+import { ArrowLeft, Search, MapPin, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { RouteData } from '../App';
 
@@ -12,40 +11,88 @@ interface RouteDestinationProps {
   onComputeRoute: (data: RouteData) => void;
 }
 
-export default function RouteDestination({ onBack, onComputeRoute }: RouteDestinationProps) {
-  console.log('[RouteDestination] Component mounted');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [riskPreference, setRiskPreference] = useState([50]);
+interface SearchResult {
+  name: string;
+  type: 'landmark' | 'street' | 'place';
+  node_id: string | null;
+  coordinates: { lat: number; lng: number } | null;
+}
 
-  // Updated with real Nairobi landmarks
+export default function RouteDestination({ onBack, onComputeRoute }: RouteDestinationProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [riskPreference, setRiskPreference] = useState([50]); // 0=safest, 100=shortest
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+  // Quick destination presets
   const presets = [
     { label: 'Jamia Mosque', location: 'Jamia Mosque' },
     { label: 'National Archives', location: 'National Archives' },
     { label: 'Afya Center', location: 'Afya Center' },
-    { label: 'GPO', location: 'GPO (General Post Office)' },
+    { label: 'GPO', location: 'GPO' },
   ];
 
-  // Updated recent searches
-  const recentSearches = [
-    'Railway Station',
-    'KICC',
-    'Jamia Mosque'
-  ];
+  const recentSearches = ['Railway Station', 'KICC', 'Jamia Mosque'];
+
+  // Debounced search for destinations
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/search-destinations?q=${encodeURIComponent(searchQuery)}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSearchResults(data.results || []);
+          setShowResults(data.results.length > 0);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, API_BASE_URL]);
 
   const handlePresetClick = (location: string) => {
     setSearchQuery(location);
+    setShowResults(false);
+  };
+
+  const handleResultClick = (result: SearchResult) => {
+    setSearchQuery(result.name);
+    setShowResults(false);
   };
 
   const handleComputeRoute = () => {
     if (!searchQuery.trim()) return;
     
-    const destination = searchQuery;
-    
-    // Generate UI-level route data (backend will override most values)
-    const riskLevel = riskPreference[0] < 35 ? 'low' : riskPreference[0] > 65 ? 'high' : 'medium';
+    // Map slider position to risk level
+    // 0-35: Safest (left side)
+    // 35-65: Balanced (middle)
+    // 65-100: Shortest (right side)
+    const riskLevel = 
+      riskPreference[0] < 35 
+        ? 'low'    // Safest
+        : riskPreference[0] > 65 
+        ? 'high'   // Shortest
+        : 'medium'; // Balanced
 
     onComputeRoute({
-      destination,
+      destination: searchQuery,
       safetyScore: 0,
       eta: 0,
       distance: 0,
@@ -78,21 +125,50 @@ export default function RouteDestination({ onBack, onComputeRoute }: RouteDestin
           <h2>Find Safe Route</h2>
         </motion.div>
 
-        {/* Search Bar */}
+        {/* Search Bar with Results Dropdown */}
         <motion.div 
           className="relative"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" strokeWidth={2} />
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400 z-10" strokeWidth={2} />
+          
+          {isSearching && (
+            <Loader2 className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400 animate-spin z-10" />
+          )}
+          
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search destination..."
+            onFocus={() => searchResults.length > 0 && setShowResults(true)}
+            placeholder="Search destination in Nairobi CBD..."
             className="w-full pl-12 pr-4 py-3 border-2 border-neutral-300 rounded-xl focus:outline-none focus:border-neutral-900 transition-colors"
           />
+
+          {/* Search Results Dropdown */}
+          {showResults && searchResults.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-neutral-300 rounded-xl shadow-lg max-h-64 overflow-y-auto z-20"
+            >
+              {searchResults.map((result, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleResultClick(result)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0"
+                >
+                  <MapPin className="w-4 h-4 text-neutral-400 flex-shrink-0" strokeWidth={2} />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm text-neutral-900">{result.name}</p>
+                    <p className="text-xs text-neutral-500 capitalize">{result.type}</p>
+                  </div>
+                </button>
+              ))}
+            </motion.div>
+          )}
         </motion.div>
       </div>
 
@@ -152,17 +228,21 @@ export default function RouteDestination({ onBack, onComputeRoute }: RouteDestin
           <div className="mt-4 bg-neutral-50 rounded-xl p-4 border-2 border-neutral-200">
             <p className="text-sm text-neutral-700">
               {riskPreference[0] < 35 
-                ? 'Prioritizes avoiding risk areas, even if the route is longer.'
+                ? '🛡️ Prioritizes avoiding risk areas, even if the route is longer. Uses optimal Dijkstra algorithm.'
                 : riskPreference[0] > 65
-                ? 'Takes the shortest path with less consideration for risk.'
-                : 'Balances safety and distance for an optimal route.'
+                ? '⚡ Takes the shortest path with less consideration for risk. Uses fast A* algorithm.'
+                : '⚖️ Balances safety and distance for an optimal route. Uses A* algorithm.'
               }
             </p>
           </div>
         </motion.div>
 
         {/* Recent Searches */}
-        <motion.div /* ... */>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
           <label className="text-sm text-neutral-600 mb-3 block">Recent searches</label>
           <div className="space-y-2">
             {recentSearches.map((location, idx) => (

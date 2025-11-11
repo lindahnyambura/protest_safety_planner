@@ -1022,6 +1022,205 @@ async def get_risk_map():
         print(f"Risk map error: {e}")
         return JSONResponse({"error": f"Failed to load risk map: {str(e)}"}, status_code=500)
 
+@app.get("/geocode")
+async def geocode_destination(q: str = Query(..., description="Search query")):
+    """
+    Geocode a destination name within Nairobi CBD bounds.
+    Returns nearest node if found, or suggestions if ambiguous.
+    
+    Args:
+        q: Search query (e.g., "Tom Mboya Street", "GPO", "Kencom")
+    
+    Returns:
+        {
+            "found": bool,
+            "node_id": str | None,
+            "coordinates": {"lat": float, "lng": float},
+            "distance_m": float,
+            "matched_name": str,
+            "suggestions": List[str]  # If multiple matches
+        }
+    """
+    # Define strict Nairobi CBD bbox
+    bbox = {
+        "north": -1.280,
+        "south": -1.295,
+        "east": 36.835,
+        "west": 36.810,
+    }
+    
+    try:
+        # STEP 1: Check if query matches a known landmark
+        query_lower = q.lower().strip()
+        
+        for name, node_id in LANDMARK_TO_NODE.items():
+            if query_lower in name or name in query_lower:
+                if node_id in NODE_TO_COORDS:
+                    lat, lng = NODE_TO_COORDS[node_id]
+                    return {
+                        "found": True,
+                        "node_id": node_id,
+                        "coordinates": {"lat": lat, "lng": lng},
+                        "distance_m": 0.0,
+                        "matched_name": name.title(),
+                        "type": "landmark"
+                    }
+        
+        # STEP 2: Query Nominatim with strict bbox
+        bbox_str = f"{bbox['west']},{bbox['south']},{bbox['east']},{bbox['north']}"
+        
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            'q': q,
+            'format': 'json',
+            'limit': 5,
+            'bounded': 1,
+            'viewbox': bbox_str,
+            'countrycodes': 'ke',
+            'addressdetails': 1
+        }
+        headers = {
+            'User-Agent': 'ProtestSafetyPlanner/1.0 (Academic Research)'
+        }
+        
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        
+        if response.status_code != 200:
+            return {
+                "found": False,
+                "error": f"Geocoding service returned {response.status_code}",
+                "suggestions": []
+            }
+        
+        results = response.json()
+        
+        if not results:
+            return {
+                "found": False,
+                "error": "No locations found matching your query",
+                "suggestions": ["Try a landmark like 'KICC' or 'Railway Station'"]
+            }
+        
+        # STEP 3: Filter results within bbox
+        valid_results = []
+        for result in results:
+            lat = float(result['lat'])
+            lng = float(result['lon'])
+            
+            if (bbox['south'] <= lat <= bbox['north'] and 
+                bbox['west'] <= lng <= bbox['east']):
+                valid_results.append({
+                    "lat": lat,
+                    "lng": lng,
+                    "display_name": result.get('display_name', ''),
+                    "type": result.get('type', ''),
+                    "class": result.get('class', '')
+                })
+        
+        if not valid_results:
+            return {
+                "found": False,
+                "error": "Location found but outside Nairobi CBD area",
+                "suggestions": ["Search within Nairobi CBD bounds"]
+            }
+        
+        # STEP 4: Find nearest node for best result
+        best_result = valid_results[0]
+        lat, lng = best_result['lat'], best_result['lng']
+        
+        # Convert to UTM
+        import pyproj
+        transformer_to_utm = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:32737", always_xy=True)
+        x_utm, y_utm = transformer_to_utm.transform(lng, lat)
+        
+        # Find nearest node using KDTree
+        if NODE_KDTREE is None or NODE_IDS is None:
+            return {
+                "found": False,
+                "error": "Graph index not available"
+            }
+        
+        distance, index = NODE_KDTREE.query([x_utm, y_utm])
+        nearest_node_id = str(NODE_IDS[index])
+        
+        # STEP 5: Return result with alternatives
+        suggestions = [
+            result['display_name'].split(',')[0] 
+            for result in valid_results[1:4]
+        ]
+        
+        return {
+            "found": True,
+            "node_id": nearest_node_id,
+            "coordinates": {"lat": lat, "lng": lng},
+            "distance_m": float(distance),
+            "matched_name": best_result['display_name'].split(',')[0],
+            "type": "geocoded",
+            "suggestions": suggestions
+        }
+        
+    except Exception as e:
+        import traceback
+        print(f"[Backend] Geocode error: {e}")
+        print(traceback.format_exc())
+        
+        return {
+            "found": False,
+            "error": f"Geocoding failed: {str(e)}",
+            "suggestions": []
+        }
+
+
+@app.get("/search-destinations")
+async def search_destinations(q: str = Query(..., min_length=2)):
+    """
+    Autocomplete search for destinations within Nairobi CBD.
+    Returns matching landmarks and street names.
+    
+    Args:
+        q: Search query (minimum 2 characters)
+    
+    Returns:
+        {
+            "results": [
+                {
+                    "name": str,
+                    "type": "landmark" | "street" | "place",
+                    "node_id": str,
+                    "coordinates": {"lat": float, "lng": float}
+                }
+            ]
+        }
+    """
+    query_lower = q.lower().strip()
+    results = []
+    
+    # Search landmarks
+    for name, node_id in LANDMARK_TO_NODE.items():
+        if query_lower in name and node_id in NODE_TO_COORDS:
+            lat, lng = NODE_TO_COORDS[node_id]
+            results.append({
+                "name": name.title(),
+                "type": "landmark",
+                "node_id": node_id,
+                "coordinates": {"lat": lat, "lng": lng}
+            })
+    
+    # Search street names from cache
+    matching_streets = set()
+    for cache_key, street_name in STREET_NAME_CACHE.items():
+        if query_lower in street_name.lower() and not is_placeholder_name(street_name):
+            matching_streets.add(street_name)
+    
+    for street_name in list(matching_streets)[:5]:  # Limit to 5 streets
+        results.append({
+            "name": street_name,
+            "type": "street",
+            "node_id": None,  # Would need geocoding
+            "coordinates": None
+        })
+    
+    return {"results": results[:10]}  # Return top 10 results
 
 @app.get("/riskmap-raster")
 async def get_risk_map_raster():

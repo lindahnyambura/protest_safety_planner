@@ -35,11 +35,11 @@ export default function LocationPermissionModal({ onLocationGranted, onClose }: 
   const [landmarks, setLandmarks] = useState<any[]>([]);
   const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-  // Fetch landmarks for manual selection (limit to 4 most popular)
+  // Fetch landmarks for manual selection (limit to 3 most popular)
   useEffect(() => {
     if (useManual) {
       setLoading(true);
-      fetch(`${API_BASE_URL}/landmarks?limit=4`)
+      fetch(`${API_BASE_URL}/landmarks?limit=3`)
         .then(res => res.json())
         .then(data => {
           console.log('[LocationModal] Loaded landmarks:', data.landmarks);

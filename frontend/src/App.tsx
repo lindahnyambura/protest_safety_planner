@@ -1,3 +1,4 @@
+// App.tsx
 import { useState, useEffect, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import LocationPermissionModal from './components/LocationPermissionModal';
@@ -127,82 +128,110 @@ export default function App() {
     try {
       const startNode = userNode;
       
-      // CRITICAL FIX: Get destination node by finding nearest node to destination coordinates
-      let goalNode = '13134429075'; // default fallback
-      
-      console.log('[App] Looking up destination node for:', destinationData.destination);
-      
+      // STEP 1: Find destination node
+      let goalNode = '13134429075'; // Railway Station fallback
+    
+      console.log('[App] Looking up destination:', destinationData.destination);
+    
       try {
-        // Method 1: Try to get node_id from landmarks API if it's a known landmark
+        // Method 1: Check if it's a known landmark
         const landmarksResponse = await fetch(`${API_BASE_URL}/landmarks`);
         if (landmarksResponse.ok) {
           const landmarksData = await landmarksResponse.json();
           const landmark = landmarksData.landmarks.find(
-            (l: any) => l.name === destinationData.destination
+            (l: any) => l.name.toLowerCase() === destinationData.destination.toLowerCase()
           );
-          
+        
           if (landmark && landmark.node_id) {
             goalNode = landmark.node_id;
-            console.log('[App] Found landmark node:', goalNode);
+            console.log('[App] ✓ Found landmark node:', goalNode);
           } else {
-            // Method 2: Destination is NOT a landmark, need to geocode it
-            console.log('[App] Not a known landmark, geocoding...');
-            
-            // First, geocode the destination name to get coordinates
+            // Method 2: Geocode the destination name
+            console.log('[App] Not a landmark, geocoding...');
+          
+            // FIXED: Add bbox constraint to Nominatim query
+            const bbox = '36.810,-1.295,36.835,-1.280'; // west,south,east,north
             const geocodeResponse = await fetch(
-              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destinationData.destination + ', Nairobi CBD, Kenya')}&format=json&limit=1`,
+              `https://nominatim.openstreetmap.org/search?` +
+              `q=${encodeURIComponent(destinationData.destination)}&` +
+              `format=json&limit=1&` +
+              `bounded=1&viewbox=${bbox}&` +
+              `countrycodes=ke`,
               { headers: { 'User-Agent': 'ProtestSafetyPlanner/1.0' } }
             );
-            
+          
             if (geocodeResponse.ok) {
               const geocodeData = await geocodeResponse.json();
               if (geocodeData.length > 0) {
                 const destLat = parseFloat(geocodeData[0].lat);
                 const destLng = parseFloat(geocodeData[0].lon);
+              
+                // FIXED: Validate coordinates are within bbox
+                if (
+                  destLat >= -1.295 && destLat <= -1.280 &&
+                  destLng >= 36.810 && destLng <= 36.835
+                ) {
+                  console.log('[App] ✓ Geocoded to:', { lat: destLat, lng: destLng });
                 
-                console.log('[App] Geocoded destination to:', { lat: destLat, lng: destLng });
+                  // Find nearest node
+                  const nodeResponse = await fetch(
+                    `${API_BASE_URL}/nearest-node?lat=${destLat}&lng=${destLng}`
+                  );
                 
-                // Now find nearest node to those coordinates
-                const nodeResponse = await fetch(
-                  `${API_BASE_URL}/nearest-node?lat=${destLat}&lng=${destLng}`
-                );
-                
-                if (nodeResponse.ok) {
-                  const nodeData = await nodeResponse.json();
-                  goalNode = nodeData.node_id;
-                  console.log('[App] Found nearest node:', goalNode, `(${nodeData.distance_m}m away)`);
+                  if (nodeResponse.ok) {
+                    const nodeData = await nodeResponse.json();
+                    goalNode = nodeData.node_id;
+                    console.log('[App] ✓ Nearest node:', goalNode, `(${nodeData.distance_m}m away)`);
+                  } else {
+                    throw new Error('Could not find nearest node');
+                  }
                 } else {
-                  throw new Error('Could not find nearest node to destination');
+                  throw new Error('Destination outside Nairobi CBD bounds');
                 }
               } else {
-                throw new Error('Could not geocode destination');
+                throw new Error('No results found for destination');
               }
             }
           }
         }
       } catch (error) {
-        console.error('Failed to find destination node:', error);
+        console.error('Destination lookup failed:', error);
         toast.warning('Using approximate destination', {
-          description: 'Could not find exact location'
+          description: error instanceof Error ? error.message : 'Could not find exact location'
         });
       }
 
-      // Map risk preference correctly:
-      // 'low' risk preference = SAFEST route (high lambda_risk = 20.0)
-      // 'medium' risk preference = BALANCED route (medium lambda_risk = 10.0)
-      // 'high' risk preference = SHORTEST route (low lambda_risk = 1.0)
-      const riskPreference =
-        destinationData.riskLevel === 'low'
-          ? 20.0  // Safest: maximum risk aversion
-          : destinationData.riskLevel === 'high'
-          ? 1.0   // Shortest: minimal risk penalty
-          : 10.0; // Balanced: moderate risk aversion
+      // STEP 2: Map route preference to algorithm + lambda_risk
+      // FIXED: Use meaningful semantic mapping
+      let algorithm = 'astar';
+      let lambda_risk = 10.0;
+    
+      if (destinationData.riskLevel === 'low') {
+        // Safest route: maximum risk aversion, use Dijkstra for optimality
+        algorithm = 'dijkstra';
+        lambda_risk = 20.0;
+      } else if (destinationData.riskLevel === 'high') {
+        // Shortest route: minimal risk penalty, use A* for speed
+        algorithm = 'astar';
+        lambda_risk = 1.0;
+      } else {
+        // Balanced route: moderate risk aversion, use A*
+        algorithm = 'astar';
+        lambda_risk = 10.0;
+      }
 
-      console.log(`[App] Computing route: start=${startNode}, goal=${goalNode}, lambda_risk=${riskPreference}`);
+      console.log(`[App] Route params: start=${startNode}, goal=${goalNode}`);
+      console.log(`[App] Preference: ${destinationData.riskLevel} → algorithm=${algorithm}, λ=${lambda_risk}`);
+    
       toast.loading('Computing safe route...', { id: 'route-loading' });
 
+      // STEP 3: Call backend with explicit parameters
       const response = await fetch(
-        `${API_BASE_URL}/route?start=${startNode}&goal=${goalNode}&algorithm=astar&lambda_risk=${riskPreference}`
+        `${API_BASE_URL}/route?` +
+        `start=${startNode}&` +
+        `goal=${goalNode}&` +
+        `algorithm=${algorithm}&` +
+        `lambda_risk=${lambda_risk}`
       );
 
       if (!response.ok) {
@@ -212,6 +241,7 @@ export default function App() {
 
       const backendRoute = await response.json();
 
+      // STEP 4: Merge backend results with UI data
       const mergedRoute: RouteData = {
         ...destinationData,
         geometry_latlng: backendRoute.geometry_latlng,
@@ -230,8 +260,12 @@ export default function App() {
       };
 
       setCurrentRoute(mergedRoute);
-      toast.success('Route computed successfully!', { id: 'route-loading' });
+      toast.success('Route computed successfully!', { 
+        id: 'route-loading',
+        description: `${algorithm.toUpperCase()} • Safety: ${mergedRoute.safetyScore}%`
+      });
       navigateTo('route-details');
+    
     } catch (error) {
       console.error('Route computation failed:', error);
       toast.error('Failed to compute route', { 
