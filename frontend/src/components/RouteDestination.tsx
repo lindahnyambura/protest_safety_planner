@@ -228,10 +228,10 @@ export default function RouteDestination({ onBack, onComputeRoute }: RouteDestin
           <div className="mt-4 bg-neutral-50 rounded-xl p-4 border-2 border-neutral-200">
             <p className="text-sm text-neutral-700">
               {riskPreference[0] < 35 
-                ? '🛡️ Prioritizes avoiding risk areas, even if the route is longer. Uses optimal Dijkstra algorithm.'
+                ? 'Prioritizes avoiding risk areas, even if the route is longer. Uses optimal Dijkstra algorithm.'
                 : riskPreference[0] > 65
-                ? '⚡ Takes the shortest path with less consideration for risk. Uses fast A* algorithm.'
-                : '⚖️ Balances safety and distance for an optimal route. Uses A* algorithm.'
+                ? 'Takes the shortest path with less consideration for risk. Uses fast A* algorithm.'
+                : 'Balances safety and distance for an optimal route. Uses A* algorithm.'
               }
             </p>
           </div>
