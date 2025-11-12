@@ -6,7 +6,7 @@ export type NavScreen = 'home' | 'activity' | 'map' | 'alerts' | 'settings';
 interface BottomNavProps {
   currentScreen: NavScreen;
   onNavigate: (screen: NavScreen) => void;
-  alertCount?: number; // new prop
+  alertCount?: number;
 }
 
 export default function BottomNav({ currentScreen, onNavigate, alertCount = 0 }: BottomNavProps) {
@@ -19,11 +19,23 @@ export default function BottomNav({ currentScreen, onNavigate, alertCount = 0 }:
   ];
 
   return (
-    <div 
-      className="fixed bottom-0 left-0 right-0 border-t-2 border-neutral-900 py-3 shadow-lg"
-      style={{ backgroundColor: '#e6e6e6' }}
+    <div
+      className="fixed bottom-0 left-0 right-0 border-t-2 border-neutral-900 shadow-lg z-50"
+      style={{
+        backgroundColor: '#e6e6e6',
+        paddingTop: '0.5rem',
+        paddingBottom: '0.75rem',
+        overflow: 'visible',
+      }}
     >
-      <div className="flex items-center justify-around max-w-md mx-auto px-2">
+      <div
+        className="
+          flex items-center justify-around 
+          w-full max-w-md mx-auto 
+          px-2 sm:px-3 
+          overflow-visible
+        "
+      >
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentScreen === item.id;
@@ -34,12 +46,17 @@ export default function BottomNav({ currentScreen, onNavigate, alertCount = 0 }:
               <motion.button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className="flex flex-col items-center gap-1 relative px-7 py-3 rounded-2xl transition-all bg-neutral-900"
+                className="
+                  flex flex-col items-center gap-1 relative 
+                  px-6 py-2 rounded-2xl transition-all 
+                  bg-neutral-900 flex-shrink-0
+                "
                 whileTap={{ scale: 0.92 }}
                 whileHover={{ scale: 1.1 }}
-                style={{ 
-                  marginTop: '-12px',
-                  boxShadow: isActive ? '0 6px 16px rgba(0,0,0,0.25)' : '0 4px 12px rgba(0,0,0,0.15)'
+                style={{
+                  boxShadow: isActive
+                    ? '0 6px 16px rgba(0,0,0,0.25)'
+                    : '0 4px 12px rgba(0,0,0,0.15)',
                 }}
               >
                 <Icon className="w-7 h-7 text-white" strokeWidth={2.5} />
@@ -54,27 +71,33 @@ export default function BottomNav({ currentScreen, onNavigate, alertCount = 0 }:
             <motion.button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`flex flex-col items-center gap-1 relative px-6 py-2 rounded-2xl transition-colors ${
-                isActive ? 'bg-neutral-900' : ''
-              }`}
+              className={`
+                flex flex-col items-center gap-1 relative 
+                px-4 py-2 rounded-2xl transition-colors 
+                flex-shrink-0
+                ${isActive ? 'bg-neutral-900' : ''}
+              `}
               whileTap={{ scale: 0.92 }}
               whileHover={{ scale: 1.05 }}
             >
-              <div className="relative">
+              <div className="relative flex items-center justify-center">
                 <Icon
                   className={`w-6 h-6 ${
                     isActive ? 'text-white' : 'text-neutral-600'
                   }`}
                   strokeWidth={2}
                 />
-                {/* Alert badge */}
                 {item.id === 'alerts' && alertCount > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     exit={{ scale: 0 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                    className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-md"
+                    className="
+                      absolute -top-1 -right-1 
+                      bg-red-600 text-white text-[10px] font-bold 
+                      rounded-full w-4 h-4 flex items-center justify-center shadow-md
+                    "
                   >
                     {alertCount > 9 ? '9+' : alertCount}
                   </motion.span>
