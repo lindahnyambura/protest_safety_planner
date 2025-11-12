@@ -52,7 +52,8 @@ export default function HelpPage({ onBack }: HelpPageProps) {
     <div className="h-full flex flex-col overflow-y-auto" style={{ backgroundColor: '#e6e6e6' }}>
       {/* Header */}
       <motion.div 
-        className="px-6 py-4 border-b border-neutral-200 bg-white sticky top-0 z-10"
+        className="px-6 py-4 border-b border-neutral-200 sticky top-0 z-10"
+        style={{ backgroundColor: '#e6e6e6' }}
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -68,7 +69,7 @@ export default function HelpPage({ onBack }: HelpPageProps) {
               <ArrowLeft className="w-5 h-5" strokeWidth={2} />
             </motion.button>
           </Button>
-          <h2>Help & Safety Tips</h2>
+          <h2 className="font-bold text-xl">Help & Safety Tips</h2>
         </div>
       </motion.div>
 
@@ -78,7 +79,7 @@ export default function HelpPage({ onBack }: HelpPageProps) {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <CheckCircle className="w-5 h-5 text-neutral-600" strokeWidth={1.5} />
-            <h3 className="text-neutral-900">Safety Checklist</h3>
+            <h3 className="text-neutral-900 font-semibold text-lg">Safety Checklist</h3>
           </div>
           <div className="space-y-3">
             {safetyChecklist.map((item, idx) => (
@@ -96,7 +97,7 @@ export default function HelpPage({ onBack }: HelpPageProps) {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Phone className="w-5 h-5 text-neutral-600" strokeWidth={1.5} />
-            <h3 className="text-neutral-900">Emergency Contacts</h3>
+            <h3 className="text-neutral-900 font-semibold text-lg">Emergency Contacts</h3>
           </div>
           <div className="space-y-2">
             {emergencyContacts.map((contact, idx) => (

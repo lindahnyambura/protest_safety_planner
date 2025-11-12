@@ -1,7 +1,7 @@
 import MapboxMap from './MapboxMap';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
-import { MapPin, Plus, Navigation, Bell, Settings, Layers, RefreshCw } from 'lucide-react';
+import { MapPin, Plus, Navigation, Layers, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HomeMapProps {
@@ -25,7 +25,6 @@ export interface ReportMarker {
   node_id: string;
 }
 
-// Static medical stations
 const MEDICAL_STATIONS = [
   { id: 'jamia', name: 'Jamia Mosque', lat: -1.283635, lng: 36.820671 },
   { id: 'archives', name: 'National Archives', lat: -1.284948, lng: 36.825943 },
@@ -48,7 +47,7 @@ export default function HomeMap({
   const [refreshing, setRefreshing] = useState(false);
   const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-  // Fetch reports on mount and periodically
+  // Fetch reports
   useEffect(() => {
     fetchReports();
     const interval = setInterval(fetchReports, 30000);
@@ -59,7 +58,6 @@ export default function HomeMap({
     try {
       setRefreshing(true);
       const response = await fetch(`${API_BASE_URL}/reports/active`);
-      
       if (response.ok) {
         const data = await response.json();
         console.log('[HomeMap] Fetched reports:', data.reports?.length || 0);
@@ -94,8 +92,7 @@ export default function HomeMap({
     { id: 'safe', label: 'Safe Zones', color: 'green', reportCount: getLayerReports('safe').length }
   ];
 
-
-  // Fix Mapbox z-index inside component
+  // Mapbox z-index fix
   useEffect(() => {
     const canvas = document.querySelector('.mapboxgl-canvas') as HTMLElement | null;
     if (canvas) {
@@ -105,10 +102,10 @@ export default function HomeMap({
     const container = document.querySelector('.mapboxgl-canvas-container') as HTMLElement | null;
     if (container) container.style.zIndex = '0';
   }, []);
-  
+
   return (
-    <div className="h-full relative">
-      {/* Mapbox Map */}
+    <div className="h-full relative" style={{ backgroundColor: '#e6e6e6' }}>
+      {/* Map */}
       <MapboxMap
         onMapLoad={setMap}
         userLocation={userCoords ? [userCoords.lng, userCoords.lat] : undefined}
@@ -122,6 +119,7 @@ export default function HomeMap({
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 p-4 z-10">
         <div className="flex items-start justify-between">
+          {/* Layer toggle */}
           <motion.div
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -140,8 +138,9 @@ export default function HomeMap({
             </Button>
           </motion.div>
 
+          {/* Refresh + Location Card */}
           <div className="flex flex-col gap-2 items-end">
-            <motion.div 
+            <motion.div
               className="flex gap-2"
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -164,36 +163,9 @@ export default function HomeMap({
                   <RefreshCw className="w-5 h-5 text-black" strokeWidth={2} />
                 </motion.button>
               </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={onAlerts}
-                className="bg-white/95 backdrop-blur border-2 border-neutral-200 shadow-lg relative"
-                asChild
-              >
-                <motion.button whileTap={{ scale: 0.95 }}>
-                  <Bell className="w-5 h-5 text-black" strokeWidth={2} />
-                  {reports.length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                      {reports.length > 9 ? '9+' : reports.length}
-                    </span>
-                  )}
-                </motion.button>
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={onSettings}
-                className="bg-white/95 backdrop-blur border-2 border-neutral-200 shadow-lg"
-                asChild
-              >
-                <motion.button whileTap={{ scale: 0.95 }}>
-                  <Settings className="w-5 h-5 text-black" strokeWidth={2} />
-                </motion.button>
-              </Button>
             </motion.div>
 
-            {/* Location Info Card */}
+            {/* Location Info */}
             <motion.div 
               className="bg-white/95 backdrop-blur rounded-xl px-3 py-2 border-2 border-neutral-200 shadow-lg"
               initial={{ y: -20, opacity: 0 }}
@@ -256,10 +228,10 @@ export default function HomeMap({
         </AnimatePresence>
       </div>
 
-      {/* Bottom Actions */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 z-[50]">
+      {/* Bottom Buttons */}
+      <div className="absolute bottom-20 left-0 right-0 p-4">
         <motion.div 
-          className="flex gap-3 pointer-events-auto"
+          className="flex gap-3"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}

@@ -1,6 +1,9 @@
 // App.tsx
 import { useState, useEffect, useRef } from 'react';
 import LandingPage from './components/LandingPage';
+import HomePage from './components/HomePage';
+import ActivityPage from './components/ActivityPage';
+import BottomNav, { NavScreen } from './components/BottomNav';
 import LocationPermissionModal from './components/LocationPermissionModal';
 import HomeMap from './components/HomeMap';
 import QuickReportModal from './components/QuickReportModal';
@@ -14,10 +17,12 @@ import HelpPage from './components/HelpPage';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 
-export type Screen = 
+export type Screen =
   | 'landing'
+  | 'home'
+  | 'activity'
+  | 'map'
   | 'location-permission'
-  | 'home-map'
   | 'route-destination'
   | 'route-details'
   | 'live-guidance'
@@ -60,27 +65,28 @@ export default function App() {
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [userNode, setUserNode] = useState<string | null>(null);
   const [mapRefreshTrigger, setMapRefreshTrigger] = useState(0);
+  const [hasGrantedLocation, setHasGrantedLocation] = useState(false);
   const homeMapRef = useRef<any>(null);
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   const navigateTo = (screen: Screen) => {
     console.log('[App] Navigating to', screen);
     setCurrentScreen(screen);
   };
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-  // When location permission granted
+  // ===================== LOCATION HANDLING =====================
   const handleLocationGranted = async (location: string, coords: { lat: number; lng: number }) => {
     console.log('[App] Location granted:', location, coords);
-    
+
     setUserLocation(location);
     setUserCoords(coords);
+    setHasGrantedLocation(true);
     setShowLocationModal(false);
 
     toast.loading('Finding your position on the map...', { id: 'find-node' });
-    
+
     try {
-      // Find nearest node on the road network
       const response = await fetch(
         `${API_BASE_URL}/nearest-node?lat=${coords.lat}&lng=${coords.lng}`
       );
@@ -89,9 +95,9 @@ export default function App() {
         const data = await response.json();
         console.log('[App] Nearest node found:', data.node_id);
         setUserNode(data.node_id);
-        toast.success(`Location set: ${location}`, { 
+        toast.success(`Location set: ${location}`, {
           id: 'find-node',
-          description: `Within ${Math.round(data.distance_m)}m of road network`
+          description: `Within ${Math.round(data.distance_m)}m of road network`,
         });
       } else {
         const error = await response.json();
@@ -99,89 +105,76 @@ export default function App() {
       }
     } catch (error) {
       console.error('Failed to find nearest node:', error);
-      toast.error('Location set with limited accuracy', { 
+      toast.error('Location set with limited accuracy', {
         id: 'find-node',
-        description: 'Using approximate position'
+        description: 'Using approximate position',
       });
-      // Fallback to Railway Station as default
-      setUserNode('13134429075');
+      setUserNode('13134429075'); // fallback
     }
 
-    navigateTo('home-map');
+    navigateTo('map');
   };
 
-  // Map of landmark destinations to OSM node IDs
-  const getNodeIdFromDestination = (destination: string): string => {
-    // This will be dynamically fetched from backend based on correct coordinates
-    // For now, we'll query the backend for the nearest node
-    return '13134429075'; // fallback
-  };
-
+  // ===================== ROUTE COMPUTATION =====================
   const handleComputeRoute = async (destinationData: RouteData) => {
     if (!userNode) {
       toast.error('User location not set', {
-        description: 'Please set your location first'
+        description: 'Please set your location first',
       });
       return;
     }
 
     try {
       const startNode = userNode;
-      
-      // STEP 1: Find destination node
-      let goalNode = '13134429075'; // Railway Station fallback
-    
+      let goalNode = '13134429075'; // fallback
+
       console.log('[App] Looking up destination:', destinationData.destination);
-    
+
       try {
-        // Method 1: Check if it's a known landmark
         const landmarksResponse = await fetch(`${API_BASE_URL}/landmarks`);
         if (landmarksResponse.ok) {
           const landmarksData = await landmarksResponse.json();
           const landmark = landmarksData.landmarks.find(
             (l: any) => l.name.toLowerCase() === destinationData.destination.toLowerCase()
           );
-        
+
           if (landmark && landmark.node_id) {
             goalNode = landmark.node_id;
             console.log('[App] ✓ Found landmark node:', goalNode);
           } else {
-            // Method 2: Geocode the destination name
             console.log('[App] Not a landmark, geocoding...');
-          
-            // FIXED: Add bbox constraint to Nominatim query
-            const bbox = '36.810,-1.295,36.835,-1.280'; // west,south,east,north
+            const bbox = '36.810,-1.295,36.835,-1.280';
             const geocodeResponse = await fetch(
               `https://nominatim.openstreetmap.org/search?` +
-              `q=${encodeURIComponent(destinationData.destination)}&` +
-              `format=json&limit=1&` +
-              `bounded=1&viewbox=${bbox}&` +
-              `countrycodes=ke`,
+                `q=${encodeURIComponent(destinationData.destination)}&format=json&limit=1&bounded=1&viewbox=${bbox}&countrycodes=ke`,
               { headers: { 'User-Agent': 'ProtestSafetyPlanner/1.0' } }
             );
-          
+
             if (geocodeResponse.ok) {
               const geocodeData = await geocodeResponse.json();
               if (geocodeData.length > 0) {
                 const destLat = parseFloat(geocodeData[0].lat);
                 const destLng = parseFloat(geocodeData[0].lon);
-              
-                // FIXED: Validate coordinates are within bbox
+
                 if (
-                  destLat >= -1.295 && destLat <= -1.280 &&
-                  destLng >= 36.810 && destLng <= 36.835
+                  destLat >= -1.295 &&
+                  destLat <= -1.280 &&
+                  destLng >= 36.810 &&
+                  destLng <= 36.835
                 ) {
                   console.log('[App] ✓ Geocoded to:', { lat: destLat, lng: destLng });
-                
-                  // Find nearest node
                   const nodeResponse = await fetch(
                     `${API_BASE_URL}/nearest-node?lat=${destLat}&lng=${destLng}`
                   );
-                
+
                   if (nodeResponse.ok) {
                     const nodeData = await nodeResponse.json();
                     goalNode = nodeData.node_id;
-                    console.log('[App] ✓ Nearest node:', goalNode, `(${nodeData.distance_m}m away)`);
+                    console.log(
+                      '[App] ✓ Nearest node:',
+                      goalNode,
+                      `(${nodeData.distance_m}m away)`
+                    );
                   } else {
                     throw new Error('Could not find nearest node');
                   }
@@ -197,41 +190,27 @@ export default function App() {
       } catch (error) {
         console.error('Destination lookup failed:', error);
         toast.warning('Using approximate destination', {
-          description: error instanceof Error ? error.message : 'Could not find exact location'
+          description:
+            error instanceof Error ? error.message : 'Could not find exact location',
         });
       }
 
-      // STEP 2: Map route preference to algorithm + lambda_risk
-      // FIXED: Use meaningful semantic mapping
       let algorithm = 'astar';
       let lambda_risk = 10.0;
-    
+
       if (destinationData.riskLevel === 'low') {
-        // Safest route: maximum risk aversion, use Dijkstra for optimality
         algorithm = 'dijkstra';
         lambda_risk = 20.0;
       } else if (destinationData.riskLevel === 'high') {
-        // Shortest route: minimal risk penalty, use A* for speed
         algorithm = 'astar';
         lambda_risk = 1.0;
-      } else {
-        // Balanced route: moderate risk aversion, use A*
-        algorithm = 'astar';
-        lambda_risk = 10.0;
       }
 
       console.log(`[App] Route params: start=${startNode}, goal=${goalNode}`);
-      console.log(`[App] Preference: ${destinationData.riskLevel} → algorithm=${algorithm}, λ=${lambda_risk}`);
-    
       toast.loading('Computing safe route...', { id: 'route-loading' });
 
-      // STEP 3: Call backend with explicit parameters
       const response = await fetch(
-        `${API_BASE_URL}/route?` +
-        `start=${startNode}&` +
-        `goal=${goalNode}&` +
-        `algorithm=${algorithm}&` +
-        `lambda_risk=${lambda_risk}`
+        `${API_BASE_URL}/route?start=${startNode}&goal=${goalNode}&algorithm=${algorithm}&lambda_risk=${lambda_risk}`
       );
 
       if (!response.ok) {
@@ -241,7 +220,6 @@ export default function App() {
 
       const backendRoute = await response.json();
 
-      // STEP 4: Merge backend results with UI data
       const mergedRoute: RouteData = {
         ...destinationData,
         geometry_latlng: backendRoute.geometry_latlng,
@@ -260,17 +238,17 @@ export default function App() {
       };
 
       setCurrentRoute(mergedRoute);
-      toast.success('Route computed successfully!', { 
+      toast.success('Route computed successfully!', {
         id: 'route-loading',
-        description: `${algorithm.toUpperCase()} • Safety: ${mergedRoute.safetyScore}%`
+        description: `${algorithm.toUpperCase()} • Safety: ${mergedRoute.safetyScore}%`,
       });
       navigateTo('route-details');
-    
     } catch (error) {
       console.error('Route computation failed:', error);
-      toast.error('Failed to compute route', { 
+      toast.error('Failed to compute route', {
         id: 'route-loading',
-        description: error instanceof Error ? error.message : 'Please try again'
+        description:
+          error instanceof Error ? error.message : 'Please try again',
       });
     }
   };
@@ -282,18 +260,16 @@ export default function App() {
   };
 
   const handleAlertClick = (lat: number, lng: number) => {
-    console.log('[App] Alert clicked, navigating to:', lat, lng);
+    console.log('[App] Alert clicked:', lat, lng);
     toast.info('Viewing alert location on map', {
-      description: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+      description: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
     });
-    navigateTo('home-map');
+    navigateTo('map');
   };
 
-  // Handle interactive map click for setting location
   const handleMapLocationSelect = async (lat: number, lng: number) => {
     console.log('[App] Map location selected:', { lat, lng });
-    
-    // Check bounds
+
     if (lat < -1.295 || lat > -1.280 || lng < 36.810 || lng > 36.835) {
       toast.error('Location outside Nairobi CBD bounds');
       return;
@@ -302,32 +278,31 @@ export default function App() {
     toast.loading('Setting location...', { id: 'map-location' });
 
     try {
-      // Reverse geocode
       const geoResponse = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
         { headers: { 'User-Agent': 'ProtestSafetyPlanner/1.0' } }
       );
-      
+
       let locationName = 'Nairobi CBD';
       if (geoResponse.ok) {
         const geoData = await geoResponse.json();
-        locationName = geoData.address?.road || geoData.address?.neighbourhood || 'Nairobi CBD';
+        locationName =
+          geoData.address?.road ||
+          geoData.address?.neighbourhood ||
+          'Nairobi CBD';
       }
 
-      // Find nearest node
-      const response = await fetch(
-        `${API_BASE_URL}/nearest-node?lat=${lat}&lng=${lng}`
-      );
+      const response = await fetch(`${API_BASE_URL}/nearest-node?lat=${lat}&lng=${lng}`);
 
       if (response.ok) {
         const data = await response.json();
         setUserLocation(locationName);
         setUserCoords({ lat, lng });
         setUserNode(data.node_id);
-        
-        toast.success(`Location set: ${locationName}`, { 
+
+        toast.success(`Location set: ${locationName}`, {
           id: 'map-location',
-          description: `Snapped to nearest road (${Math.round(data.distance_m)}m)`
+          description: `Snapped to nearest road (${Math.round(data.distance_m)}m)`,
         });
       } else {
         throw new Error('Could not find nearest road');
@@ -338,14 +313,28 @@ export default function App() {
     }
   };
 
-  const renderScreen = () => {
-    try {
-      switch (currentScreen) {
-        case 'landing':
-          return <LandingPage onContinue={() => setShowLocationModal(true)} />;
+  const handleBottomNavigation = (screen: NavScreen) => {
+    if (screen === 'map' && !hasGrantedLocation) {
+      setShowLocationModal(true);
+      return;
+    }
+    navigateTo(screen as Screen);
+  };
 
-        case 'home-map':
-          return (
+  const shouldShowBottomNav = ['home', 'activity', 'map', 'alerts', 'settings'].includes(currentScreen);
+
+  // ===================== SCREEN RENDERING =====================
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'landing':
+        return <LandingPage onContinue={() => navigateTo('home')} />;
+      case 'home':
+        return <HomePage />;
+      case 'activity':
+        return <ActivityPage />;
+      case 'map':
+        return (
+          hasGrantedLocation && (
             <HomeMap
               userLocation={userLocation}
               userCoords={userCoords}
@@ -356,96 +345,57 @@ export default function App() {
               onMapClick={handleMapLocationSelect}
               key={mapRefreshTrigger}
             />
-          );
-
-        case 'route-destination':
-          return (
-            <RouteDestination
-              onBack={() => navigateTo('home-map')}
-              onComputeRoute={handleComputeRoute}
-            />
-          );
-
-        case 'route-details':
-          if (!currentRoute) {
-            toast.error('No route data available');
-            navigateTo('route-destination');
-            return null;
-          }
-          return (
+          )
+        );
+      case 'route-destination':
+        return (
+          <RouteDestination
+            onBack={() => navigateTo('map')}
+            onComputeRoute={handleComputeRoute}
+          />
+        );
+      case 'route-details':
+        return (
+          currentRoute && (
             <RouteDetails
               routeData={currentRoute}
               onBack={() => navigateTo('route-destination')}
               onStartGuidance={() => navigateTo('live-guidance')}
             />
-          );
-
-        case 'live-guidance':
-          if (!currentRoute) {
-            toast.error('No route data available');
-            navigateTo('home-map');
-            return null;
-          }
-          return (
+          )
+        );
+      case 'live-guidance':
+        return (
+          currentRoute && (
             <LiveGuidance
               routeData={currentRoute}
               onReroute={() => navigateTo('route-destination')}
-              onComplete={() => navigateTo('home-map')}
+              onComplete={() => navigateTo('map')}
             />
-          );
-
-        case 'alerts':
-          return <AlertsFeed onBack={() => navigateTo('home-map')} onAlertClick={handleAlertClick} />;
-
-        case 'settings':
-          return (
-            <SettingsPage
-              onBack={() => navigateTo('home-map')}
-              onEthics={() => navigateTo('ethics')}
-              onHelp={() => navigateTo('help')}
-            />
-          );
-
-        case 'ethics':
-          return <EthicsPage onBack={() => navigateTo('settings')} />;
-
-        case 'help':
-          return <HelpPage onBack={() => navigateTo('settings')} />;
-
-        default:
-          console.error('[App] Unknown screen:', currentScreen);
-          return <div className="p-4">Unknown screen: {currentScreen}</div>;
-      }
-    } catch (error) {
-      console.error('[App] Error rendering screen:', error);
-      return (
-        <div className="flex items-center justify-center h-screen p-4">
-          <div className="text-center">
-            <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
-            <p className="text-neutral-600 mb-4">
-              {error instanceof Error ? error.message : 'Unknown error'}
-            </p>
-            <button
-              onClick={() => navigateTo('home-map')}
-              className="px-4 py-2 bg-neutral-900 text-white rounded-lg"
-            >
-              Return to Home
-            </button>
-          </div>
-        </div>
-      );
+          )
+        );
+      case 'alerts':
+        return <AlertsFeed onAlertClick={handleAlertClick} />;
+      case 'settings':
+        return (
+          <SettingsPage
+            onBack={() => navigateTo('home')}
+            onEthics={() => navigateTo('ethics')}
+            onHelp={() => navigateTo('help')}
+          />
+        );
+      case 'ethics':
+        return <EthicsPage onBack={() => navigateTo('settings')} />;
+      case 'help':
+        return <HelpPage onBack={() => navigateTo('settings')} />;
+      default:
+        return <div className="p-4">Unknown screen: {currentScreen}</div>;
     }
   };
 
   return (
-    <div className="min-h-screen bg-white overflow-hidden">
-      <div className="w-full h-screen bg-white overflow-hidden relative">
-        {/* Debug info
-        <div className="absolute top-0 left-0 z-50 bg-black text-white text-xs px-2 py-1 opacity-75">
-          Screen: {currentScreen} | Node: {userNode || 'none'} | 
-          Coords: {userCoords ? `${userCoords.lat.toFixed(3)}, ${userCoords.lng.toFixed(3)}` : 'none'}
-        </div> */}
-
+    <div className="min-h-screen overflow-hidden" style={{ backgroundColor: '#e6e6e6' }}>
+      <div className="w-full h-screen overflow-hidden relative" style={{ backgroundColor: '#e6e6e6' }}>
         {renderScreen()}
 
         {showLocationModal && (
@@ -455,12 +405,16 @@ export default function App() {
           />
         )}
 
-        {showReportModal && currentScreen === 'home-map' && userCoords && (
+        {showReportModal && currentScreen === 'map' && userCoords && (
           <QuickReportModal
             onClose={() => setShowReportModal(false)}
             userLocation={userCoords}
             onReportSuccess={handleReportSuccess}
           />
+        )}
+
+        {shouldShowBottomNav && (
+          <BottomNav currentScreen={currentScreen as NavScreen} onNavigate={handleBottomNavigation} />
         )}
       </div>
 

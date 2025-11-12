@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { ArrowLeft, Wind, Shield, Users, CheckCircle, Droplets, MapPin, Clock } from 'lucide-react';
+import { Wind, Shield, Users, CheckCircle, Droplets, MapPin, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AlertsFeedProps {
-  onBack: () => void;
   onAlertClick?: (lat: number, lng: number) => void; // Navigate to location on map
 }
 
@@ -21,7 +20,7 @@ interface Report {
   location_name?: string;
 }
 
-export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
+export default function AlertsFeed({ onAlertClick }: AlertsFeedProps) {
   console.log('[AlertsFeed] Component rendered');
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
@@ -30,17 +29,13 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
 
   useEffect(() => {
     fetchReports();
-    
-    // Refresh every 15 seconds
     const interval = setInterval(fetchReports, 15000);
-    
     return () => clearInterval(interval);
   }, []);
 
   const fetchReports = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/reports/active`);
-      
       if (response.ok) {
         const data = await response.json();
         console.log('[AlertsFeed] Fetched reports:', data.reports?.length || 0);
@@ -99,14 +94,13 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
   };
 
   const getReportTitle = (type: string) => {
-    return type.replace('_', ' ').split(' ').map(w => 
+    return type.replace('_', ' ').split(' ').map(w =>
       w.charAt(0).toUpperCase() + w.slice(1)
     ).join(' ');
   };
 
   const getTimeAgo = (timestamp: number) => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    
     if (seconds < 60) return 'Just now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
@@ -115,7 +109,6 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
 
   const getExpiresIn = (expiresAt: number) => {
     const seconds = Math.floor((expiresAt - Date.now()) / 1000);
-    
     if (seconds <= 0) return 'Expired';
     if (seconds < 60) return `${seconds}s`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
@@ -124,44 +117,24 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
 
   const handleReportClick = (report: Report) => {
     console.log('[AlertsFeed] Report clicked:', report);
-    
-    if (onAlertClick) {
-      onAlertClick(report.lat, report.lng);
-    }
-    
-    onBack(); // Return to map after clicking
+    if (onAlertClick) onAlertClick(report.lat, report.lng);
   };
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: '#e6e6e6' }}>
+    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: '#e6e6e6' }}>
       {/* Header */}
       <motion.div 
-        className="px-6 py-4 border-b border-neutral-200"
+        className="px-6 py-8 border-b border-neutral-200"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="flex items-center gap-3 mb-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onBack}
-            className="rounded-full"
-            asChild
-          >
-            <motion.button whileTap={{ scale: 0.9 }}>
-              <ArrowLeft className="w-5 h-5" strokeWidth={2} />
-            </motion.button>
-          </Button>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold">Alerts & Events</h2>
-            <p className="text-sm text-neutral-600">
-              {loading ? 'Loading...' : `${reports.length} active report${reports.length !== 1 ? 's' : ''}`}
-            </p>
-          </div>
-        </div>
+        <h2 className="font-bold text-2xl mb-4">Alerts & Events</h2>
+        <p className="text-sm text-neutral-600">
+          {loading ? 'Loading...' : `${reports.length} active report${reports.length !== 1 ? 's' : ''}`}
+        </p>
 
         {/* Filter Chips */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto pb-1 mt-4">
           <motion.div whileTap={{ scale: 0.95 }}>
             <Badge
               onClick={() => setActiveFilter(null)}
@@ -177,7 +150,6 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
           {filters.map((filter) => {
             const Icon = filter.icon;
             const count = reports.filter(r => r.type === filter.id).length;
-            
             return (
               <motion.div key={filter.id} whileTap={{ scale: 0.95 }}>
                 <Badge
@@ -225,8 +197,8 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
               const color = getReportColor(report.type);
               const timeAgo = getTimeAgo(report.timestamp);
               const expiresIn = getExpiresIn(report.expires_at);
-              const isExpiring = (report.expires_at - Date.now()) < 120000; // Less than 2 minutes
-              
+              const isExpiring = (report.expires_at - Date.now()) < 120000;
+
               return (
                 <motion.button
                   key={report.id}
@@ -253,7 +225,7 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
                         'text-neutral-600'
                       }`} strokeWidth={1.5} />
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <h4 className="text-neutral-900 font-medium">
@@ -272,7 +244,7 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
                           {Math.round(report.confidence * 100)}%
                         </Badge>
                       </div>
-                      
+
                       <div className="flex items-center gap-2 text-sm text-neutral-600 mb-2">
                         <MapPin className="w-3 h-3" strokeWidth={1.5} />
                         <span className="truncate">
@@ -298,7 +270,6 @@ export default function AlertsFeed({ onBack, onAlertClick }: AlertsFeedProps) {
         )}
       </div>
 
-      {/* Info Footer */}
       {!loading && filteredReports.length > 0 && (
         <div className="px-6 py-4 bg-neutral-50 border-t border-neutral-200">
           <p className="text-sm text-neutral-600 text-center">

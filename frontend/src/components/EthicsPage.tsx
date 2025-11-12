@@ -11,7 +11,8 @@ export default function EthicsPage({ onBack }: EthicsPageProps) {
     <div className="h-full flex flex-col overflow-y-auto" style={{ backgroundColor: '#e6e6e6' }}>
       {/* Header */}
       <motion.div 
-        className="px-6 py-4 border-b border-neutral-200 bg-white sticky top-0 z-10"
+        className="px-6 py-4 border-b border-neutral-200 sticky top-0 z-10"
+        style={{ backgroundColor: '#e6e6e6' }}
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -27,7 +28,7 @@ export default function EthicsPage({ onBack }: EthicsPageProps) {
               <ArrowLeft className="w-5 h-5" strokeWidth={2} />
             </motion.button>
           </Button>
-          <h2>Ethics & DPIA</h2>
+          <h2 className="font-bold text-xl">Ethics & DPIA</h2>
         </div>
       </motion.div>
 
@@ -35,7 +36,7 @@ export default function EthicsPage({ onBack }: EthicsPageProps) {
       <div className="flex-1 px-6 py-6 space-y-8">
         {/* Why We Built SafeNav */}
         <section>
-          <h3 className="mb-4 text-neutral-900">Why We Built SafeNav</h3>
+          <h3 className="mb-4 text-neutral-900 font-semibold text-lg">Why We Built SafeNav</h3>
           <div className="prose prose-sm text-neutral-700 space-y-3">
             <p>
               SafeNav was created to help communities stay safe during civic events and protests. We believe that access to real-time safety information is a fundamental right, especially for those exercising their right to peaceful assembly.
@@ -48,7 +49,7 @@ export default function EthicsPage({ onBack }: EthicsPageProps) {
 
         {/* How We Handle Your Data */}
         <section>
-          <h3 className="mb-4 text-neutral-900">How We Handle Your Data</h3>
+          <h3 className="mb-4 text-neutral-900 font-semibold text-lg">How We Handle Your Data</h3>
           <div className="space-y-4">
             <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
               <div className="flex items-start gap-3">
@@ -96,7 +97,7 @@ export default function EthicsPage({ onBack }: EthicsPageProps) {
 
         {/* Data Protection Impact Summary */}
         <section>
-          <h3 className="mb-4 text-neutral-900">Data Protection Impact Summary</h3>
+          <h3 className="mb-4 text-neutral-900 font-semibold text-lg">Data Protection Impact Summary</h3>
           <div className="bg-white border-2 border-neutral-200 rounded-xl p-6">
             <div className="space-y-6">
               {/* Collect */}
@@ -172,7 +173,7 @@ export default function EthicsPage({ onBack }: EthicsPageProps) {
 
         {/* Additional Resources */}
         <section className="pb-8">
-          <h3 className="mb-4 text-neutral-900">Learn More</h3>
+          <h3 className="mb-4 text-neutral-900 font-semibold text-lg">Learn More</h3>
           <div className="space-y-2">
             <a href="#" className="block p-3 bg-neutral-50 rounded-lg border border-neutral-200 hover:bg-neutral-100 transition-colors">
               <p className="text-sm text-neutral-900">View Full Privacy Policy</p>

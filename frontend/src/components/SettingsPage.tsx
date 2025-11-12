@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
-import { ArrowLeft, ChevronRight, Trash2, FileText, HelpCircle } from 'lucide-react';
+import { ChevronRight, Trash2, FileText, HelpCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface SettingsPageProps {
@@ -12,7 +12,6 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ onBack, onEthics, onHelp }: SettingsPageProps) {
-  console.log('[SettingsPage] Component mounted');
   const [settings, setSettings] = useState({
     shareReports: true,
     locationPrecision: true,
@@ -34,34 +33,21 @@ export default function SettingsPage({ onBack, onEthics, onHelp }: SettingsPageP
   };
 
   return (
-    <div className="h-full flex flex-col overflow-y-auto" style={{ backgroundColor: '#e6e6e6' }}>
+    <div className="h-full flex flex-col overflow-y-auto pb-20" style={{ backgroundColor: '#e6e6e6' }}>
       {/* Header */}
       <motion.div 
-        className="px-6 py-4 border-b border-neutral-200 bg-white sticky top-0 z-10"
+        className="px-6 py-8 border-b border-neutral-200"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onBack}
-            className="rounded-full"
-            asChild
-          >
-            <motion.button whileTap={{ scale: 0.9 }}>
-              <ArrowLeft className="w-5 h-5" strokeWidth={2} />
-            </motion.button>
-          </Button>
-          <h2>Settings & Privacy</h2>
-        </div>
+        <h2 className="font-bold text-2xl">Settings & Privacy</h2>
       </motion.div>
 
       {/* Content */}
       <div className="flex-1">
         {/* Privacy Settings */}
         <div className="px-6 py-6 border-b border-neutral-200">
-          <h3 className="mb-4 text-neutral-900">Privacy</h3>
+          <h3 className="mb-4 text-neutral-900 font-semibold text-lg">Privacy</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -94,7 +80,7 @@ export default function SettingsPage({ onBack, onEthics, onHelp }: SettingsPageP
 
         {/* Navigation Settings */}
         <div className="px-6 py-6 border-b border-neutral-200">
-          <h3 className="mb-4 text-neutral-900">Navigation</h3>
+          <h3 className="mb-4 text-neutral-900 font-semibold text-lg">Navigation</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -114,7 +100,7 @@ export default function SettingsPage({ onBack, onEthics, onHelp }: SettingsPageP
 
         {/* Alerts Settings */}
         <div className="px-6 py-6 border-b border-neutral-200">
-          <h3 className="mb-4 text-neutral-900">Alerts</h3>
+          <h3 className="mb-4 text-neutral-900 font-semibold text-lg">Alerts</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -147,7 +133,7 @@ export default function SettingsPage({ onBack, onEthics, onHelp }: SettingsPageP
 
         {/* Data Retention */}
         <div className="px-6 py-6 border-b border-neutral-200">
-          <h3 className="mb-4 text-neutral-900">Data Retention</h3>
+          <h3 className="mb-4 text-neutral-900 font-semibold text-lg">Data Retention</h3>
           
           <div>
             <p className="text-neutral-900 mb-3">Report Expiry Time</p>
