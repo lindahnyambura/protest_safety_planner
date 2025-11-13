@@ -4,6 +4,7 @@ main.py - FastAPI backend integrating RiskAwareRoutePlanner
 
 import uvicorn
 from fastapi import FastAPI, Query
+import time
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
 from pathlib import Path
@@ -21,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from scipy.spatial import KDTree
 from pydantic import BaseModel
+
 
 from PIL import Image
 import io
