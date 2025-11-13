@@ -1,7 +1,7 @@
 
   # SafeNav App
 
-  This is a code bundle for SafeNav App Design.
+  This is a code bundle for SafeNav App.
 
   ## Running the code
 

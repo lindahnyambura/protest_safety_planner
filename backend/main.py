@@ -29,7 +29,6 @@ import matplotlib.pyplot as plt
 from matplotlib import cm, colors
 from scipy.ndimage import gaussian_filter
 
-
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -43,9 +42,14 @@ from src.report_adapter.report_aggregator import (
     update_edge_harm_with_aggregation
 )
 
+# Import fusion
+from src.fusion.simple_fusion import SimpleFusionEngine, apply_fusion_to_graph
+
+
 # Global state
 aggregator = None
 baseline_p_sim = {}  # Store original simulation probs
+fusion_engine = None
 
 # 0. Coordinate conversion
 UTM_CRS = "EPSG:32737"  # UTM Zone 37S
@@ -183,7 +187,6 @@ async def submit_report(report: ReportSubmission):
             )
         
         # Convert lat/lng to UTM for nearest node search
-        
         transformer_to_utm = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:32737", always_xy=True)
         x_utm, y_utm = transformer_to_utm.transform(report.lng, report.lat)
         
@@ -209,17 +212,22 @@ async def submit_report(report: ReportSubmission):
             RECENT_REPORTS[nearest_node_id] = []
         RECENT_REPORTS[nearest_node_id].append(report_record)
         
-        # 4. Update graph with aggregated data
-        update_edge_harm_with_aggregation(
+        # 4. UPDATED: Apply Fusion (replaces simple update_edge_harm)
+        fusion_stats = apply_fusion_to_graph(
             planner.osm_graph,
             RECENT_REPORTS,
             aggregator,
-            baseline_p_sim
+            baseline_p_sim,
+            fusion_engine
         )
         
         # 5. Gather and return updated statistics
         stats = aggregator.get_report_statistics(RECENT_REPORTS)
-        print(f"[Backend] Graph updated with {stats['total_active_reports']} active reports.")
+        
+        print(f"[Backend] ✓ Fusion applied:")
+        print(f"  - Active reports: {stats['total_active_reports']}")
+        print(f"  - Edges updated: {fusion_stats['edges_updated']}")
+        print(f"  - Mean change: {fusion_stats['mean_absolute_change']:.4f}")
 
         return {
             "status": "ok",
@@ -229,7 +237,9 @@ async def submit_report(report: ReportSubmission):
             "expires_in_seconds": REPORT_EXPIRY_SECONDS,
             "graph_update": {
                 "total_active_reports": stats.get("total_active_reports", 0),
-                "nodes_affected": stats.get("nodes_affected", 0)
+                "nodes_affected": stats.get("nodes_affected", 0),
+                "edges_updated": fusion_stats.get("edges_updated", 0),
+                "mean_absolute_change": round(fusion_stats.get("mean_absolute_change", 0), 4)
             }
         }
         
@@ -246,7 +256,8 @@ async def submit_report(report: ReportSubmission):
 @app.get("/reports/aggregated")
 async def get_aggregated_report_data():
     """
-    NEW ENDPOINT: Return aggregated report probabilities with uncertainty
+    Return aggregated report probabilities with uncertainty bounds.
+    Shows how reports are being statistically combined.
     """
     current_time = time.time()
     
@@ -261,6 +272,12 @@ async def get_aggregated_report_data():
             if node_id in NODE_TO_COORDS:
                 lat, lng = NODE_TO_COORDS[node_id]
                 
+                # Count active reports at this node
+                num_active = len([
+                    r for r in RECENT_REPORTS[node_id]
+                    if current_time - r['timestamp'] < aggregator.time_window
+                ])
+                
                 aggregated_data.append({
                     "node_id": node_id,
                     "lat": lat,
@@ -268,11 +285,12 @@ async def get_aggregated_report_data():
                     "p_report": round(p_report, 3),
                     "ci_lower": round(ci_lower, 3),
                     "ci_upper": round(ci_upper, 3),
-                    "num_reports": len([
-                        r for r in RECENT_REPORTS[node_id]
-                        if current_time - r['timestamp'] < aggregator.time_window
-                    ]),
-                    "interpretation": "positive = increased risk, negative = safer"
+                    "num_reports": num_active,
+                    "interpretation": (
+                        "increased_risk" if p_report > 0.01 else
+                        "decreased_risk" if p_report < -0.01 else
+                        "neutral"
+                    )
                 })
     
     return {
@@ -285,7 +303,7 @@ async def get_aggregated_report_data():
 
 @app.on_event("startup")
 async def start_report_expiry_task():
-    """Enhanced expiry task that also updates graph"""
+    """Enhanced expiry task that re-applies fusion after cleanup"""
     import asyncio
     
     async def expire_old_reports():
@@ -303,17 +321,18 @@ async def start_report_expiry_task():
                 if not RECENT_REPORTS[node_id]:
                     del RECENT_REPORTS[node_id]
             
-            # Re-aggregate and update graph
-            if aggregator and baseline_p_sim:
-                update_edge_harm_with_aggregation(
+            # Re-apply fusion with remaining reports
+            if aggregator and fusion_engine and baseline_p_sim:
+                fusion_stats = apply_fusion_to_graph(
                     planner.osm_graph,
                     RECENT_REPORTS,
                     aggregator,
-                    baseline_p_sim
+                    baseline_p_sim,
+                    fusion_engine
                 )
                 
                 stats = aggregator.get_report_statistics(RECENT_REPORTS)
-                print(f"[Backend] Graph updated: {stats['total_active_reports']} active reports")
+                print(f"[Backend] Periodic update: {stats['total_active_reports']} active reports")
     
     asyncio.create_task(expire_old_reports()) 
 
@@ -786,8 +805,10 @@ def generate_risk_heatmap_png(p_sim: np.ndarray) -> io.BytesIO:
 
 @app.on_event("startup")
 def load_planner():
-    global planner, planner_config, aggregator, baseline_p_sim
+    global planner, planner_config, aggregator, fusion_engine, baseline_p_sim
 
+    print("[Backend] Starting initialization...")
+    
     # 1. Load planner config
     with open(CONFIG_PATH, "r") as f:
         planner_config = yaml.safe_load(f)
@@ -839,6 +860,14 @@ def load_planner():
     )
     print("[Backend] Report Aggregator initialized.")
 
+    # Initialize Fusion Engine
+    fusion_engine = SimpleFusionEngine(
+        simulation_weight=0.7,    # 70% trust simulation
+        report_weight=0.3,        # 30% trust reports
+        use_uncertainty_weighting=True
+    )
+    print("[Backend] ✓ Fusion Engine initialized")
+
     # 7. Store baseline harm probabilities (for later reset)
     for u, v in planner.osm_graph.edges():
         if isinstance(planner.osm_graph, nx.MultiDiGraph):
@@ -851,28 +880,62 @@ def load_planner():
     print(f"[Backend] Stored {len(baseline_p_sim)} baseline edge probabilities")
 
     print("[Backend] Planner initialized successfully.")
+    print("[Backend] Fusion pipeline ready")
 
-@app.on_event("startup")
-async def start_report_expiry_task():
-    import asyncio
-    
-    async def expire_old_reports():
-        while True:
-            await asyncio.sleep(60)  # Check every minute
-            current_time = time.time()
-            
-            for node_id in list(RECENT_REPORTS.keys()):
-                RECENT_REPORTS[node_id] = [
-                    r for r in RECENT_REPORTS[node_id]
-                    if r['expires_at'] > current_time
-                ]
-                
-                if not RECENT_REPORTS[node_id]:
-                    del RECENT_REPORTS[node_id]
-    
-    asyncio.create_task(expire_old_reports())
 
 # 3. API Endpoints
+
+@app.get("/fusion/stats")
+async def get_fusion_statistics():
+    """
+    Return statistics about the current fusion state.
+    Useful for dashboard/debugging.
+    """
+    stats = aggregator.get_report_statistics(RECENT_REPORTS)
+    
+    # Count how many edges differ from baseline
+    edges_modified = 0
+    total_edges = 0
+    max_delta = 0.0
+    
+    for edge_key, baseline_p in baseline_p_sim.items():
+        total_edges += 1
+        
+        # Get current p_harm
+        if len(edge_key) == 3:  # MultiDiGraph
+            u, v, key = edge_key
+            if planner.osm_graph.has_edge(u, v):
+                current_p = planner.osm_graph[u][v][key].get('p_harm', 0.0)
+        else:  # DiGraph
+            u, v = edge_key
+            if planner.osm_graph.has_edge(u, v):
+                current_p = planner.osm_graph[u][v].get('p_harm', 0.0)
+        
+        delta = abs(current_p - baseline_p)
+        if delta > 0.001:
+            edges_modified += 1
+            max_delta = max(max_delta, delta)
+    
+    return {
+        "fusion_active": True,
+        "simulation_weight": fusion_engine.sim_weight,
+        "report_weight": fusion_engine.report_weight,
+        "reports": {
+            "total_active": stats['total_active_reports'],
+            "nodes_affected": stats['nodes_affected'],
+            "by_type": stats['by_type']
+        },
+        "graph_state": {
+            "total_edges": total_edges,
+            "edges_modified": edges_modified,
+            "percent_modified": round(100 * edges_modified / total_edges, 2),
+            "max_probability_change": round(max_delta, 4)
+        },
+        "interpretation": (
+            f"{stats['total_active_reports']} reports influencing "
+            f"{edges_modified} edges ({100*edges_modified/total_edges:.1f}%)"
+        )
+    }
 
 @app.get("/nearest-node")
 def get_nearest_node(lat: float = Query(...), lng: float = Query(...)):
@@ -1965,47 +2028,83 @@ def get_route(
             
             print(f"[Backend] ✓ Generated {len(result['directions'])} turn-by-turn directions")
         
-        # Add routing metadata for transparency
+        # NEW: Add Fusion Metadata
+        stats = aggregator.get_report_statistics(RECENT_REPORTS)
+        
+        # Check how many edges on this route were affected by reports
+        route_path = result.get('path', [])
+        affected_edges_on_route = 0
+        
+        for i in range(len(route_path) - 1):
+            u, v = route_path[i], route_path[i+1]
+            
+            if len(baseline_p_sim) > 0:
+                # Check if this edge differs from baseline
+                if isinstance(planner.osm_graph, nx.MultiDiGraph):
+                    for key in planner.osm_graph[u][v]:
+                        baseline = baseline_p_sim.get((u, v, key), 0.0)
+                        current = planner.osm_graph[u][v][key].get('p_harm', 0.0)
+                        if abs(current - baseline) > 0.001:
+                            affected_edges_on_route += 1
+                            break
+                else:
+                    baseline = baseline_p_sim.get((u, v), 0.0)
+                    current = planner.osm_graph[u][v].get('p_harm', 0.0)
+                    if abs(current - baseline) > 0.001:
+                        affected_edges_on_route += 1
+        
+        result["fusion_metadata"] = {
+            "reports": {
+                "total_active": stats['total_active_reports'],
+                "nodes_affected": stats['nodes_affected'],
+                "by_type": stats['by_type']
+            },
+            "route_analysis": {
+                "total_edges": len(route_path) - 1,
+                "edges_influenced_by_reports": affected_edges_on_route,
+                "percent_influenced": round(
+                    100 * affected_edges_on_route / max(len(route_path) - 1, 1), 
+                    1
+                )
+            },
+            "fusion_config": {
+                "simulation_weight": fusion_engine.sim_weight,
+                "report_weight": fusion_engine.report_weight,
+                "method": "uncertainty_weighted_bayesian"
+            },
+            "interpretation": (
+                f"This route was influenced by {stats['total_active_reports']} "
+                f"active reports affecting {affected_edges_on_route} edges"
+            )
+        }
+        
+        # Add routing params
         result["routing_params"] = {
             "algorithm": algorithm,
             "lambda_risk": lambda_risk,
             "lambda_distance": planner.config.get('lambda_distance', 1.0),
-            "cost_function": cost_type,
-            "edge_risk_strategy": planner.config.get('edge_risk_strategy', 'max')
+            "cost_function": cost_type
         }
         
-        # Log success metrics
-        print(f"\n[Backend] ✓ ROUTE COMPUTED SUCCESSFULLY")
-        print(f"  Path nodes:    {len(result.get('path', []))}")
-        print(f"  Distance:      {result.get('metadata', {}).get('total_distance_m', 0):.1f}m")
-        print(f"  Safety score:  {result.get('safety_score', 0):.3f} ({result.get('safety_score', 0)*100:.1f}%)")
-        print(f"  ETA:           {result.get('metadata', {}).get('estimated_time_s', 0)/60:.1f} min")
-        print(f"  Turns:         {result.get('metadata', {}).get('num_turns', 0)}")
-        print(f"  Max edge risk: {result.get('metadata', {}).get('max_edge_risk', 0):.3f}")
-        print(f"  Mean edge risk: {result.get('metadata', {}).get('mean_edge_risk', 0):.3f}")
-        print(f"  Nodes explored: {result.get('metadata', {}).get('nodes_explored', 0)}")
+        print(f"\n[Backend] ✓ ROUTE COMPUTED")
+        print(f"  Distance: {result.get('metadata', {}).get('total_distance_m', 0):.1f}m")
+        print(f"  Safety: {result.get('safety_score', 0)*100:.1f}%")
+        print(f"  Reports influencing route: {affected_edges_on_route} edges")
         print(f"{'='*60}\n")
         
         return result
         
     except Exception as e:
         import traceback
-        print(f"\n[Backend] ROUTE COMPUTATION ERROR")
-        print(f"  Error: {str(e)}")
-        print(f"  Traceback:")
+        print(f"\n[Backend] ROUTE ERROR: {str(e)}")
         print(traceback.format_exc())
-        print(f"{'='*60}\n")
-        
         return JSONResponse(
-            {
-                "error": f"Route computation failed: {str(e)}",
-                "details": "Check server logs for full traceback"
-            },
+            {"error": f"Route computation failed: {str(e)}"},
             status_code=500
         )
     
     finally:
-        # CRITICAL: Restore original config after route computation
+        # Restore original config
         planner.config['lambda_risk'] = original_lambda
         planner.cost_fn = get_cost_function(cost_type, planner.config)
         planner.optimizer.cost_fn = planner.cost_fn
