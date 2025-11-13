@@ -212,6 +212,7 @@ async def submit_report(report: ReportSubmission):
             RECENT_REPORTS[nearest_node_id] = []
         RECENT_REPORTS[nearest_node_id].append(report_record)
         
+        import time
         # 4. UPDATED: Apply Fusion (replaces simple update_edge_harm)
         fusion_stats = apply_fusion_to_graph(
             planner.osm_graph,
@@ -1469,7 +1470,7 @@ async def build_street_name_cache_endpoint(max_edges: int = 100):
 @app.get("/reports/active")
 async def get_active_reports():
     """
-    Return all currently active (non-expired) reports
+    Return all currently active (non-expired) reports with accurate locations
     """
     import time
     
@@ -1483,8 +1484,27 @@ async def get_active_reports():
                 if node_id in NODE_TO_COORDS:
                     lat, lng = NODE_TO_COORDS[node_id]
                     
-                    # Try to get location name
-                    location_name = get_coordinate_based_name(lat, lng)
+                    # Try to get accurate street name from graph edges
+                    location_name = None
+                    
+                    # Check edges from this node for street names
+                    if planner and planner.osm_graph:
+                        neighbors = list(planner.osm_graph.neighbors(node_id))
+                        
+                        if neighbors:
+                            # Get street name from first edge
+                            try:
+                                location_name = get_street_name_from_edge(
+                                    planner.osm_graph, 
+                                    node_id, 
+                                    neighbors[0]
+                                )
+                            except Exception as e:
+                                print(f"[Backend] Street name lookup failed for {node_id}: {e}")
+                    
+                    # Fallback to coordinate-based name if no street name found
+                    if not location_name or is_placeholder_name(location_name):
+                        location_name = get_coordinate_based_name(lat, lng)
                     
                     active_reports.append({
                         "id": f"{node_id}_{int(report['timestamp'])}",
@@ -1492,8 +1512,8 @@ async def get_active_reports():
                         "lat": lat,
                         "lng": lng,
                         "confidence": report['confidence'],
-                        "timestamp": int(report['timestamp'] * 1000),  # Convert to ms
-                        "expires_at": int(report['expires_at'] * 1000),  # Convert to ms
+                        "timestamp": int(report['timestamp'] * 1000),  # ms
+                        "expires_at": int(report['expires_at'] * 1000),  # ms
                         "node_id": node_id,
                         "location_name": location_name
                     })
