@@ -37,6 +37,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import planner
 from src.planner.route_planner import RiskAwareRoutePlanner
 
+# Import report aggregator
+from src.report_adapter.report_aggregator import (
+    ReportAggregator, 
+    update_edge_harm_with_aggregation
+)
+
+# Global state
+aggregator = None
+baseline_p_sim = {}  # Store original simulation probs
 
 # 0. Coordinate conversion
 UTM_CRS = "EPSG:32737"  # UTM Zone 37S
@@ -139,9 +148,10 @@ async def submit_report(report: ReportSubmission):
     Updates the risk map in real-time
     """
     import time
+    import pyproj
     
     try:
-        # Validate report type
+        # 1. Validate report type
         valid_types = ['safe', 'crowd', 'police', 'tear_gas', 'water_cannon']
         if report.type not in valid_types:
             return JSONResponse(
@@ -165,7 +175,7 @@ async def submit_report(report: ReportSubmission):
         
         print(f"[Backend] Report received: {report.type} at ({report.lat}, {report.lng})")
         
-        # Find nearest node using KDTree
+        # 2. Find nearest node using KDTree
         if NODE_KDTREE is None or NODE_IDS is None:
             return JSONResponse(
                 {"error": "Graph index not initialized"},
@@ -173,7 +183,7 @@ async def submit_report(report: ReportSubmission):
             )
         
         # Convert lat/lng to UTM for nearest node search
-        import pyproj
+        
         transformer_to_utm = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:32737", always_xy=True)
         x_utm, y_utm = transformer_to_utm.transform(report.lng, report.lat)
         
@@ -183,7 +193,7 @@ async def submit_report(report: ReportSubmission):
         
         print(f"[Backend] Snapped to node {nearest_node_id} (distance: {distance:.1f}m)")
         
-        # Create report record
+        # 3. Create report record
         timestamp = time.time()
         report_record = {
             "type": report.type,
@@ -199,17 +209,28 @@ async def submit_report(report: ReportSubmission):
             RECENT_REPORTS[nearest_node_id] = []
         RECENT_REPORTS[nearest_node_id].append(report_record)
         
-        # Update edge harm probabilities
-        update_edge_harm_from_reports(nearest_node_id, report.type, report.confidence)
+        # 4. Update graph with aggregated data
+        update_edge_harm_with_aggregation(
+            planner.osm_graph,
+            RECENT_REPORTS,
+            aggregator,
+            baseline_p_sim
+        )
         
-        print(f"[Backend] Report stored. Total active reports: {sum(len(r) for r in RECENT_REPORTS.values())}")
-        
+        # 5. Gather and return updated statistics
+        stats = aggregator.get_report_statistics(RECENT_REPORTS)
+        print(f"[Backend] Graph updated with {stats['total_active_reports']} active reports.")
+
         return {
             "status": "ok",
             "report_id": f"r_{int(timestamp)}",
             "node_id": nearest_node_id,
             "snapped_distance_m": float(distance),
-            "expires_in_seconds": REPORT_EXPIRY_SECONDS
+            "expires_in_seconds": REPORT_EXPIRY_SECONDS,
+            "graph_update": {
+                "total_active_reports": stats.get("total_active_reports", 0),
+                "nodes_affected": stats.get("nodes_affected", 0)
+            }
         }
         
     except Exception as e:
@@ -220,6 +241,81 @@ async def submit_report(report: ReportSubmission):
             {"error": f"Internal server error: {str(e)}"},
             status_code=500
         )
+
+
+@app.get("/reports/aggregated")
+async def get_aggregated_report_data():
+    """
+    NEW ENDPOINT: Return aggregated report probabilities with uncertainty
+    """
+    current_time = time.time()
+    
+    aggregated_data = []
+    
+    for node_id in RECENT_REPORTS.keys():
+        p_report, ci_lower, ci_upper = aggregator.aggregate_node_reports(
+            node_id, RECENT_REPORTS, current_time
+        )
+        
+        if abs(p_report) > 0.001:  # Only return significant adjustments
+            if node_id in NODE_TO_COORDS:
+                lat, lng = NODE_TO_COORDS[node_id]
+                
+                aggregated_data.append({
+                    "node_id": node_id,
+                    "lat": lat,
+                    "lng": lng,
+                    "p_report": round(p_report, 3),
+                    "ci_lower": round(ci_lower, 3),
+                    "ci_upper": round(ci_upper, 3),
+                    "num_reports": len([
+                        r for r in RECENT_REPORTS[node_id]
+                        if current_time - r['timestamp'] < aggregator.time_window
+                    ]),
+                    "interpretation": "positive = increased risk, negative = safer"
+                })
+    
+    return {
+        "aggregated_reports": aggregated_data,
+        "aggregation_method": "weighted_average_with_ci",
+        "time_window_seconds": aggregator.time_window,
+        "timestamp": int(current_time * 1000)
+    }
+
+
+@app.on_event("startup")
+async def start_report_expiry_task():
+    """Enhanced expiry task that also updates graph"""
+    import asyncio
+    
+    async def expire_old_reports():
+        while True:
+            await asyncio.sleep(60)  # Check every minute
+            current_time = time.time()
+            
+            # Remove expired reports
+            for node_id in list(RECENT_REPORTS.keys()):
+                RECENT_REPORTS[node_id] = [
+                    r for r in RECENT_REPORTS[node_id]
+                    if r['expires_at'] > current_time
+                ]
+                
+                if not RECENT_REPORTS[node_id]:
+                    del RECENT_REPORTS[node_id]
+            
+            # Re-aggregate and update graph
+            if aggregator and baseline_p_sim:
+                update_edge_harm_with_aggregation(
+                    planner.osm_graph,
+                    RECENT_REPORTS,
+                    aggregator,
+                    baseline_p_sim
+                )
+                
+                stats = aggregator.get_report_statistics(RECENT_REPORTS)
+                print(f"[Backend] Graph updated: {stats['total_active_reports']} active reports")
+    
+    asyncio.create_task(expire_old_reports()) 
 
 
 # Global node mapping cache
@@ -690,17 +786,17 @@ def generate_risk_heatmap_png(p_sim: np.ndarray) -> io.BytesIO:
 
 @app.on_event("startup")
 def load_planner():
-    global planner, planner_config
+    global planner, planner_config, aggregator, baseline_p_sim
 
-    # Load config
+    # 1. Load planner config
     with open(CONFIG_PATH, "r") as f:
         planner_config = yaml.safe_load(f)
 
-    # Load OSM graph
+    # 2. Load OSM graph and fix coordinate types
     graph_path = DATA_DIR / "nairobi_walk.graphml"
     osm_graph = nx.read_graphml(graph_path)
     
-    # FIX: Convert node coordinates from strings to floats
+    # Convert node coordinates from strings to floats
     for node, data in osm_graph.nodes(data=True):
         if 'x' in data:
             data['x'] = float(data['x'])
@@ -709,7 +805,7 @@ def load_planner():
     
     print(f"[Backend] Loaded OSM graph with {len(osm_graph.nodes)} nodes.")
 
-    # Load harm probabilities
+    # 3. Load harm probabilities (simulation results) and cell-to-node mapping
     p_sim_path = ARTIFACTS_DIR / "p_sim.npy"
     p_sim = np.load(p_sim_path)
     print(f"[Backend] Loaded harm probability grid: {p_sim.shape}")
@@ -718,25 +814,41 @@ def load_planner():
     cell_to_node_path = DATA_DIR / "cell_to_node.npy"
     cell_to_node = np.load(cell_to_node_path, allow_pickle=True)
 
-    # Initialize planner
+    # 4. Initialize RiskAwareRoutePlanner
     planner = RiskAwareRoutePlanner(
         osm_graph=osm_graph,
         p_sim=p_sim,
         config=planner_config,
         cell_to_node=cell_to_node
     )
-
+    # 5. Build caches and supporting indices
     # Build coordinate cache
     build_node_coordinate_cache(planner.osm_graph)
-    
     # Load landmark mappings
     load_landmark_mappings()
-
     # Build KDTree for nearest node lookup
     build_node_kdtree(planner.osm_graph)
-
     # Load street name cache
     load_street_name_cache()
+
+    # 6. Initialize the report aggregator
+    aggregator = ReportAggregator(
+        time_window=300,      # 5 minutes
+        spatial_radius=1,     # Affect immediate neighbors
+        confidence_level=0.95
+    )
+    print("[Backend] Report Aggregator initialized.")
+
+    # 7. Store baseline harm probabilities (for later reset)
+    for u, v in planner.osm_graph.edges():
+        if isinstance(planner.osm_graph, nx.MultiDiGraph):
+            for key in planner.osm_graph[u][v]:
+                edge_data = planner.osm_graph[u][v][key]
+                baseline_p_sim[(u, v, key)] = edge_data.get('p_harm', 0.0)
+        else:
+            edge_data = planner.osm_graph[u][v]
+            baseline_p_sim[(u, v)] = edge_data.get('p_harm', 0.0)
+    print(f"[Backend] Stored {len(baseline_p_sim)} baseline edge probabilities")
 
     print("[Backend] Planner initialized successfully.")
 
