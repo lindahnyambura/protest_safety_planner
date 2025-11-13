@@ -1,4 +1,4 @@
-// App.tsx
+// App.tsx - FIXED with alert count tracking
 import { useState, useEffect, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import HomePage from './components/HomePage';
@@ -66,6 +66,7 @@ export default function App() {
   const [userNode, setUserNode] = useState<string | null>(null);
   const [mapRefreshTrigger, setMapRefreshTrigger] = useState(0);
   const [hasGrantedLocation, setHasGrantedLocation] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
   const homeMapRef = useRef<any>(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -75,7 +76,33 @@ export default function App() {
     setCurrentScreen(screen);
   };
 
-  // ===================== LOCATION HANDLING =====================
+  // FETCH ALERT COUNT
+  const fetchAlertCount = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/active`);
+      if (response.ok) {
+        const data = await response.json();
+        const count = data.reports?.length || 0;
+        setAlertCount(count);
+        console.log('[App] Alert count updated:', count);
+      }
+    } catch (error) {
+      console.error('[App] Failed to fetch alert count:', error);
+    }
+  };
+
+  // POLL FOR ALERTS
+  useEffect(() => {
+    // Initial fetch
+    fetchAlertCount();
+
+    // Poll every 15 seconds
+    const interval = setInterval(fetchAlertCount, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // LOCATION HANDLING
   const handleLocationGranted = async (location: string, coords: { lat: number; lng: number }) => {
     console.log('[App] Location granted:', location, coords);
 
@@ -115,7 +142,7 @@ export default function App() {
     navigateTo('map');
   };
 
-  // ===================== ROUTE COMPUTATION =====================
+  // ROUTE COMPUTATION
   const handleComputeRoute = async (destinationData: RouteData) => {
     if (!userNode) {
       toast.error('User location not set', {
@@ -254,8 +281,12 @@ export default function App() {
   };
 
   const handleReportSuccess = () => {
-    console.log('[App] Report submitted successfully, refreshing map');
+    console.log('[App] Report submitted successfully, refreshing map and alerts');
     setMapRefreshTrigger((prev) => prev + 1);
+    
+    // Immediately refresh alert count
+    fetchAlertCount();
+    
     toast.success('Map updated with your report');
   };
 
@@ -323,7 +354,7 @@ export default function App() {
 
   const shouldShowBottomNav = ['home', 'activity', 'map', 'alerts', 'settings'].includes(currentScreen);
 
-  // ===================== SCREEN RENDERING =====================
+  // SCREEN RENDERING
   const renderScreen = () => {
     switch (currentScreen) {
       case 'landing':
@@ -414,7 +445,11 @@ export default function App() {
         )}
 
         {shouldShowBottomNav && (
-          <BottomNav currentScreen={currentScreen as NavScreen} onNavigate={handleBottomNavigation} />
+          <BottomNav 
+            currentScreen={currentScreen as NavScreen} 
+            onNavigate={handleBottomNavigation}
+            alertCount={alertCount}
+          />
         )}
       </div>
 

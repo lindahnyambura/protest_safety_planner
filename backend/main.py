@@ -13,7 +13,7 @@ import numpy as np
 import networkx as nx
 import json
 import pyproj
-import time
+import asyncio
 import requests
 from typing import Optional
 from typing import Dict, List, Tuple
@@ -153,9 +153,6 @@ async def submit_report(report: ReportSubmission):
     Submit an anonymous hazard report
     Updates the risk map in real-time
     """
-    import time
-    import pyproj
-    
     try:
         # 1. Validate report type
         valid_types = ['safe', 'crowd', 'police', 'tear_gas', 'water_cannon']
@@ -214,7 +211,6 @@ async def submit_report(report: ReportSubmission):
             RECENT_REPORTS[nearest_node_id] = []
         RECENT_REPORTS[nearest_node_id].append(report_record)
         
-        import time
         # 4. UPDATED: Apply Fusion (replaces simple update_edge_harm)
         fusion_stats = apply_fusion_to_graph(
             planner.osm_graph,
@@ -307,7 +303,6 @@ async def get_aggregated_report_data():
 @app.on_event("startup")
 async def start_report_expiry_task():
     """Enhanced expiry task that re-applies fusion after cleanup"""
-    import asyncio
     
     async def expire_old_reports():
         while True:
