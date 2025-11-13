@@ -6,6 +6,7 @@ Combines simulation priors with report-based updates using weighted averaging
 
 import numpy as np
 from typing import Dict, Tuple
+import time
 
 
 class SimpleFusionEngine:

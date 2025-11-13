@@ -154,6 +154,7 @@ async def submit_report(report: ReportSubmission):
     Updates the risk map in real-time
     """
     try:
+        import time
         # 1. Validate report type
         valid_types = ['safe', 'crowd', 'police', 'tear_gas', 'water_cannon']
         if report.type not in valid_types:
@@ -245,7 +246,8 @@ async def submit_report(report: ReportSubmission):
     except Exception as e:
         import traceback
         print(f"[Backend] Report submission error: {e}")
-        print(traceback.format_exc())
+        print(f"[Backend] Full traceback:")
+        print(traceback.format_exc())  # <-- This will show you WHICH file is missing 'time'
         return JSONResponse(
             {"error": f"Internal server error: {str(e)}"},
             status_code=500
@@ -302,37 +304,37 @@ async def get_aggregated_report_data():
 
 @app.on_event("startup")
 async def start_report_expiry_task():
-    """Enhanced expiry task that also updates graph."""
-    import asyncio
-
+    """Enhanced expiry task that re-applies fusion after cleanup"""
+    
     async def expire_old_reports():
         while True:
             await asyncio.sleep(60)  # Check every minute
             current_time = time.time()
-
+            
             # Remove expired reports
             for node_id in list(RECENT_REPORTS.keys()):
                 RECENT_REPORTS[node_id] = [
                     r for r in RECENT_REPORTS[node_id]
                     if r['expires_at'] > current_time
                 ]
-
+                
                 if not RECENT_REPORTS[node_id]:
                     del RECENT_REPORTS[node_id]
-
-            # Re-aggregate and update graph
-            if aggregator and baseline_p_sim:
-                update_edge_harm_with_aggregation(
+            
+            # Re-apply fusion with remaining reports
+            if aggregator and fusion_engine and baseline_p_sim:
+                fusion_stats = apply_fusion_to_graph(
                     planner.osm_graph,
                     RECENT_REPORTS,
                     aggregator,
-                    baseline_p_sim
+                    baseline_p_sim,
+                    fusion_engine
                 )
-
+                
                 stats = aggregator.get_report_statistics(RECENT_REPORTS)
-                print(f"[Backend] Graph updated: {stats['total_active_reports']} active reports")
-
-    asyncio.create_task(expire_old_reports()) 
+                print(f"[Backend] Periodic update: {stats['total_active_reports']} active reports")
+    
+    asyncio.create_task(expire_old_reports())  
 
 
 # Global node mapping cache
