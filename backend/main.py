@@ -302,38 +302,36 @@ async def get_aggregated_report_data():
 
 @app.on_event("startup")
 async def start_report_expiry_task():
-    """Enhanced expiry task that re-applies fusion after cleanup"""
-    
-    # Capture time in closure scope
-    import time as time_module
+    """Enhanced expiry task that also updates graph."""
+    import asyncio
+
     async def expire_old_reports():
         while True:
             await asyncio.sleep(60)  # Check every minute
-            current_time = time_module.time()
-            
+            current_time = time.time()
+
             # Remove expired reports
             for node_id in list(RECENT_REPORTS.keys()):
                 RECENT_REPORTS[node_id] = [
                     r for r in RECENT_REPORTS[node_id]
                     if r['expires_at'] > current_time
                 ]
-                
+
                 if not RECENT_REPORTS[node_id]:
                     del RECENT_REPORTS[node_id]
-            
-            # Re-apply fusion with remaining reports
-            if aggregator and fusion_engine and baseline_p_sim:
-                fusion_stats = apply_fusion_to_graph(
+
+            # Re-aggregate and update graph
+            if aggregator and baseline_p_sim:
+                update_edge_harm_with_aggregation(
                     planner.osm_graph,
                     RECENT_REPORTS,
                     aggregator,
-                    baseline_p_sim,
-                    fusion_engine
+                    baseline_p_sim
                 )
-                
+
                 stats = aggregator.get_report_statistics(RECENT_REPORTS)
-                print(f"[Backend] Periodic update: {stats['total_active_reports']} active reports")
-    
+                print(f"[Backend] Graph updated: {stats['total_active_reports']} active reports")
+
     asyncio.create_task(expire_old_reports()) 
 
 
