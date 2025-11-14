@@ -1,9 +1,10 @@
-// App.tsx - FIXED with alert count tracking
+// App.tsx
 import { useState, useEffect, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import HomePage from './components/HomePage';
 import ActivityPage from './components/ActivityPage';
 import BottomNav, { NavScreen } from './components/BottomNav';
+import { AnimatePresence } from 'motion/react';
 import LocationPermissionModal from './components/LocationPermissionModal';
 import HomeMap from './components/HomeMap';
 import QuickReportModal from './components/QuickReportModal';

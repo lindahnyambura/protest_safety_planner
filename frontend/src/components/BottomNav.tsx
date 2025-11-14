@@ -1,5 +1,5 @@
 import { Home, MapPin, Bell, Settings, Map } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export type NavScreen = 'home' | 'activity' | 'map' | 'alerts' | 'settings';
 
@@ -40,6 +40,8 @@ export default function BottomNav({ currentScreen, onNavigate, alertCount = 0 }:
           const Icon = item.icon;
           const isActive = currentScreen === item.id;
           const isCenter = item.isCenter;
+          const isAlerts = item.id === 'alerts';
+          const hasAlerts = alertCount > 0;
 
           if (isCenter) {
             return (
@@ -87,22 +89,87 @@ export default function BottomNav({ currentScreen, onNavigate, alertCount = 0 }:
                   }`}
                   strokeWidth={2}
                 />
-                {item.id === 'alerts' && alertCount > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                    className="
-                      absolute -top-1 -right-1 
-                      bg-red-600 text-white text-[10px] font-bold 
-                      rounded-full w-4 h-4 flex items-center justify-center shadow-md
-                    "
-                  >
-                    {alertCount > 9 ? '9+' : alertCount}
-                  </motion.span>
+                
+                {/* SLEEK ALERT BADGE WITH ANIMATIONS */}
+                {isAlerts && hasAlerts && (
+                  <AnimatePresence>
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1}}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ 
+                        type: 'spring', 
+                        stiffness: 500, 
+                        damping: 25, 
+                      }}
+                      className="absolute -top-2 -right-2"
+                    >
+                      {/* Badge with gradient and border */}
+                      <motion.div
+                        whileHover={{ scale: 1.15 }}
+                        animate={{
+                          scale: [1, 1.15, 1],
+                          boxShadow: [
+                            '0 0 0 0 rgba(0,0,0,0.5)',
+                            '0 0 0 6px rgba(0,0,0,0.25)',
+                            '0 0 0 0 rgba(0,0,0,0)',
+                          ],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                        className="
+                          relative flex items-center justify-center
+                          w-5 h-5
+                          rounded-full
+                          bg-black
+                          border border-neutral-800
+                          shadow-[0_2px_8px_rgba(0,0,0,0.5)]
+                          z-10
+                          overflow-hidden
+                        "
+                      >
+                        {/* Count text */}
+                        <span 
+                          className="
+                            text-[10px] font-semibold
+                            text-white
+                            z-20
+                          "
+                        >
+                          {alertCount > 99 ? '99+' : alertCount}
+                        </span>
+                        
+                        {/* Shine effect that periodically sweeps across */}
+                        <motion.div
+                          animate={{
+                            x: ['-50%', '150%'],
+                          }}
+                          transition={{
+                            duration: 2.5,
+                            repeat: Infinity,
+                            repeatDelay: 1.5,
+                            ease: 'easeInOut',
+                          }}
+                          className="
+                            absolute top-0 bottom-0
+                            w-[40%] 
+                            bg-gradient-to-r from-transparent via-white/10 to-transparent
+                            z-10
+                            pointer-events-none
+                          "
+                          style={{
+                            transform: "rotate(20deg)",
+                          }}
+                        />
+                      </motion.div>
+                    </motion.div>
+                  </AnimatePresence>
                 )}
               </div>
+              
               <span
                 className={`text-xs ${
                   isActive ? 'text-white' : 'text-neutral-600'
